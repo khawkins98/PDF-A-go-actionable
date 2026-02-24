@@ -34,16 +34,31 @@ The tool covers the practical validation workflow used by accessibility professi
 - Reading order (with structure tree visualization to help)
 - Screen reader testing (with tool recommendations)
 
-## Relationship to PDF-A-go-slim
+## Related Projects
 
-This is a sibling project to [PDF-A-go-slim](https://github.com/nickhawkins/PDF-A-go-slim), a browser-based PDF optimizer. Both tools share underlying PDF parsing infrastructure (pdf-lib, content stream parsing, structure tree traversal) but serve different purposes:
+PDF-A-go-actionable is part of a family of client-side PDF tools:
 
-- **PDF-A-go-slim** -- reduce file size
-- **PDF-A-go-actionable** -- validate accessibility
+- **[PDF-A-go-go](https://github.com/khawkins98/PDF-A-go-go)** — a lightweight, embeddable PDF viewer for web pages. Built on PDF.js (pdfjs-dist). PDF-A-go-go was the origin project — while building a showcase PDF for it, font embedding bloat was discovered, which motivated creating PDF-A-go-slim. The two projects share the "no server, no framework, pure browser" philosophy but use different PDF libraries (PDF.js for rendering vs. pdf-lib for structural access).
+
+- **[PDF-A-go-slim](https://github.com/khawkins98/PDF-A-go-slim)** — a browser-based PDF optimizer that reduces file size. Built on pdf-lib and fflate. PDF-A-go-actionable shares its tech stack and reuses several utility modules from PDF-A-go-slim (stream decoding, content stream parsing, structure tree traversal, accessibility detection). The extensive PDF internals knowledge documented in PDF-A-go-slim's `docs/learnings.md` also informed this project's design.
+
+In short: **PDF-A-go-go** renders PDFs, **PDF-A-go-slim** optimizes them, and **PDF-A-go-actionable** validates their accessibility.
 
 ## Status
 
 Early development. See [PRD.md](PRD.md) for the full product requirements.
+
+## Acknowledgments
+
+This project builds on the work of many others:
+
+- **[pdf-lib](https://github.com/Hopding/pdf-lib)** by Andrew Dillon — low-level PDF object access that makes client-side PDF analysis possible
+- **[fflate](https://github.com/101arrowz/fflate)** by 101arrowz — fast, lightweight compression/decompression used for PDF stream decoding
+- **[PDF-A-go-slim](https://github.com/khawkins98/PDF-A-go-slim)** — sibling project whose utility modules (stream decoding, content stream parsing, structure tree traversal, accessibility detection) provide the foundation for this tool's PDF engine
+- **[PDF-A-go-go](https://github.com/khawkins98/PDF-A-go-go)** — the original project in this family, whose development surfaced the PDF accessibility challenges this tool addresses
+- **[PAC (PDF Accessibility Checker)](https://pac.pdf-accessibility.org/)** by the PDF/UA Foundation — the gold standard for PDF accessibility validation, and the primary inspiration for this tool's check coverage
+- **[veraPDF](https://verapdf.org/)** — open-source PDF/A and PDF/UA validator whose test corpus and rule definitions inform our check logic
+- **WCAG**, **PDF/UA (ISO 14289)**, and the **Matterhorn Protocol** — the standards that define what accessible PDFs look like
 
 ## License
 

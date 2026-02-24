@@ -211,7 +211,7 @@ Used for stream decompression when parsing content streams. Key functions:
 Content stream parsing requires decompressing streams first. The decoder chain in `stream-decode.js` handles:
 - **FlateDecode** — zlib/DEFLATE via fflate
 - **LZWDecode** — custom decoder (PDF's variant has non-standard early code size change)
-- **ASCII85Decode** — 4 bytes into 5 ASCII characters
+- **ASCII85Decode** — ASCII85 text back into bytes (5 chars → 4 bytes)
 - **ASCIIHexDecode** — hex pairs to bytes
 - **RunLengthDecode** — simple RLE
 - **PNG row prediction** (Predictor 10-15) — reversed after Flate decompression

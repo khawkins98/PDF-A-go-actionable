@@ -28,7 +28,7 @@ This is a **validation tool**, not a remediation tool. It tells you exactly what
 - **Client-side only.** All processing happens in the browser via Web Workers. No data leaves the user's machine.
 - **Professional UI.** Desktop metaphor with functional panel layout. Clean, modern aesthetic — serious tool for serious work, not a novelty.
 
-### Audit Checks (mapped to UNDRR 13-point checklist)
+### Audit Checks (13-point PDF accessibility checklist)
 
 #### Automated — Pass/Fail
 
@@ -64,7 +64,7 @@ This is a **validation tool**, not a remediation tool. It tells you exactly what
 
 | # | Check | What We Provide |
 |---|---|---|
-| 5 | Reading order is logical | List of content items showing structure-tree order vs. page position order, with mismatches flagged |
+| 11 | Reading order is logical | List of content items showing structure-tree order vs. page position order, with mismatches flagged |
 | 12 | PAC reports no errors | Link to PAC download + online alternatives |
 | 13 | Logical reading order confirmed by ear | Link to NVDA download; testing guidance |
 
@@ -228,11 +228,34 @@ Windows can be moved, resized, minimized, and maximized. Users arrange them to s
 
 ## Success Criteria
 
-- Covers 10 of 13 UNDRR checklist items with automated checks
+- Covers 10 of 13 checklist items with automated checks
 - Zero false positives on well-formed tagged PDFs (e.g., PDF/UA-compliant documents)
 - Processes a 50-page tagged PDF in under 3 seconds
 - Works offline in practice (static assets, no server calls). Explicit service worker deferred to V1.1.
 - Passes WCAG 2.1 AA itself (the accessibility checker must be accessible)
+
+---
+
+## Attribution & Acknowledgments
+
+### Policy
+
+When this project draws on code, patterns, or ideas from other projects, we cite the source clearly. This applies to:
+
+- **Direct code reuse** — the 7 utility modules copied from PDF-A-go-slim should credit that project and note that they in turn depend on work from pdf-lib, fflate, and the broader PDF specification ecosystem.
+- **Design inspiration** — if UI patterns, interaction models, or check logic are informed by existing tools (PAC, axesCheck, veraPDF, etc.), say so.
+- **Dependencies** — runtime dependencies (pdf-lib, fflate, WinBox.js, etc.) should be acknowledged with their licenses.
+- **Standards and references** — WCAG, PDF/UA, Matterhorn Protocol, and other specifications that inform the audit checks.
+
+### Where attribution appears
+
+- **README.md** — an "Acknowledgments" section listing key inspirations and dependencies.
+- **In-app** — an "About" panel or footer with credits and dependency licenses.
+- **Source code** — file-level comments in modules adapted from other projects, noting the origin (e.g., "Adapted from PDF-A-go-slim's stream-decode.js, which builds on fflate by 101arrowz").
+
+### Upstream awareness
+
+The utility modules shared with PDF-A-go-slim are not written in a vacuum — they build on capabilities provided by their dependencies. When we adapt or extend these modules, we should remain aware of and credit the upstream chain. For example, `stream-decode.js` wraps fflate's decompression; `unicode-mapper.js` implements logic informed by the Adobe Glyph List specification; `content-stream-parser.js` implements parsing defined by the PDF specification (ISO 32000).
 
 ---
 
@@ -246,7 +269,7 @@ Windows can be moved, resized, minimized, and maximized. Users arrange them to s
 
 Bundled sample PDFs serve double duty: test fixtures for development, and a "try it now" feature in the app (users can select a sample PDF from a menu instead of dropping their own).
 
-Sources (all CC BY 4.0 or public domain, compatible with Apache 2.0):
+Sources (all CC BY 4.0 or public domain, compatible with this project's license (MIT) with required attribution):
 
 | Source | What | Use |
 |---|---|---|
