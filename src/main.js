@@ -1,12 +1,10 @@
 /**
  * PDF-A-go-actionable — Entry point.
  *
- * Initializes the UI shell, creates the Web Worker, and wires up
- * drag-and-drop file handling.
+ * Creates the Web Worker and passes it to the app shell.
+ * The app shell manages the full lifecycle including worker message routing.
  */
 import { initAppShell } from './ui/app-shell.js';
-import { initDropZone } from './ui/drop-zone.js';
-import { state } from './ui/state.js';
 
 // Show small-screen banner
 function initSmallScreenBanner() {
@@ -24,29 +22,12 @@ function initSmallScreenBanner() {
   document.body.prepend(banner);
 }
 
-// Create and manage Web Worker
+// Create Web Worker
 function createWorker() {
-  const worker = new Worker(
+  return new Worker(
     new URL('./worker.js', import.meta.url),
     { type: 'module' }
   );
-
-  worker.addEventListener('message', (e) => {
-    const { type, ...data } = e.data;
-    switch (type) {
-      case 'progress':
-        state.emit('progress', data);
-        break;
-      case 'result':
-        state.emit('result', data);
-        break;
-      case 'error':
-        state.emit('error', data);
-        break;
-    }
-  });
-
-  return worker;
 }
 
 function init() {
@@ -55,8 +36,7 @@ function init() {
   const appEl = document.getElementById('app');
   const worker = createWorker();
 
-  const shell = initAppShell(appEl);
-  initDropZone(appEl, worker, shell);
+  initAppShell(appEl, worker);
 }
 
 if (document.readyState === 'loading') {

@@ -1,34 +1,27 @@
 /**
- * Drag-and-drop + file input handler for PDF files.
+ * File upload component — drag-and-drop + file input.
+ * Supports selecting multiple PDF files at once.
  */
-import { state } from './state.js';
 
 /**
- * Initialize the drop zone in the app container.
+ * Create a file upload zone element.
  *
- * @param {HTMLElement} container - The #app element
- * @param {Worker} worker - The audit Web Worker
- * @param {object} shell - The app shell instance
+ * @param {Function} onFiles - Callback receiving an array of selected Files
+ * @returns {HTMLElement} The upload zone element
  */
-export function initDropZone(container, worker, shell) {
+export function createUploadZone(onFiles) {
   const zone = document.createElement('div');
   zone.className = 'drop-zone';
   zone.setAttribute('role', 'region');
   zone.setAttribute('aria-label', 'PDF file upload area');
+  zone.setAttribute('tabindex', '0');
   zone.innerHTML = `
-    <div class="drop-zone__title">Drop a PDF here</div>
+    <div class="drop-zone__title">Drop PDF(s) here</div>
     <div class="drop-zone__subtitle">or click to browse</div>
-    <input type="file" accept=".pdf,application/pdf" class="visually-hidden" id="file-input" aria-label="Choose PDF file" />
-    <div class="progress-bar" style="display:none;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
-      <div class="progress-bar__fill" style="width:0%"></div>
-    </div>
-    <div class="drop-zone__status visually-hidden" role="status" aria-live="polite"></div>
+    <input type="file" accept=".pdf,application/pdf" multiple class="visually-hidden" aria-label="Choose PDF files" />
   `;
 
-  const fileInput = zone.querySelector('#file-input');
-  const progressBar = zone.querySelector('.progress-bar');
-  const progressFill = zone.querySelector('.progress-bar__fill');
-  const statusEl = zone.querySelector('.drop-zone__status');
+  const fileInput = zone.querySelector('input[type="file"]');
 
   // Click to browse
   zone.addEventListener('click', (e) => {
@@ -41,11 +34,11 @@ export function initDropZone(container, worker, shell) {
       fileInput.click();
     }
   });
-  zone.setAttribute('tabindex', '0');
 
   fileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) handleFile(file);
+    const files = filterPdfs(e.target.files);
+    if (files.length > 0) onFiles(files);
+    fileInput.value = ''; // reset so re-selecting same file works
   });
 
   // Drag and drop
@@ -61,50 +54,20 @@ export function initDropZone(container, worker, shell) {
   zone.addEventListener('drop', (e) => {
     e.preventDefault();
     zone.classList.remove('drop-zone--active');
-    const file = e.dataTransfer.files[0];
-    if (file && file.type === 'application/pdf') {
-      handleFile(file);
-    }
+    const files = filterPdfs(e.dataTransfer.files);
+    if (files.length > 0) onFiles(files);
   });
 
-  // Progress updates
-  state.on('progress', ({ phase, percent }) => {
-    progressBar.style.display = '';
-    progressFill.style.width = `${percent}%`;
-    progressBar.setAttribute('aria-valuenow', String(percent));
-    statusEl.textContent = `Analyzing: ${phase} (${percent}%)`;
-  });
+  return zone;
+}
 
-  // Result
-  state.on('result', (data) => {
-    progressBar.style.display = 'none';
-    statusEl.textContent = 'Analysis complete.';
-    zone.style.display = 'none';
-    shell.showReport(data);
-  });
-
-  // Error
-  state.on('error', ({ message }) => {
-    progressBar.style.display = 'none';
-    statusEl.textContent = `Error: ${message}`;
-    zone.querySelector('.drop-zone__title').textContent = 'Error analyzing PDF';
-    zone.querySelector('.drop-zone__subtitle').textContent = message;
-  });
-
-  container.appendChild(zone);
-
-  async function handleFile(file) {
-    state.reset();
-    zone.querySelector('.drop-zone__title').textContent = `Analyzing ${file.name}...`;
-    zone.querySelector('.drop-zone__subtitle').textContent = '';
-    statusEl.textContent = 'Starting analysis...';
-    progressBar.style.display = '';
-    progressFill.style.width = '0%';
-
-    const buffer = await file.arrayBuffer();
-    worker.postMessage(
-      { type: 'audit', buffer, fileName: file.name },
-      [buffer]
-    );
-  }
+/**
+ * Filter a FileList to only PDF files.
+ * @param {FileList} fileList
+ * @returns {File[]}
+ */
+export function filterPdfs(fileList) {
+  return [...fileList].filter(
+    (f) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
+  );
 }

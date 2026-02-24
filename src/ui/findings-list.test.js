@@ -7,15 +7,16 @@
  * - Status-based sorting within groups (fail > warning > manual > pass)
  * - Card rendering with title, summary, and status badge
  * - Empty state
- * - Click dispatching selectFinding event
+ * - Click dispatching selectFinding event on scoped bus
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderFindingsPanel } from './findings-list.js';
-import { state } from './state.js';
+import { createSessionBus } from './state.js';
+
+let bus;
 
 beforeEach(() => {
-  state.reset();
-  state._listeners = new Map();
+  bus = createSessionBus();
 });
 
 function makeFinding(overrides) {
@@ -36,14 +37,14 @@ describe('renderFindingsPanel', () => {
       findings: [makeFinding()],
     };
 
-    renderFindingsPanel(el, data);
+    renderFindingsPanel(el, data, bus);
 
     expect(el.children.length).toBeGreaterThan(0);
   });
 
   it('should show empty message when no findings', () => {
     const el = document.createElement('div');
-    renderFindingsPanel(el, { findings: [] });
+    renderFindingsPanel(el, { findings: [] }, bus);
 
     expect(el.textContent).toContain('No findings to display');
   });
@@ -58,7 +59,7 @@ describe('renderFindingsPanel', () => {
       ],
     };
 
-    renderFindingsPanel(el, data);
+    renderFindingsPanel(el, data, bus);
 
     const sections = el.querySelectorAll('section');
     expect(sections.length).toBe(2); // metadata and structure
@@ -74,7 +75,7 @@ describe('renderFindingsPanel', () => {
       ],
     };
 
-    renderFindingsPanel(el, data);
+    renderFindingsPanel(el, data, bus);
 
     const cards = el.querySelectorAll('.finding-card');
     const labels = [...cards].map((c) => c.querySelector('strong').textContent);
@@ -92,7 +93,7 @@ describe('renderFindingsPanel', () => {
       ],
     };
 
-    renderFindingsPanel(el, data);
+    renderFindingsPanel(el, data, bus);
 
     const card = el.querySelector('.finding-card');
     expect(card.textContent).toContain('Check Title');
@@ -105,23 +106,23 @@ describe('renderFindingsPanel', () => {
       findings: [makeFinding({ id: 'a', status: 'fail' })],
     };
 
-    renderFindingsPanel(el, data);
+    renderFindingsPanel(el, data, bus);
 
     const badge = el.querySelector('.status-badge--fail');
     expect(badge).toBeDefined();
     expect(badge.textContent).toBe('Fail');
   });
 
-  it('should emit selectFinding on card click', () => {
+  it('should emit selectFinding on scoped bus on card click', () => {
     const el = document.createElement('div');
     const data = {
       findings: [makeFinding({ id: 'my-finding' })],
     };
 
-    renderFindingsPanel(el, data);
+    renderFindingsPanel(el, data, bus);
 
     const received = [];
-    state.on('selectFinding', (d) => received.push(d));
+    bus.on('selectFinding', (d) => received.push(d));
 
     const card = el.querySelector('.finding-card');
     card.click();
@@ -136,7 +137,7 @@ describe('renderFindingsPanel', () => {
       findings: [makeFinding()],
     };
 
-    renderFindingsPanel(el, data);
+    renderFindingsPanel(el, data, bus);
 
     const card = el.querySelector('.finding-card');
     expect(card.tagName).toBe('BUTTON');
@@ -149,7 +150,7 @@ describe('renderFindingsPanel', () => {
       findings: [makeFinding({ title: 'Doc Title', status: 'pass' })],
     };
 
-    renderFindingsPanel(el, data);
+    renderFindingsPanel(el, data, bus);
 
     const card = el.querySelector('.finding-card');
     expect(card.getAttribute('aria-label')).toContain('Doc Title');

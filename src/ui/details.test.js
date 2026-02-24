@@ -10,11 +10,12 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderDetailsPanel } from './details.js';
-import { state } from './state.js';
+import { createSessionBus } from './state.js';
+
+let bus;
 
 beforeEach(() => {
-  state.reset();
-  state._listeners = new Map();
+  bus = createSessionBus();
 });
 
 function makeFinding(overrides) {
@@ -37,20 +38,19 @@ describe('renderDetailsPanel', () => {
     const el = document.createElement('div');
     const data = { findings: [makeFinding()] };
 
-    renderDetailsPanel(el, data);
+    renderDetailsPanel(el, data, bus);
 
     expect(el.textContent).toContain('Select a finding');
   });
 
-  it('should render finding details when selectFinding is emitted', () => {
+  it('should render finding details when selectFinding is emitted on bus', () => {
     const el = document.createElement('div');
     const finding = makeFinding({ id: 'doc-title', title: 'Document Title' });
     const data = { findings: [finding] };
 
-    renderDetailsPanel(el, data);
+    renderDetailsPanel(el, data, bus);
 
-    // Simulate finding selection
-    state.emit('selectFinding', { findingId: 'doc-title' });
+    bus.emit('selectFinding', { findingId: 'doc-title' });
 
     expect(el.textContent).toContain('Document Title');
     expect(el.textContent).toContain('The document title is missing.');
@@ -60,8 +60,8 @@ describe('renderDetailsPanel', () => {
     const el = document.createElement('div');
     const data = { findings: [makeFinding({ id: 'f1', status: 'fail' })] };
 
-    renderDetailsPanel(el, data);
-    state.emit('selectFinding', { findingId: 'f1' });
+    renderDetailsPanel(el, data, bus);
+    bus.emit('selectFinding', { findingId: 'f1' });
 
     const badge = el.querySelector('.status-badge--fail');
     expect(badge).toBeDefined();
@@ -76,8 +76,8 @@ describe('renderDetailsPanel', () => {
       ],
     };
 
-    renderDetailsPanel(el, data);
-    state.emit('selectFinding', { findingId: 'f1' });
+    renderDetailsPanel(el, data, bus);
+    bus.emit('selectFinding', { findingId: 'f1' });
 
     expect(el.textContent).toContain('How to Fix');
     expect(el.textContent).toContain('Fix by doing X.');
@@ -91,8 +91,8 @@ describe('renderDetailsPanel', () => {
       ],
     };
 
-    renderDetailsPanel(el, data);
-    state.emit('selectFinding', { findingId: 'f1' });
+    renderDetailsPanel(el, data, bus);
+    bus.emit('selectFinding', { findingId: 'f1' });
 
     expect(el.textContent).not.toContain('How to Fix');
   });
@@ -105,8 +105,8 @@ describe('renderDetailsPanel', () => {
       ],
     };
 
-    renderDetailsPanel(el, data);
-    state.emit('selectFinding', { findingId: 'f1' });
+    renderDetailsPanel(el, data, bus);
+    bus.emit('selectFinding', { findingId: 'f1' });
 
     expect(el.textContent).toContain('WCAG 2.1 SC 1.3.1');
     expect(el.textContent).toContain('PDF/UA-1 clause 7.4.2');
@@ -126,8 +126,8 @@ describe('renderDetailsPanel', () => {
       ],
     };
 
-    renderDetailsPanel(el, data);
-    state.emit('selectFinding', { findingId: 'f1' });
+    renderDetailsPanel(el, data, bus);
+    bus.emit('selectFinding', { findingId: 'f1' });
 
     const dts = el.querySelectorAll('dt');
     const dds = el.querySelectorAll('dd');
@@ -142,9 +142,9 @@ describe('renderDetailsPanel', () => {
     const data = { findings: [makeFinding({ id: 'f1', title: 'Late Finding' })] };
 
     // Emit selectFinding BEFORE rendering the panel
-    state.emit('selectFinding', { findingId: 'f1' });
+    bus.emit('selectFinding', { findingId: 'f1' });
 
-    renderDetailsPanel(el, data);
+    renderDetailsPanel(el, data, bus);
 
     // Should show the finding immediately, not the placeholder
     expect(el.textContent).toContain('Late Finding');
@@ -160,12 +160,12 @@ describe('renderDetailsPanel', () => {
       ],
     };
 
-    renderDetailsPanel(el, data);
+    renderDetailsPanel(el, data, bus);
 
-    state.emit('selectFinding', { findingId: 'f1' });
+    bus.emit('selectFinding', { findingId: 'f1' });
     expect(el.textContent).toContain('First Finding');
 
-    state.emit('selectFinding', { findingId: 'f2' });
+    bus.emit('selectFinding', { findingId: 'f2' });
     expect(el.textContent).toContain('Second Finding');
     expect(el.textContent).not.toContain('First Finding');
   });
@@ -178,8 +178,8 @@ describe('renderDetailsPanel', () => {
       ],
     };
 
-    renderDetailsPanel(el, data);
-    state.emit('selectFinding', { findingId: 'f1' });
+    renderDetailsPanel(el, data, bus);
+    bus.emit('selectFinding', { findingId: 'f1' });
 
     const sections = el.querySelectorAll('section[aria-label]');
     const labels = [...sections].map((s) => s.getAttribute('aria-label'));
