@@ -4,7 +4,7 @@
  * Creates the dockview panel system and manages layout transitions
  * between drop-zone view and report view.
  */
-import { DockviewComponent } from 'dockview-core';
+import { DockviewComponent, themeLight } from 'dockview-core';
 import { state } from './state.js';
 import { renderSummaryPanel } from './report.js';
 import { renderFindingsPanel } from './findings-list.js';
@@ -14,6 +14,7 @@ import { renderFontTable } from './font-table.js';
 import { renderImageTable } from './image-table.js';
 
 import 'dockview-core/dist/styles/dockview.css';
+import '../styles/dockview-theme.css';
 
 /**
  * Initialize the application shell.
@@ -35,6 +36,7 @@ export function initAppShell(container) {
 
     // Try to restore saved layout, otherwise build default
     dockview = new DockviewComponent(dockviewContainer, {
+      theme: themeLight,
       createComponent: (options) => {
         return createPanel(options.name, data);
       },
