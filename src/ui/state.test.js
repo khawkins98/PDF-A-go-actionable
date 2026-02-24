@@ -9,16 +9,13 @@
  * - reset clears stored state
  * - unsubscribe function returned by on()
  * - no errors when emitting to no listeners
+ * - EventBus class export
+ * - createSessionBus factory
+ * - destroy method
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 
-// Import the class directly to get fresh instances for each test
-// (the exported `state` is a singleton)
-// We'll test the singleton behavior too.
-
-// Re-create EventBus per test by importing the module and creating instances.
-// Since EventBus isn't exported, we test via the singleton and reset between tests.
-import { state } from './state.js';
+import { state, EventBus, createSessionBus } from './state.js';
 
 describe('EventBus (state)', () => {
   beforeEach(() => {
@@ -134,5 +131,68 @@ describe('EventBus (state)', () => {
     it('should not error when no listeners registered', () => {
       expect(() => state.emit('unknown-event', { data: 1 })).not.toThrow();
     });
+  });
+});
+
+describe('EventBus class export', () => {
+  it('should export EventBus as a class', () => {
+    expect(EventBus).toBeDefined();
+    expect(typeof EventBus).toBe('function');
+  });
+
+  it('should allow creating independent instances', () => {
+    const bus1 = new EventBus();
+    const bus2 = new EventBus();
+
+    const received1 = [];
+    const received2 = [];
+    bus1.on('test', (d) => received1.push(d));
+    bus2.on('test', (d) => received2.push(d));
+
+    bus1.emit('test', { from: 'bus1' });
+
+    expect(received1).toHaveLength(1);
+    expect(received2).toHaveLength(0); // isolated
+  });
+});
+
+describe('createSessionBus', () => {
+  it('should return a new EventBus instance', () => {
+    const bus = createSessionBus();
+    expect(bus).toBeInstanceOf(EventBus);
+  });
+
+  it('should return isolated buses each time', () => {
+    const bus1 = createSessionBus();
+    const bus2 = createSessionBus();
+    expect(bus1).not.toBe(bus2);
+
+    const received = [];
+    bus1.on('selectFinding', (d) => received.push(d));
+
+    bus2.emit('selectFinding', { findingId: 'x' });
+
+    expect(received).toHaveLength(0); // bus2 events don't reach bus1
+  });
+});
+
+describe('destroy', () => {
+  it('should clear all listeners and stored state', () => {
+    const bus = createSessionBus();
+
+    const received = [];
+    bus.on('test', (d) => received.push(d));
+    bus.emit('result', { findings: [] });
+    bus.emit('selectFinding', { findingId: 'x' });
+
+    bus.destroy();
+
+    // State cleared
+    expect(bus.getResults()).toBeNull();
+    expect(bus.getSelectedFinding()).toBeNull();
+
+    // Listeners cleared — no delivery after destroy
+    bus.emit('test', { value: 1 });
+    expect(received).toHaveLength(0);
   });
 });

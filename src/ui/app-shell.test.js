@@ -1,18 +1,17 @@
 // @vitest-environment happy-dom
 /**
- * Tests for the app shell — dockview-core panel creation.
+ * Tests for the app shell — floating panel creation.
  *
- * The critical contract: createPanel must return an object with:
- * - element: HTMLElement (mounted by dockview)
- * - init: Function (called after mounting)
- *
- * This test would have caught the crash where init() tried to access
- * params.containerElement (which doesn't exist in dockview-core's API).
+ * The critical contract: createPanelElement must return an HTMLElement
+ * with content rendered by the appropriate render function.
+ * Only covers the three floating panel types (structure, fonts, images).
  */
 import { describe, it, expect, vi } from 'vitest';
-import { createPanel } from './app-shell.js';
 
-// Mock render functions to avoid testing their internals here
+// Mock WinBox (not needed for createPanelElement but must resolve at import)
+vi.mock('winbox/src/js/winbox.js', () => ({ default: vi.fn() }));
+
+// Mock panel render functions
 vi.mock('./report.js', () => ({
   renderSummaryPanel: vi.fn(),
 }));
@@ -32,7 +31,22 @@ vi.mock('./image-table.js', () => ({
   renderImageTable: vi.fn(),
 }));
 
-const PANEL_NAMES = ['summary', 'findings', 'details', 'structure', 'fonts', 'images'];
+// Mock other app-shell dependencies
+vi.mock('./drop-zone.js', () => ({
+  createUploadZone: vi.fn(() => document.createElement('div')),
+  filterPdfs: vi.fn((files) => [...files]),
+}));
+vi.mock('./export.js', () => ({
+  initExport: vi.fn(() => ({
+    exportJSON: vi.fn(),
+    exportCSV: vi.fn(),
+    exportPDF: vi.fn(),
+  })),
+}));
+
+import { createPanelElement } from './app-shell.js';
+
+const FLOATING_PANEL_NAMES = ['structure', 'fonts', 'images'];
 
 const testData = {
   findings: [
@@ -41,62 +55,60 @@ const testData = {
   meta: { pageCount: 1, fileSize: 1000, fileName: 'test.pdf' },
 };
 
-describe('createPanel', () => {
-  describe('dockview-core IContentRenderer contract', () => {
-    for (const name of PANEL_NAMES) {
-      it(`should return { element: HTMLElement, init: Function } for "${name}" panel`, () => {
-        const panel = createPanel(name, testData);
+describe('createPanelElement', () => {
+  describe('returns an HTMLElement for each floating panel', () => {
+    for (const name of FLOATING_PANEL_NAMES) {
+      it(`should return an HTMLElement for "${name}" panel`, () => {
+        const el = createPanelElement(name, testData);
 
-        // The critical contract: element must be an HTMLElement
-        expect(panel.element).toBeDefined();
-        expect(panel.element).toBeInstanceOf(HTMLElement);
-        expect(panel.element.tagName).toBe('DIV');
-
-        // init must be a function
-        expect(typeof panel.init).toBe('function');
+        expect(el).toBeDefined();
+        expect(el).toBeInstanceOf(HTMLElement);
+        expect(el.tagName).toBe('DIV');
       });
     }
   });
 
   describe('element properties', () => {
     it('should create an element with overflow auto for scrolling', () => {
-      const panel = createPanel('summary', testData);
-      expect(panel.element.style.overflow).toBe('auto');
+      const el = createPanelElement('structure', testData);
+      expect(el.style.overflow).toBe('auto');
     });
 
     it('should create an element with 100% height', () => {
-      const panel = createPanel('summary', testData);
-      expect(panel.element.style.height).toBe('100%');
+      const el = createPanelElement('structure', testData);
+      expect(el.style.height).toBe('100%');
     });
   });
 
-  describe('init invocation', () => {
-    it('should not throw when init is called with dockview parameters', () => {
-      const panel = createPanel('summary', testData);
+  describe('render function invocation', () => {
+    it('should call the correct render function for structure', async () => {
+      const { renderTreeExplorer } = await import('./tree-explorer.js');
 
-      // dockview-core calls init with { params, title, api, containerApi }
-      // NOT with containerElement
-      expect(() => {
-        panel.init({ params: {}, title: 'Summary', api: {}, containerApi: {} });
-      }).not.toThrow();
+      createPanelElement('structure', testData);
+
+      expect(renderTreeExplorer).toHaveBeenCalledWith(expect.any(HTMLElement), testData);
     });
 
-    it('should call the correct render function on init', async () => {
-      const { renderSummaryPanel } = await import('./report.js');
+    it('should call the correct render function for fonts', async () => {
+      const { renderFontTable } = await import('./font-table.js');
 
-      const panel = createPanel('summary', testData);
-      panel.init({ params: {}, title: 'Summary', api: {}, containerApi: {} });
+      createPanelElement('fonts', testData);
 
-      expect(renderSummaryPanel).toHaveBeenCalledWith(panel.element, testData);
+      expect(renderFontTable).toHaveBeenCalledWith(expect.any(HTMLElement), testData);
+    });
+
+    it('should call the correct render function for images', async () => {
+      const { renderImageTable } = await import('./image-table.js');
+
+      createPanelElement('images', testData);
+
+      expect(renderImageTable).toHaveBeenCalledWith(expect.any(HTMLElement), testData);
     });
 
     it('should not throw for unknown panel names', () => {
-      const panel = createPanel('nonexistent', testData);
+      const el = createPanelElement('nonexistent', testData);
 
-      expect(panel.element).toBeInstanceOf(HTMLElement);
-      expect(() => {
-        panel.init({ params: {}, title: 'Unknown', api: {}, containerApi: {} });
-      }).not.toThrow();
+      expect(el).toBeInstanceOf(HTMLElement);
     });
   });
 });

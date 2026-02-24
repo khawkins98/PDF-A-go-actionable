@@ -26,7 +26,7 @@ This is a **validation tool**, not a remediation tool. It tells you exactly what
 - **Actionable over exhaustive.** Every check result should tell the user what's wrong and what to do about it. Avoid jargon-heavy compliance-speak.
 - **Practical over pedantic.** Cover the checks that matter most in real-world accessibility (the 13-point checklist from validation workflows), not the full 300+ PDF/UA machine rules.
 - **Client-side only.** All processing happens in the browser via Web Workers. No data leaves the user's machine.
-- **Professional UI.** Desktop metaphor with functional panel layout. Clean, modern aesthetic — serious tool for serious work, not a novelty.
+- **Professional UI.** Conventional desktop application layout: welcome dialog, progress dialog, main results window with floating tool panels. Clean, modern aesthetic — serious tool for serious work, not a novelty.
 - **Test-driven.** Tests are written before implementation. Every audit check has passing and failing test cases defined upfront. This ensures correctness from the start and prevents regressions as the codebase grows.
 - **Conventional Commits.** All commit messages follow the [Conventional Commits](https://www.conventionalcommits.org/) specification (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`, etc.). This keeps the git history scannable and enables automated changelogs later.
 
@@ -90,9 +90,9 @@ The audit produces a structured report with:
 
 - **Per-element language check** — informational check for `/Lang` on individual StructElems (not yet implemented)
 - **Interactive structure tree** — full tree rendering with lazy expansion (currently shows summary data only)
-- **Layout persistence** — save/restore dockview panel arrangement in localStorage
+- **Layout persistence** — save/restore WinBox window positions in localStorage
 - **Sample PDFs** — bundled samples in `public/samples/` for "try it now"
-- **In-app About/Credits panel** — dependency acknowledgments in the UI
+- ~~**In-app About/Credits panel**~~ — Done (About dialog in menu bar)
 - **Reading order comparison** — automated structure-tree-order vs. page-position-order analysis (currently guidance-only)
 - **Worker protocol tests** — test coverage for worker message handling
 - **Real-world PDF testing** — test with PDFs from Word, InDesign, PptxGenJS, etc.
@@ -105,7 +105,7 @@ See `FUTURE-IDEAS.md` for the full deferred feature list. Key items:
 - **CI/CD integration** — CLI mode or API endpoint for automated pipelines
 - **Batch processing** — multiple PDFs, aggregate reporting
 - **veraPDF rule mapping** — map findings to veraPDF rule IDs for interoperability
-- **Dark mode** — dockview theme variant
+- **Dark mode** — WinBox theme variant
 - **Per-image decorative detection** — MCID-to-content-stream correlation for exact identification
 
 ---
@@ -117,7 +117,7 @@ See `FUTURE-IDEAS.md` for the full deferred feature list. Key items:
 - **Vite** — build tool (same as PDF-A-go-slim) | Done
 - **pdf-lib** — low-level PDF object access (proven in PDF-A-go-slim) | Done
 - **fflate** — stream decompression for content stream parsing | Done
-- **dockview-core** — panel/window management (VS Code-style drag/resize layout). Replaced WinBox.js from the original plan — dockview provides a more structured panel system with tab groups. | Done
+- **WinBox** — floating window management (movable, resizable windows) | Done
 - **Web Workers** — off-main-thread PDF parsing and auditing | Done
 - **Vanilla JS** — no framework | Done
 
@@ -141,8 +141,8 @@ All source files created. Done.
 
 ```
 src/
-  main.js              — app shell, drag-and-drop, worker orchestration
-  worker.js            — Web Worker: loads PDF, runs audit, posts results
+  main.js              — entry point, worker creation, app shell init
+  worker.js            — Web Worker: loads PDF, runs audit, posts results with sessionId
   audit/
     runner.js           — orchestrates all audit modules, collects findings
     metadata.js         — title, lang, security, displayDocTitle, bookmarks
@@ -155,9 +155,9 @@ src/
     links.js            — link text quality analysis
     reading-order.js    — manual review guidance (PAC, NVDA, reading order)
   ui/
-    app-shell.js        — dockview-core layout setup, panel creation
-    state.js            — event bus for inter-panel communication
-    drop-zone.js        — drag-and-drop + file input + progress bar
+    app-shell.js        — WinBox multi-session lifecycle: menu bar + welcome → progress → per-PDF results + floating panels
+    state.js            — EventBus class, global singleton, createSessionBus() for per-session isolation
+    drop-zone.js        — reusable multi-file upload component (drag-and-drop + browse)
     report.js           — summary score, metadata, status counts
     findings-list.js    — grouped/sorted finding cards
     details.js          — selected finding detail + remediation
@@ -205,14 +205,14 @@ Implemented in `src/worker.js`. Done.
 
 Inbound:
 ```js
-{ type: 'audit', buffer: ArrayBuffer, fileName: string }
+{ type: 'audit', buffer: ArrayBuffer, fileName: string, sessionId: string }
 ```
 
-Outbound:
+Outbound (all include `sessionId` for routing to the correct session):
 ```js
-{ type: 'progress', phase: 'structure', percent: 40 }
-{ type: 'result', findings: Finding[], meta: { pageCount, fileSize, ... } }
-{ type: 'error', message: string }
+{ type: 'progress', sessionId, phase: 'structure', percent: 40 }
+{ type: 'result', sessionId, findings: Finding[], meta: { pageCount, fileSize, ... } }
+{ type: 'error', sessionId, message: string }
 ```
 
 ---
@@ -221,17 +221,17 @@ Outbound:
 
 ### Layout
 
-Panel-based layout using dockview-core (VS Code-style). Done.
+Desktop-style layout using WinBox (floating, movable, resizable windows) with a persistent application menu bar. Supports multiple PDFs — each gets its own results window. Done.
 
-- **Drop zone** — prominent full-page area with drag-and-drop + file input + progress bar | Done
-- **Summary panel** — overall score, pass/fail/warning/manual counts, document metadata | Done
-- **Findings panel** — grouped by category, sorted fail-first, clickable cards | Done
-- **Details panel** — selected check details, remediation guidance, WCAG/PDF/UA reference links | Done
-- **Structure explorer panel** — summary view (element count, types, max depth, heading hierarchy) | Partial (full interactive tree pending)
-- **Font table panel** — font inventory with ToUnicode + embedding status | Done
-- **Image table panel** — image inventory with alt text values | Done
+- **App menu bar** — persistent fixed bar at top of viewport; contains Open File(s), Export All (format submenu), Window (Tile All/Cascade All/Close All + open window list), About, Help | Done
+- **Welcome dialog** — centered window with app info, feature highlights, and multi-file upload zone; reappears when all results windows are closed | Done
+- **Progress dialog** — per-session centered window with file name, progress bar, and phase info | Done
+- **Results windows** — one per analyzed PDF, cascade-positioned (~85% of viewport); contains summary bar (top), session toolbar (floating panel toggles + per-file export), and split findings/details view; movable and resizable | Done
+- **Floating tool panels** — Structure Tree, Font Inventory, Image Inventory per session; opened from session toolbar buttons; movable, resizable, closeable | Done
+- **About dialog** — app info, version, technology credits | Done
+- **Help dialog** — usage steps, tips, keyboard shortcuts | Done
 
-Panels are arranged in a default layout: summary (top-left), findings (bottom-left), details/structure/fonts/images as tabbed group (right). Panels are draggable and resizable. Layout persistence via localStorage is pending.
+All WinBox windows are constrained below the menu bar height (36px) for drag and maximize. Each results window shows summary + findings list (left 35%) + finding details (right 65%). Finding selection is scoped per session via `EventBus` instances — selecting a finding in one window doesn't affect another. Floating panels open per session and can be repositioned. Closing all results windows returns to the welcome dialog.
 
 ### Visual Design
 
@@ -239,7 +239,7 @@ Panels are arranged in a default layout: summary (top-left), findings (bottom-le
 - Traffic-light status indicators (green pass #2b8a3e, red fail #c92a2a, amber warning #e67700, blue manual-check #1864ab) — not color-only, includes text labels | Done
 - Professional typography — system font stack (-apple-system, BlinkMacSystemFont, Segoe UI, Roboto) | Done
 - **Light mode only for V1.0.** Theme CSS structured with custom properties for easy dark mode addition. | Done
-- **dockview theme** — custom light theme in `src/styles/dockview-theme.css`. | Done
+- **WinBox theme** — white theme via `winbox/dist/css/themes/white.min.css`. | Done
 - **Desktop-focused.** On small screens (< 768px), show a dismissible banner: "This tool is designed for larger screens." No mobile-specific layout — users aren't blocked, just informed. | Done
 - **Skip link** for keyboard navigation. Focus-visible outlines. ARIA labels on interactive regions. | Done
 
@@ -247,12 +247,18 @@ Panels are arranged in a default layout: summary (top-left), findings (bottom-le
 
 All steps implemented. Done.
 
-1. User drops PDF (or clicks to browse)
-2. Progress bar during analysis (fast — typically under 2 seconds)
-3. Summary appears with overall score
-4. User explores findings, drills into details
-5. Remediation guidance tells them exactly what to fix and where
-6. Export results as JSON, CSV, or PDF summary report
+1. App menu bar is always visible at the top of the viewport
+2. Welcome dialog opens with app info and multi-file upload zone
+3. User drops PDFs or uses menu bar "Open File(s)" to browse
+4. Per-file progress dialogs show analysis progress with phase info
+5. Each analyzed PDF spawns its own cascade-positioned results window
+6. User explores findings in any window; finding selection is scoped per session
+7. Opens floating panels (Structure Tree, Fonts, Images) per session from session toolbar
+8. Exports single-session results via session toolbar, or all results via menu bar "Export All"
+9. Uses Window menu to Tile, Cascade, or navigate between open results
+10. About and Help dialogs available from the menu bar at any time
+11. Closing a results window cleans up its session and floating panels
+12. When all results windows are closed, welcome dialog reappears
 
 ---
 
@@ -287,7 +293,7 @@ When this project draws on code, patterns, or ideas from other projects, we cite
 
 - **Direct code reuse** — the 7 utility modules copied from PDF-A-go-slim should credit that project and note that they in turn depend on work from pdf-lib, fflate, and the broader PDF specification ecosystem.
 - **Design inspiration** — if UI patterns, interaction models, or check logic are informed by existing tools (PAC, axesCheck, veraPDF, etc.), say so.
-- **Dependencies** — runtime dependencies (pdf-lib, fflate, dockview-core, etc.) should be acknowledged with their licenses.
+- **Dependencies** — runtime dependencies (pdf-lib, fflate, WinBox, etc.) should be acknowledged with their licenses.
 - **Standards and references** — WCAG, PDF/UA, Matterhorn Protocol, and other specifications that inform the audit checks.
 
 ### Where attribution appears
@@ -322,23 +328,23 @@ All audit modules and core logic are developed using **strict TDD** — tests ar
 |---|---|
 | Every audit check — pass and fail cases | Done (52 tests across 8 test files) |
 | Utility functions — `resolveRole()`, `buildRoleMap()`, cycle detection | Done (11 tests in `role-map.test.js`) |
-| UI integration — panel creation contracts, render functions, event bus, export helpers | Done (64 tests across 6 test files) |
+| UI integration — panel creation contracts, render functions, event bus (including scoped session buses), export helpers | Done (67 tests across 6 test files) |
 | Worker protocol — message handling | Pending |
 
 #### UI Integration Tests
 
-UI code must have test coverage. The dockview-core `createComponent` API contract, panel render functions, the event bus, and export helpers are all testable without a browser — using `happy-dom` as the Vitest environment.
+UI code must have test coverage. The WinBox panel creation, panel render functions, the event bus, and export helpers are all testable without a browser — using `happy-dom` as the Vitest environment.
 
 | Test File | What It Covers | Tests |
 |---|---|---|
-| `src/ui/app-shell.test.js` | `createPanel` returns `{ element: HTMLElement, init: Function }` for all 6 panel names; init callable with dockview parameters; correct render function dispatch | 11 |
-| `src/ui/state.test.js` | EventBus on/off/emit, state storage for result/selectFinding, late subscriber access, reset, unsubscribe return value | 11 |
+| `src/ui/app-shell.test.js` | `createPanelElement` returns HTMLElement for 3 floating panel types; element properties; correct render function dispatch | 9 |
+| `src/ui/state.test.js` | EventBus on/off/emit, state storage, late subscriber access, reset, unsubscribe; EventBus class export; createSessionBus isolation; destroy method | 16 |
 | `src/ui/export.test.js` | `escapeCsvField` quoting/escaping, `buildFilename` generation, `initExport` API shape | 14 |
 | `src/ui/report.test.js` | `renderSummaryPanel` status counts, overall badge, metadata rendering, ARIA labels | 9 |
-| `src/ui/findings-list.test.js` | Category grouping, status-priority sorting, card rendering, click dispatches selectFinding, keyboard accessibility (button elements) | 9 |
-| `src/ui/details.test.js` | Placeholder state, finding rendering (title, badge, summary, remediation, refs, details array), late subscriber behavior, content replacement on re-select | 10 |
+| `src/ui/findings-list.test.js` | Category grouping, status-priority sorting, card rendering, scoped bus click dispatch, keyboard accessibility | 9 |
+| `src/ui/details.test.js` | Placeholder state, scoped bus finding rendering, late subscriber, content replacement, semantic sections | 10 |
 
-**Why this matters:** A crash in V1.0 was caused by the `createPanel` function returning the wrong shape for dockview-core's `IContentRenderer` interface. Audit-only tests (pure functions, no DOM) cannot catch UI integration bugs. Any code that interfaces with a third-party UI library or renders DOM must have contract tests.
+**Why this matters:** Any code that interfaces with a third-party UI library or renders DOM must have contract tests to catch integration bugs early.
 
 #### TDD Conventions
 
@@ -372,7 +378,7 @@ Cherry-pick a small representative set covering the 10 automated checks. Store i
 
 ## Resolved Questions
 
-1. **Window manager:** Changed from WinBox.js to **dockview-core** (~4.3.1). Provides VS Code-style panel layout with tabs, drag-and-drop rearrangement, and resize. Custom light theme in `src/styles/dockview-theme.css`.
+1. **Window manager:** Using **WinBox** (0.2.x). Provides floating, movable, resizable windows with minimize/maximize. White theme via built-in theme CSS.
 2. **Shared code strategy:** Copy 7 modules from PDF-A-go-slim's `src/engine/utils/` into `src/engine/utils/`. They're self-contained (only depend on pdf-lib + fflate, both already in our stack). Expect divergence — the optimization project and validation project serve different goals. Done — all 7 copied with provenance comments.
 3. **PDF.js / visual preview:** Not needed for V1.0 — all checks are structural analysis via pdf-lib, and reading order is presented as a list comparison, not a visual overlay. PDF-A-go-slim embeds PDF-A-go-go (a PDF.js-based viewer) for before/after preview, but that viewer is designed for simple display, not deep integration with audit results. When visual preview is added (V1.1+), build directly on PDF.js rather than wrapping PDF-A-go-go — the level of integration needed (element highlighting, structure tree overlays, linking findings to page locations) would fight against PDF-A-go-go's abstraction layer.
 4. **Branding:** Keep "actionable" — it differentiates from "check" (passive) and signals the remediation guidance angle.
@@ -382,5 +388,5 @@ Cherry-pick a small representative set covering the 10 automated checks. Store i
 8. **Dark mode:** Light only for V1.0. Theme CSS structured with CSS custom properties for easy dark mode addition later. Done.
 9. **Export:** V1.0 feature, not deferred. Export audit results as JSON, CSV, or a PDF summary report. Done.
 10. **Service worker:** Deferred. App works offline in practice (static assets, no server). Explicit service worker in V1.1.
-11. **Testing:** TDD with Vitest — 116 tests across 14 test files covering audit checks, RoleMap utilities, and UI integration (panel contracts, render functions, event bus, export helpers). Worker protocol tests pending. 14 pdf-lib fixture factories in `test/fixtures/`. Uses `happy-dom` for DOM-based UI tests. Sample PDFs for in-app "try it" feature pending.
+11. **Testing:** TDD with Vitest — 119 tests across 14 test files covering audit checks, RoleMap utilities, and UI integration (panel creation, render functions, scoped event buses, export helpers). Worker protocol tests pending. 14 pdf-lib fixture factories in `test/fixtures/`. Uses `happy-dom` for DOM-based UI tests. Sample PDFs for in-app "try it" feature pending.
 12. **Content stream robustness:** Architect the audit layer defensively — graceful fallbacks (warning findings, not crashes) if pdf-lib or stream parsing hits edge cases. Done — each audit module wraps in try/catch, runner catches per-module errors and returns warning findings.

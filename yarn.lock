@@ -542,11 +542,6 @@ deep-eql@^5.0.1:
   resolved "https://registry.yarnpkg.com/deep-eql/-/deep-eql-5.0.2.tgz#4b756d8d770a9257300825d52a2c2cff99c3a341"
   integrity sha512-h5k/5U50IJJFpzfL6nO9jaaumfjO/f2NjK/oYB2Djzm4p9L+3T9qWpZqZ2hAbLPuuYq9wrU08WQyBTL5GbPk5Q==
 
-dockview-core@^4.3.1:
-  version "4.13.1"
-  resolved "https://registry.yarnpkg.com/dockview-core/-/dockview-core-4.13.1.tgz#619e20ca52d077b83e985c91ce434f404626584c"
-  integrity sha512-+7vR0ZEoL8CNck6NqDVUMqBT22niwBu5CMMI137dZ3c8NDc7c5Si+3dGEqQgM4lNtHBLAtvypo1C4p21J2wkiQ==
-
 entities@^7.0.1:
   version "7.0.1"
   resolved "https://registry.yarnpkg.com/entities/-/entities-7.0.1.tgz#26e8a88889db63417dcb9a1e79a3f1bc92b5976b"
@@ -915,6 +910,11 @@ why-is-node-running@^2.3.0:
   dependencies:
     siginfo "^2.0.0"
     stackback "0.0.2"
+
+winbox@^0.2.82:
+  version "0.2.82"
+  resolved "https://registry.yarnpkg.com/winbox/-/winbox-0.2.82.tgz#915e0a4591cefcb3df6aab83ea2006e8da0804f9"
+  integrity sha512-fMHaLnnuhyw1mLvzmCTWMpRKDfXUK/Z08VdbyBqDaITFFAd3Fx2BGDCF6rzGSkWrQgo8fHTFpFICofyM36FTnA==
 
 ws@^8.18.3:
   version "8.19.0"

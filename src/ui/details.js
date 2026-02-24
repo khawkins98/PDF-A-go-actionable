@@ -5,7 +5,6 @@
  * selected finding's title, status badge, summary, remediation text,
  * details array, and WCAG/PDF/UA references.
  */
-import { state } from './state.js';
 
 /**
  * Render the details panel into the given container element.
@@ -16,8 +15,9 @@ import { state } from './state.js';
  * @param {HTMLElement} el - The container element to render into
  * @param {object} data - Audit result data
  * @param {object[]} data.findings - Array of Finding objects
+ * @param {import('./state.js').EventBus} bus - Scoped event bus for the session
  */
-export function renderDetailsPanel(el, data) {
+export function renderDetailsPanel(el, data, bus) {
   const { findings } = data;
 
   // Build a lookup map by finding id
@@ -30,7 +30,7 @@ export function renderDetailsPanel(el, data) {
   renderPlaceholder(el);
 
   // Listen for finding selection
-  state.on('selectFinding', ({ findingId }) => {
+  bus.on('selectFinding', ({ findingId }) => {
     const finding = findingsMap.get(findingId);
     if (finding) {
       renderFinding(el, finding);
@@ -38,7 +38,7 @@ export function renderDetailsPanel(el, data) {
   });
 
   // If there's already a selected finding (late subscriber), show it
-  const selected = state.getSelectedFinding();
+  const selected = bus.getSelectedFinding();
   if (selected) {
     const finding = findingsMap.get(selected.findingId);
     if (finding) {

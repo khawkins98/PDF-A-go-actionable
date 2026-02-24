@@ -51,7 +51,7 @@ In short: **PDF-A-go-go** renders PDFs, **PDF-A-go-slim** optimizes them, and **
 
 ## Status
 
-Early development. See [PRD.md](PRD.md) for the full product requirements.
+In development. See [PRD.md](PRD.md) for the full product requirements.
 
 ## Acknowledgments
 
@@ -59,6 +59,7 @@ This project builds on the work of many others:
 
 - **[pdf-lib](https://github.com/Hopding/pdf-lib)** by Andrew Dillon — low-level PDF object access that makes client-side PDF analysis possible
 - **[fflate](https://github.com/101arrowz/fflate)** by 101arrowz — fast, lightweight compression/decompression used for PDF stream decoding
+- **[WinBox](https://github.com/nextapps-de/winbox)** by Nextapps GmbH — lightweight window manager providing the floating panel system
 - **[PDF-A-go-slim](https://github.com/khawkins98/PDF-A-go-slim)** — sibling project whose utility modules (stream decoding, content stream parsing, structure tree traversal, accessibility detection) provide the foundation for this tool's PDF engine
 - **[PDF-A-go-go](https://github.com/khawkins98/PDF-A-go-go)** — the original project in this family, whose development surfaced the PDF accessibility challenges this tool addresses
 - **[PAC (PDF Accessibility Checker)](https://pac.pdf-accessibility.org/)** by the PDF/UA Foundation — the gold standard for PDF accessibility validation, and the primary inspiration for this tool's check coverage

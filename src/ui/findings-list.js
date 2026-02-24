@@ -5,7 +5,6 @@
  * fail > warning > manual > pass > not-applicable.
  * Clicking a finding dispatches a 'selectFinding' event on the state bus.
  */
-import { state } from './state.js';
 
 /** Sort priority for finding statuses (lower = higher priority). */
 const STATUS_ORDER = {
@@ -36,8 +35,9 @@ const CATEGORY_LABELS = {
  * @param {HTMLElement} el - The container element to render into
  * @param {object} data - Audit result data
  * @param {object[]} data.findings - Array of Finding objects
+ * @param {import('./state.js').EventBus} bus - Scoped event bus for the session
  */
-export function renderFindingsPanel(el, data) {
+export function renderFindingsPanel(el, data, bus) {
   const { findings } = data;
 
   el.innerHTML = '';
@@ -147,7 +147,7 @@ export function renderFindingsPanel(el, data) {
         card.style.boxShadow = 'inset 3px 0 0 var(--color-primary)';
         selectedCard = card;
 
-        state.emit('selectFinding', { findingId: finding.id });
+        bus.emit('selectFinding', { findingId: finding.id });
       });
 
       // Status badge

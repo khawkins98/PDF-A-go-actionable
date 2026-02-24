@@ -1,5 +1,9 @@
 /**
- * Simple event bus for inter-panel communication.
+ * Event bus for inter-panel communication.
+ *
+ * The global `state` singleton handles app-level events.
+ * Use `createSessionBus()` to create scoped buses for per-analysis sessions
+ * (isolates selectFinding events between multiple open results windows).
  *
  * Events:
  * - 'progress' — audit progress update { phase, percent }
@@ -8,7 +12,7 @@
  * - 'selectFinding' — user selected a finding { findingId }
  */
 
-class EventBus {
+export class EventBus {
   constructor() {
     this._listeners = new Map();
     this._results = null;
@@ -56,6 +60,18 @@ class EventBus {
     this._results = null;
     this._selectedFinding = null;
   }
+
+  destroy() {
+    this._listeners.clear();
+    this._results = null;
+    this._selectedFinding = null;
+  }
 }
 
+/** App-level singleton bus. */
 export const state = new EventBus();
+
+/** Create a scoped event bus for an analysis session. */
+export function createSessionBus() {
+  return new EventBus();
+}
