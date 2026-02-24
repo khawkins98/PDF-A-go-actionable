@@ -4,6 +4,8 @@ Technical knowledge accumulated during development. Updated as we go.
 
 This project shares foundational PDF knowledge with its sibling [PDF-A-go-slim](https://github.com/khawkins98/PDF-A-go-slim). The optimization-focused learnings (font subsetting, image recompression, stream compression, deduplication, metadata stripping) live in [PDF-A-go-slim's learnings file](https://github.com/khawkins98/PDF-A-go-slim/blob/main/docs/learnings.md). This file covers what's specific to accessibility auditing, plus the shared PDF internals knowledge that both projects rely on.
 
+> **Provenance:** The PDF Internals, Tooling & Libraries, and Testing Patterns sections were seeded from [PDF-A-go-slim's `docs/learnings.md`](https://github.com/khawkins98/PDF-A-go-slim/blob/main/docs/learnings.md) (commit `5618536`, Feb 2026). Accessibility-specific sections (Accessibility Standards, Accessibility Auditing Patterns) are original to this project. When updating shared knowledge (pdf-lib gotchas, stream decoding, content stream parsing), consider backporting relevant changes to PDF-A-go-slim's learnings file as well.
+
 ---
 
 ## PDF Internals
