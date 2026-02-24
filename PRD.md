@@ -40,7 +40,7 @@ This is a **validation tool**, not a remediation tool. It tells you exactly what
 | 4 | PDF is tagged | `/MarkInfo << /Marked true >>` |
 | 5 | Structure tree present | Catalog `/StructTreeRoot` |
 | 6 | All meaningful images have alt text | `/Figure` StructElems with/without `/Alt` |
-| 7 | Decorative images marked as artifacts | Images not referenced by StructElems, artifact markers in content streams |
+| 7 | Decorative images flagged for review | Images not in structure tree flagged as "please verify — may need alt text or artifact marking" (`warning` status) |
 | 8 | Headings use correct hierarchy | H1-H6 StructElems in document order; skip detection |
 | 9 | Tables have proper header cells | `/Table` StructElems with `/TH` children and `/Scope` |
 | 10 | Lists are properly tagged | `/L` > `/LI` > `/Lbl` + `/LBody` structure |
@@ -56,7 +56,7 @@ This is a **validation tool**, not a remediation tool. It tells you exactly what
 | Bookmark/outline presence | Catalog `/Outlines` |
 | Tab order set to structure | Per-page `/Tabs /S` |
 | Form field labeling | `/AcroForm` fields with/without `/TU` tooltips |
-| Link text quality | `/Link` StructElem text content; flag generic ("click here") |
+| Link text quality | `/Link` StructElem text content; flag generic ("click here", "here", "read more", "learn more", "link", "this link", "more info", "download") and bare URLs |
 | Structure tree summary | Element count, types, max depth |
 | Per-element language | `/Lang` on individual StructElems |
 
@@ -64,7 +64,7 @@ This is a **validation tool**, not a remediation tool. It tells you exactly what
 
 | # | Check | What We Provide |
 |---|---|---|
-| 5 | Reading order is logical | Structure tree order visualization; anomaly detection |
+| 5 | Reading order is logical | List of content items showing structure-tree order vs. page position order, with mismatches flagged |
 | 12 | PAC reports no errors | Link to PAC download + online alternatives |
 | 13 | Logical reading order confirmed by ear | Link to NVDA download; testing guidance |
 
@@ -77,18 +77,18 @@ The audit produces a structured report with:
 3. **Structure tree explorer** — interactive tree view of the tag structure
 4. **Font inventory** — all fonts with ToUnicode status
 5. **Image inventory** — all images with alt text status
+6. **Export** — download results as JSON, CSV, or a PDF summary report
 
-### V1.1 — Machine-Actionable Reports (future)
+### V1.1 — Extended Capabilities (future)
 
-Leave the architecture open for structured, machine-readable output:
+See `FUTURE-IDEAS.md` for the full deferred feature list. Key items:
 
-- **JSON report export** — full audit results as structured JSON
 - **EARL (Evaluation and Report Language)** — W3C standard for accessibility evaluation results
 - **CI/CD integration** — CLI mode or API endpoint for automated pipelines
 - **Batch processing** — multiple PDFs, aggregate reporting
 - **veraPDF rule mapping** — map findings to veraPDF rule IDs for interoperability
-
-The V1.0 data model should already use structured objects internally (not just rendered HTML), making V1.1 export a thin serialization layer.
+- **Dark mode** — WinBox theme variant
+- **Per-image decorative detection** — MCID-to-content-stream correlation for exact identification
 
 ---
 
@@ -99,7 +99,7 @@ The V1.0 data model should already use structured objects internally (not just r
 - **Vite** — build tool (same as PDF-A-go-slim)
 - **pdf-lib** — low-level PDF object access (proven in PDF-A-go-slim)
 - **fflate** — stream decompression for content stream parsing
-- **dockview-core** — panel/window management (MIT, actively maintained, VS Code-grade aesthetic)
+- **WinBox.js** — window management (~5 KB, Apache 2.0). Custom accessible theme with modular CSS (no built-in design tokens — we write our own reusable theme).
 - **Web Workers** — off-main-thread PDF parsing and auditing
 
 ### Shared Code from PDF-A-go-slim
@@ -134,12 +134,13 @@ src/
     links.js            — link text quality analysis
     reading-order.js    — content stream position vs structure tree order
   ui/
-    app-shell.js        — dockview layout setup, panel registration
+    app-shell.js        — WinBox layout setup, window creation
     report.js           — summary score, per-check cards
     tree-explorer.js    — interactive structure tree view
     font-table.js       — font inventory display
     image-table.js      — image inventory display
     guidance.js         — remediation text and external links
+    export.js           — JSON, CSV, and PDF report generation
   engine/utils/         — shared utilities (from PDF-A-go-slim)
 ```
 
@@ -183,24 +184,25 @@ Outbound:
 
 ### Layout
 
-Professional panel-based layout using dockview-core:
+Window-based layout using WinBox.js:
 
-- **Drop zone** — prominent, always accessible (top bar or dedicated panel)
-- **Summary panel** — overall score and pass/fail counts
-- **Findings panel** — expandable list of all checks, grouped by category
-- **Structure explorer panel** — interactive tag tree (collapsible, searchable)
-- **Details panel** — selected check details, remediation guidance, WCAG/PDF/UA references
-- **Font & image inventories** — tabular views as secondary panels
+- **Drop zone** — prominent, always accessible (top bar or dedicated area)
+- **Summary window** — overall score and pass/fail counts
+- **Findings window** — expandable list of all checks, grouped by category
+- **Structure explorer window** — interactive tag tree (collapsible, searchable)
+- **Details window** — selected check details, remediation guidance, WCAG/PDF/UA references
+- **Font & image inventories** — tabular views as secondary windows
 
-Panels can be rearranged, resized, and toggled. Layout state persists in localStorage.
+Windows can be moved, resized, minimized, and maximized. Users arrange them to suit their workflow.
 
 ### Visual Design
 
-- Clean, neutral color palette (not retro)
+- Soft, high-contrast accessible light theme (not blazing white). The tool must pass WCAG 2.1 AA itself.
 - Traffic-light status indicators (green pass, red fail, amber warning, blue manual-check)
 - Professional typography — system font stack or Inter
-- Dark mode support via dockview's built-in theming
-- Responsive: panels stack vertically on mobile
+- **Light mode only for V1.0.** Theme CSS is structured to support dark mode later without a rewrite.
+- **WinBox theme is modular** — written as a standalone CSS file that could be reused by other WinBox projects. nextOS-inspired feel.
+- **Desktop-focused.** On small screens (< 768px), show a dismissible banner: "This tool is designed for larger screens." No mobile-specific layout — users aren't blocked, just informed.
 
 ### Interaction Flow
 
@@ -209,7 +211,7 @@ Panels can be rearranged, resized, and toggled. Layout state persists in localSt
 3. Summary appears with overall score
 4. User explores findings, drills into details
 5. Remediation guidance tells them exactly what to fix and where
-6. Optional: export report as JSON (V1.1 groundwork — the button can exist in V1.0 UI)
+6. Export results as JSON, CSV, or PDF summary report
 
 ---
 
@@ -229,14 +231,44 @@ Panels can be rearranged, resized, and toggled. Layout state persists in localSt
 - Covers 10 of 13 UNDRR checklist items with automated checks
 - Zero false positives on well-formed tagged PDFs (e.g., PDF/UA-compliant documents)
 - Processes a 50-page tagged PDF in under 3 seconds
-- Works offline after initial load (service worker cacheable)
+- Works offline in practice (static assets, no server calls). Explicit service worker deferred to V1.1.
 - Passes WCAG 2.1 AA itself (the accessibility checker must be accessible)
 
 ---
 
-## Open Questions
+## Testing
 
-1. **Window manager choice:** dockview-core (VS Code aesthetic, MIT, active) is the leading candidate. WinBox.js (5 kB, simpler API, Apache 2.0, stalled) is the lightweight alternative. Decision needed before UI implementation begins.
-2. **Shared code strategy:** Copy modules from PDF-A-go-slim vs. extract to a shared npm package. Copying is simpler for V1.0; a shared package makes sense if both tools evolve in parallel.
-3. **PDF.js for visual preview:** Adding Mozilla's pdf.js would enable page rendering for reading-order visualization. Significant bundle addition (~400 kB). Worth evaluating for V1.1.
-4. **Branding / domain:** Naming follows the "PDF-A-go-*" family. Consider whether "actionable" communicates the right thing to non-technical users, or whether something like "PDF-A-go-check" is clearer.
+### Framework
+
+**Vitest** — natural fit with Vite. Audit modules are pure functions (PDF buffer in, findings out), ideal for unit tests.
+
+### Sample PDFs
+
+Bundled sample PDFs serve double duty: test fixtures for development, and a "try it now" feature in the app (users can select a sample PDF from a menu instead of dropping their own).
+
+Sources (all CC BY 4.0 or public domain, compatible with Apache 2.0):
+
+| Source | What | Use |
+|---|---|---|
+| **veraPDF Corpus** | Pass/fail pairs per Matterhorn Protocol checkpoint | Automated regression tests |
+| **PDF/UA Reference Suite 1.1** | 10 well-formed PDF/UA-1 documents | Zero-false-positive verification |
+| **PDF Association Techniques** | Atomic pass/fail examples per technique | Unit-testing individual checks |
+
+Cherry-pick a small representative set covering the 10 automated checks. Store in `test/fixtures/` with a manifest describing each file's expected results. The app loads a curated subset from `public/samples/`.
+
+---
+
+## Resolved Questions
+
+1. **Window manager:** WinBox.js (~5 KB, Apache 2.0). Lightweight, full CSS control. We write a custom accessible theme (modular, reusable, nextOS-inspired). No built-in design tokens — theming is class-based CSS overrides.
+2. **Shared code strategy:** Copy 7 modules from PDF-A-go-slim's `src/engine/utils/` into `src/engine/utils/`. They're self-contained (only depend on pdf-lib + fflate, both already in our stack). Expect divergence — the optimization project and validation project serve different goals.
+3. **PDF.js:** Not used by PDF-A-go-slim (it uses pdf-lib only). Not needed for V1.0. Reading order uses a list of items with structure-tree vs. page-position order, flagging mismatches — no page rendering required.
+4. **Branding:** Keep "actionable" — it differentiates from "check" (passive) and signals the remediation guidance angle.
+5. **Decorative image detection:** V1.0 uses a heuristic (image count vs. figure count). Flag unmatched images as "please verify — may need alt text or artifact marking" (`warning` status). Per-image MCID correlation deferred to V1.1.
+6. **Link text quality:** Simple built-in word list: "click here", "here", "read more", "learn more", "link", "this link", "more info", "download". Also flag bare URLs as link text.
+7. **Mobile:** Desktop-focused. Dismissible banner on small screens (< 768px): "This tool is designed for larger screens." No mobile-specific layout work.
+8. **Dark mode:** Light only for V1.0. Theme CSS structured for easy dark mode addition later.
+9. **Export:** V1.0 feature, not deferred. Export audit results as JSON, CSV, or a PDF summary report.
+10. **Service worker:** Deferred. App works offline in practice (static assets, no server). Explicit service worker in V1.1.
+11. **Testing:** Vitest for unit tests. Sample PDFs bundled for both testing and in-app "try it" feature.
+12. **Content stream robustness:** Architect the audit layer defensively — graceful fallbacks (warning findings, not crashes) if pdf-lib or stream parsing hits edge cases. Plan for robustness from the start since we'll be doing intensive checking.
