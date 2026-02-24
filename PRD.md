@@ -28,57 +28,74 @@ This is a **validation tool**, not a remediation tool. It tells you exactly what
 - **Client-side only.** All processing happens in the browser via Web Workers. No data leaves the user's machine.
 - **Professional UI.** Desktop metaphor with functional panel layout. Clean, modern aesthetic — serious tool for serious work, not a novelty.
 - **Test-driven.** Tests are written before implementation. Every audit check has passing and failing test cases defined upfront. This ensures correctness from the start and prevents regressions as the codebase grows.
+- **Conventional Commits.** All commit messages follow the [Conventional Commits](https://www.conventionalcommits.org/) specification (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`, etc.). This keeps the git history scannable and enables automated changelogs later.
 
 ### Audit Checks (13-point PDF accessibility checklist)
 
 #### Automated — Pass/Fail
 
-| # | Check | Detection Method |
-|---|---|---|
-| 1 | Document title is set (not filename) | XMP `dc:title` + Info dict `/Title` |
-| 2 | Document language is specified | Catalog `/Lang` |
-| 3 | Security permits accessibility | Encryption dict `/P` permissions bit 5 |
-| 4 | PDF is tagged | `/MarkInfo << /Marked true >>` |
-| 5 | Structure tree present | Catalog `/StructTreeRoot` |
-| 6 | All meaningful images have alt text | `/Figure` StructElems with/without `/Alt` |
-| 7 | Decorative images flagged for review | Images not in structure tree flagged as "please verify — may need alt text or artifact marking" (`warning` status) |
-| 8 | Headings use correct hierarchy | H1-H6 StructElems in document order; skip detection |
-| 9 | Tables have proper header cells | `/Table` StructElems with `/TH` children and `/Scope` |
-| 10 | Lists are properly tagged | `/L` > `/LI` > `/Lbl` + `/LBody` structure |
+All 10 automated checks are implemented with tests (`src/audit/`). Each resolves custom types through RoleMap.
+
+| # | Check | Detection Method | Status |
+|---|---|---|---|
+| 1 | Document title is set (not filename) | XMP `dc:title` + Info dict `/Title` | Done |
+| 2 | Document language is specified | Catalog `/Lang` | Done |
+| 3 | Security permits accessibility | Encryption dict `/P` permissions bit 5 + bit 10 | Done |
+| 4 | PDF is tagged | `/MarkInfo << /Marked true >>` | Done |
+| 5 | Structure tree present | Catalog `/StructTreeRoot` | Done |
+| 6 | All meaningful images have alt text | `/Figure` StructElems with/without `/Alt` (resolved via RoleMap) | Done |
+| 7 | Decorative images flagged for review | Images not in structure tree flagged as "please verify — may need alt text or artifact marking" (`warning` status) | Done |
+| 8 | Headings use correct hierarchy | H1-H6 StructElems in document order; skip detection (via tree walk) | Done |
+| 9 | Tables have proper header cells | `/Table` StructElems with `/TH` children and `/Scope` (resolved via RoleMap) | Done |
+| 10 | Lists are properly tagged | `/L` > `/LI` > `/Lbl` + `/LBody` structure (resolved via RoleMap) | Done |
 
 #### Automated — Informational
 
-| Check | Detection Method |
-|---|---|
-| PDF/A conformance level | XMP `pdfaid:part` + `pdfaid:conformance` |
-| PDF/UA conformance | XMP `pdfuaid:part` |
-| DisplayDocTitle enabled | `/ViewerPreferences << /DisplayDocTitle true >>` |
-| ToUnicode CMap coverage | Font objects with/without `/ToUnicode` stream |
-| Bookmark/outline presence | Catalog `/Outlines` |
-| Tab order set to structure | Per-page `/Tabs /S` |
-| Form field labeling | `/AcroForm` fields with/without `/TU` tooltips |
-| Link text quality | `/Link` StructElem text content; flag generic ("click here", "here", "read more", "learn more", "link", "this link", "more info", "download") and bare URLs |
-| Structure tree summary | Element count, types, max depth |
-| Per-element language | `/Lang` on individual StructElems |
+| Check | Detection Method | Status |
+|---|---|---|
+| PDF/A conformance level | XMP `pdfaid:part` + `pdfaid:conformance` | Done |
+| PDF/UA conformance | XMP `pdfuaid:part` | Done |
+| DisplayDocTitle enabled | `/ViewerPreferences << /DisplayDocTitle true >>` | Done |
+| ToUnicode CMap coverage | Font objects with/without `/ToUnicode` stream | Done |
+| Font embedding status | FontDescriptor with/without FontFile/FontFile2/FontFile3 | Done |
+| Bookmark/outline presence | Catalog `/Outlines` | Done |
+| Tab order set to structure | Per-page `/Tabs /S` | Done |
+| Form field labeling | `/AcroForm` fields with/without `/TU` tooltips | Done |
+| Link text quality | `/Link` StructElem text content; flag generic ("click here", "here", "read more", "learn more", "link", "this link", "more info", "download") and bare URLs | Done |
+| Structure tree summary | Element count, types, max depth | Done |
+| Per-element language | `/Lang` on individual StructElems | **Pending** |
 
 #### Manual Review Required (flagged with guidance)
 
-| # | Check | What We Provide |
-|---|---|---|
-| 11 | Reading order is logical | List of content items showing structure-tree order vs. page position order, with mismatches flagged |
-| 12 | PAC reports no errors | Link to PAC download + online alternatives |
-| 13 | Logical reading order confirmed by ear | Link to NVDA download; testing guidance |
+All three manual-review items return `manual` status findings with actionable guidance and tool links.
+
+| # | Check | What We Provide | Status |
+|---|---|---|---|
+| 11 | Reading order is logical | Guidance to use the Structure Tree panel to review element order; remediation instructions for authoring tools | Done (guidance only — automated order-vs-position comparison is deferred) |
+| 12 | PAC reports no errors | Link to PAC download + online alternatives | Done |
+| 13 | Logical reading order confirmed by ear | Link to NVDA download; VoiceOver instructions; testing guidance | Done |
 
 ### Report Output
 
 The audit produces a structured report with:
 
-1. **Summary score** — e.g., "8 of 10 automated checks passed, 2 issues found, 3 items need manual review"
-2. **Per-check detail** — pass/fail/warning/manual-check status, explanation, remediation guidance
-3. **Structure tree explorer** — interactive tree view of the tag structure
-4. **Font inventory** — all fonts with ToUnicode status
-5. **Image inventory** — all images with alt text status
-6. **Export** — download results as JSON, CSV, or a PDF summary report
+1. **Summary score** — pass/fail/warning/manual/not-applicable counts with traffic-light status icons | Done
+2. **Per-check detail** — pass/fail/warning/manual-check status, explanation, remediation guidance | Done
+3. **Structure tree explorer** — summary view (element count, types, max depth, heading hierarchy); full interactive tree rendering is a placeholder | Partial
+4. **Font inventory** — all fonts with ToUnicode and embedding status | Done
+5. **Image inventory** — all images with alt text status | Done
+6. **Export** — download results as JSON, CSV, or a PDF summary report (all three formats implemented) | Done
+
+### Remaining V1.0 Work
+
+- **Per-element language check** — informational check for `/Lang` on individual StructElems (not yet implemented)
+- **Interactive structure tree** — full tree rendering with lazy expansion (currently shows summary data only)
+- **Layout persistence** — save/restore dockview panel arrangement in localStorage
+- **Sample PDFs** — bundled samples in `public/samples/` for "try it now"
+- **In-app About/Credits panel** — dependency acknowledgments in the UI
+- **Reading order comparison** — automated structure-tree-order vs. page-position-order analysis (currently guidance-only)
+- **Worker protocol tests** — test coverage for worker message handling
+- **Real-world PDF testing** — test with PDFs from Word, InDesign, PptxGenJS, etc.
 
 ### V1.1 — Extended Capabilities (future)
 
@@ -88,7 +105,7 @@ See `FUTURE-IDEAS.md` for the full deferred feature list. Key items:
 - **CI/CD integration** — CLI mode or API endpoint for automated pipelines
 - **Batch processing** — multiple PDFs, aggregate reporting
 - **veraPDF rule mapping** — map findings to veraPDF rule IDs for interoperability
-- **Dark mode** — WinBox theme variant
+- **Dark mode** — dockview theme variant
 - **Per-image decorative detection** — MCID-to-content-stream correlation for exact identification
 
 ---
@@ -97,27 +114,30 @@ See `FUTURE-IDEAS.md` for the full deferred feature list. Key items:
 
 ### Stack
 
-- **Vite** — build tool (same as PDF-A-go-slim)
-- **pdf-lib** — low-level PDF object access (proven in PDF-A-go-slim)
-- **fflate** — stream decompression for content stream parsing
-- **WinBox.js** — window management (~5 KB, Apache 2.0). Custom accessible theme with modular CSS (no built-in design tokens — we write our own reusable theme).
-- **Web Workers** — off-main-thread PDF parsing and auditing
+- **Vite** — build tool (same as PDF-A-go-slim) | Done
+- **pdf-lib** — low-level PDF object access (proven in PDF-A-go-slim) | Done
+- **fflate** — stream decompression for content stream parsing | Done
+- **dockview-core** — panel/window management (VS Code-style drag/resize layout). Replaced WinBox.js from the original plan — dockview provides a more structured panel system with tab groups. | Done
+- **Web Workers** — off-main-thread PDF parsing and auditing | Done
+- **Vanilla JS** — no framework | Done
 
 ### Shared Code from PDF-A-go-slim
 
-The following modules can be extracted or copied from PDF-A-go-slim as a starting point:
+All 7 modules copied to `src/engine/utils/` with provenance comments. Done.
 
-| Module | Purpose |
-|---|---|
-| `accessibility-detect.js` | Core trait detection + existing audits |
-| `content-stream-parser.js` | Extract char codes per font from content streams |
-| `unicode-mapper.js` | Map char codes to Unicode codepoints |
-| `glyph-list.js` | Adobe Glyph List + encoding tables |
-| `stream-decode.js` | Decoders: Flate, LZW, ASCII85, ASCIIHex, RunLength |
-| `pdf-traversal.js` | BFS graph walker from PDF trailer |
-| `hash.js` | djb2 hash utility |
+| Module | Purpose | Status |
+|---|---|---|
+| `accessibility-detect.js` | Core trait detection + existing audits | Done |
+| `content-stream-parser.js` | Extract char codes per font from content streams | Done |
+| `unicode-mapper.js` | Map char codes to Unicode codepoints | Done |
+| `glyph-list.js` | Adobe Glyph List + encoding tables | Done |
+| `stream-decode.js` | Decoders: Flate, LZW, ASCII85, ASCIIHex, RunLength | Done |
+| `pdf-traversal.js` | BFS graph walker from PDF trailer | Done |
+| `hash.js` | djb2 hash utility | Done |
 
 ### New Code
+
+All source files created. Done.
 
 ```
 src/
@@ -128,21 +148,35 @@ src/
     metadata.js         — title, lang, security, displayDocTitle, bookmarks
     structure.js        — tagged check, structure tree walk, heading hierarchy
     images.js           — alt text coverage, decorative image detection
-    tables.js           — TH/TD validation, scope, caption
+    tables.js           — TH/TD validation, scope
     lists.js            — L/LI/Lbl/LBody structure validation
     fonts.js            — ToUnicode coverage, embedding status
     forms.js            — field labels, tab order
     links.js            — link text quality analysis
-    reading-order.js    — content stream position vs structure tree order
+    reading-order.js    — manual review guidance (PAC, NVDA, reading order)
   ui/
-    app-shell.js        — WinBox layout setup, window creation
-    report.js           — summary score, per-check cards
-    tree-explorer.js    — interactive structure tree view
-    font-table.js       — font inventory display
-    image-table.js      — image inventory display
-    guidance.js         — remediation text and external links
+    app-shell.js        — dockview-core layout setup, panel creation
+    state.js            — event bus for inter-panel communication
+    drop-zone.js        — drag-and-drop + file input + progress bar
+    report.js           — summary score, metadata, status counts
+    findings-list.js    — grouped/sorted finding cards
+    details.js          — selected finding detail + remediation
+    tree-explorer.js    — structure tree summary view
+    font-table.js       — font inventory table
+    image-table.js      — image inventory table
+    guidance.js         — remediation text templates and external links
     export.js           — JSON, CSV, and PDF report generation
-  engine/utils/         — shared utilities (from PDF-A-go-slim)
+  engine/utils/
+    resolve.js          — PDFRef resolution helper (new)
+    role-map.js         — RoleMap resolution for structure elements (new)
+    struct-tree-walker.js — depth-first tree walk with safety caps (new)
+    accessibility-detect.js — (from PDF-A-go-slim)
+    content-stream-parser.js — (from PDF-A-go-slim)
+    unicode-mapper.js   — (from PDF-A-go-slim)
+    glyph-list.js       — (from PDF-A-go-slim)
+    stream-decode.js    — (from PDF-A-go-slim)
+    pdf-traversal.js    — (from PDF-A-go-slim)
+    hash.js             — (from PDF-A-go-slim)
 ```
 
 ### Data Model
@@ -167,9 +201,11 @@ This model supports both human-readable rendering (V1.0) and machine-readable ex
 
 ### Worker Protocol
 
+Implemented in `src/worker.js`. Done.
+
 Inbound:
 ```js
-{ type: 'audit', buffer: ArrayBuffer }
+{ type: 'audit', buffer: ArrayBuffer, fileName: string }
 ```
 
 Outbound:
@@ -185,27 +221,31 @@ Outbound:
 
 ### Layout
 
-Window-based layout using WinBox.js:
+Panel-based layout using dockview-core (VS Code-style). Done.
 
-- **Drop zone** — prominent, always accessible (top bar or dedicated area)
-- **Summary window** — overall score and pass/fail counts
-- **Findings window** — expandable list of all checks, grouped by category
-- **Structure explorer window** — interactive tag tree (collapsible, searchable)
-- **Details window** — selected check details, remediation guidance, WCAG/PDF/UA references
-- **Font & image inventories** — tabular views as secondary windows
+- **Drop zone** — prominent full-page area with drag-and-drop + file input + progress bar | Done
+- **Summary panel** — overall score, pass/fail/warning/manual counts, document metadata | Done
+- **Findings panel** — grouped by category, sorted fail-first, clickable cards | Done
+- **Details panel** — selected check details, remediation guidance, WCAG/PDF/UA reference links | Done
+- **Structure explorer panel** — summary view (element count, types, max depth, heading hierarchy) | Partial (full interactive tree pending)
+- **Font table panel** — font inventory with ToUnicode + embedding status | Done
+- **Image table panel** — image inventory with alt text values | Done
 
-Windows can be moved, resized, minimized, and maximized. Users arrange them to suit their workflow.
+Panels are arranged in a default layout: summary (top-left), findings (bottom-left), details/structure/fonts/images as tabbed group (right). Panels are draggable and resizable. Layout persistence via localStorage is pending.
 
 ### Visual Design
 
-- Soft, high-contrast accessible light theme (not blazing white). The tool must pass WCAG 2.1 AA itself.
-- Traffic-light status indicators (green pass, red fail, amber warning, blue manual-check)
-- Professional typography — system font stack or Inter
-- **Light mode only for V1.0.** Theme CSS is structured to support dark mode later without a rewrite.
-- **WinBox theme is modular** — written as a standalone CSS file that could be reused by other WinBox projects. nextOS-inspired feel.
-- **Desktop-focused.** On small screens (< 768px), show a dismissible banner: "This tool is designed for larger screens." No mobile-specific layout — users aren't blocked, just informed.
+- Soft, high-contrast accessible light theme with CSS custom properties. The tool must pass WCAG 2.1 AA itself. | Done
+- Traffic-light status indicators (green pass #2b8a3e, red fail #c92a2a, amber warning #e67700, blue manual-check #1864ab) — not color-only, includes text labels | Done
+- Professional typography — system font stack (-apple-system, BlinkMacSystemFont, Segoe UI, Roboto) | Done
+- **Light mode only for V1.0.** Theme CSS structured with custom properties for easy dark mode addition. | Done
+- **dockview theme** — custom light theme in `src/styles/dockview-theme.css`. | Done
+- **Desktop-focused.** On small screens (< 768px), show a dismissible banner: "This tool is designed for larger screens." No mobile-specific layout — users aren't blocked, just informed. | Done
+- **Skip link** for keyboard navigation. Focus-visible outlines. ARIA labels on interactive regions. | Done
 
 ### Interaction Flow
+
+All steps implemented. Done.
 
 1. User drops PDF (or clicks to browse)
 2. Progress bar during analysis (fast — typically under 2 seconds)
@@ -229,11 +269,13 @@ Windows can be moved, resized, minimized, and maximized. Users arrange them to s
 
 ## Success Criteria
 
-- Covers 10 of 13 checklist items with automated checks
-- Zero false positives on well-formed tagged PDFs (e.g., PDF/UA-compliant documents)
-- Processes a 50-page tagged PDF in under 3 seconds
-- Works offline in practice (static assets, no server calls). Explicit service worker deferred to V1.1.
-- Passes WCAG 2.1 AA itself (the accessibility checker must be accessible)
+| Criterion | Status |
+|---|---|
+| Covers 10 of 13 checklist items with automated checks | Done (all 10 automated + 3 manual guidance) |
+| Zero false positives on well-formed tagged PDFs | Pending real-world testing |
+| Processes a 50-page tagged PDF in under 3 seconds | Pending performance profiling |
+| Works offline in practice (static assets, no server calls). Explicit service worker deferred to V1.1 | Done (static build, no server calls) |
+| Passes WCAG 2.1 AA itself (the accessibility checker must be accessible) | Partial (skip link, focus styles, ARIA labels, contrast ratios — needs axe-core audit) |
 
 ---
 
@@ -245,14 +287,16 @@ When this project draws on code, patterns, or ideas from other projects, we cite
 
 - **Direct code reuse** — the 7 utility modules copied from PDF-A-go-slim should credit that project and note that they in turn depend on work from pdf-lib, fflate, and the broader PDF specification ecosystem.
 - **Design inspiration** — if UI patterns, interaction models, or check logic are informed by existing tools (PAC, axesCheck, veraPDF, etc.), say so.
-- **Dependencies** — runtime dependencies (pdf-lib, fflate, WinBox.js, etc.) should be acknowledged with their licenses.
+- **Dependencies** — runtime dependencies (pdf-lib, fflate, dockview-core, etc.) should be acknowledged with their licenses.
 - **Standards and references** — WCAG, PDF/UA, Matterhorn Protocol, and other specifications that inform the audit checks.
 
 ### Where attribution appears
 
-- **README.md** — an "Acknowledgments" section listing key inspirations and dependencies.
-- **In-app** — an "About" panel or footer with credits and dependency licenses.
-- **Source code** — file-level comments in modules adapted from other projects, noting the origin (e.g., "Adapted from PDF-A-go-slim's stream-decode.js, which builds on fflate by 101arrowz").
+| Location | Status |
+|---|---|
+| **README.md** — "Acknowledgments" section listing key inspirations and dependencies | Done |
+| **In-app** — an "About" panel or footer with credits and dependency licenses | Pending |
+| **Source code** — file-level provenance comments in modules copied from PDF-A-go-slim | Done |
 
 ### Upstream awareness
 
@@ -274,25 +318,45 @@ All audit modules and core logic are developed using **strict TDD** — tests ar
 
 #### What Gets Tests First
 
-- **Every audit check** — each of the 10 automated checks and 3 manual-review checks must have tests written before the check is implemented. Tests cover both the passing case (well-formed PDF) and the failing case (PDF with the specific issue).
-- **Utility functions** — `resolveRole()`, `resolve()`, stream decoders, content stream parser. Tests define the contract before writing the logic.
-- **Worker protocol** — message handling (inbound `audit` messages, outbound `progress`/`result`/`error` messages).
-- **Export formats** — JSON, CSV, and PDF report generation tested against expected output structure.
+| Area | Status |
+|---|---|
+| Every audit check — pass and fail cases | Done (52 tests across 8 test files) |
+| Utility functions — `resolveRole()`, `buildRoleMap()`, cycle detection | Done (11 tests in `role-map.test.js`) |
+| UI integration — panel creation contracts, render functions, event bus, export helpers | Done (64 tests across 6 test files) |
+| Worker protocol — message handling | Pending |
+
+#### UI Integration Tests
+
+UI code must have test coverage. The dockview-core `createComponent` API contract, panel render functions, the event bus, and export helpers are all testable without a browser — using `happy-dom` as the Vitest environment.
+
+| Test File | What It Covers | Tests |
+|---|---|---|
+| `src/ui/app-shell.test.js` | `createPanel` returns `{ element: HTMLElement, init: Function }` for all 6 panel names; init callable with dockview parameters; correct render function dispatch | 11 |
+| `src/ui/state.test.js` | EventBus on/off/emit, state storage for result/selectFinding, late subscriber access, reset, unsubscribe return value | 11 |
+| `src/ui/export.test.js` | `escapeCsvField` quoting/escaping, `buildFilename` generation, `initExport` API shape | 14 |
+| `src/ui/report.test.js` | `renderSummaryPanel` status counts, overall badge, metadata rendering, ARIA labels | 9 |
+| `src/ui/findings-list.test.js` | Category grouping, status-priority sorting, card rendering, click dispatches selectFinding, keyboard accessibility (button elements) | 9 |
+| `src/ui/details.test.js` | Placeholder state, finding rendering (title, badge, summary, remediation, refs, details array), late subscriber behavior, content replacement on re-select | 10 |
+
+**Why this matters:** A crash in V1.0 was caused by the `createPanel` function returning the wrong shape for dockview-core's `IContentRenderer` interface. Audit-only tests (pure functions, no DOM) cannot catch UI integration bugs. Any code that interfaces with a third-party UI library or renders DOM must have contract tests.
 
 #### TDD Conventions
 
-- Test files live alongside source files: `src/audit/metadata.js` → `src/audit/metadata.test.js`
-- Test PDF fixtures are built inline using pdf-lib factory functions (not static files) so tests are self-contained and document the exact PDF structure being tested.
-- Each test file should be runnable in isolation: `npx vitest run src/audit/metadata.test.js`
-- Commit tests and implementation together — the test is part of the feature, not an afterthought.
+- Test files live alongside source files: `src/audit/metadata.js` → `src/audit/metadata.test.js` | Done
+- Test PDF fixtures are built inline using pdf-lib factory functions (14 factories in `test/fixtures/create-test-pdfs.js`) | Done
+- Shared test helper: `test/helpers/context.js` with `buildTestContext()` matching runner.js logic | Done
+- UI tests use `// @vitest-environment happy-dom` directive for DOM access | Done
+- Each test file runnable in isolation: `npx vitest run src/audit/metadata.test.js` | Done
+- Commit tests and implementation together | Done
+- Any code interfacing with a third-party UI library must have contract tests verifying the expected API shape | Done
 
 ### Framework
 
-**Vitest** — natural fit with Vite. Audit modules are pure functions (PDF buffer in, findings out), ideal for unit tests and TDD.
+**Vitest** — natural fit with Vite. Audit modules are pure functions (PDF buffer in, findings out), ideal for unit tests and TDD. Done.
 
 ### Sample PDFs
 
-Bundled sample PDFs serve double duty: test fixtures for development, and a "try it now" feature in the app (users can select a sample PDF from a menu instead of dropping their own).
+Bundled sample PDFs serve double duty: test fixtures for development, and a "try it now" feature in the app (users can select a sample PDF from a menu instead of dropping their own). **Pending** — `public/samples/` directory created but not yet populated.
 
 Sources (all CC BY 4.0 or public domain, compatible with this project's license (MIT) with required attribution):
 
@@ -308,15 +372,15 @@ Cherry-pick a small representative set covering the 10 automated checks. Store i
 
 ## Resolved Questions
 
-1. **Window manager:** WinBox.js (~5 KB, Apache 2.0). Lightweight, full CSS control. We write a custom accessible theme (modular, reusable, nextOS-inspired). No built-in design tokens — theming is class-based CSS overrides.
-2. **Shared code strategy:** Copy 7 modules from PDF-A-go-slim's `src/engine/utils/` into `src/engine/utils/`. They're self-contained (only depend on pdf-lib + fflate, both already in our stack). Expect divergence — the optimization project and validation project serve different goals.
+1. **Window manager:** Changed from WinBox.js to **dockview-core** (~4.3.1). Provides VS Code-style panel layout with tabs, drag-and-drop rearrangement, and resize. Custom light theme in `src/styles/dockview-theme.css`.
+2. **Shared code strategy:** Copy 7 modules from PDF-A-go-slim's `src/engine/utils/` into `src/engine/utils/`. They're self-contained (only depend on pdf-lib + fflate, both already in our stack). Expect divergence — the optimization project and validation project serve different goals. Done — all 7 copied with provenance comments.
 3. **PDF.js / visual preview:** Not needed for V1.0 — all checks are structural analysis via pdf-lib, and reading order is presented as a list comparison, not a visual overlay. PDF-A-go-slim embeds PDF-A-go-go (a PDF.js-based viewer) for before/after preview, but that viewer is designed for simple display, not deep integration with audit results. When visual preview is added (V1.1+), build directly on PDF.js rather than wrapping PDF-A-go-go — the level of integration needed (element highlighting, structure tree overlays, linking findings to page locations) would fight against PDF-A-go-go's abstraction layer.
 4. **Branding:** Keep "actionable" — it differentiates from "check" (passive) and signals the remediation guidance angle.
-5. **Decorative image detection:** V1.0 uses a heuristic (image count vs. figure count). Flag unmatched images as "please verify — may need alt text or artifact marking" (`warning` status). Per-image MCID correlation deferred to V1.1.
-6. **Link text quality:** Simple built-in word list: "click here", "here", "read more", "learn more", "link", "this link", "more info", "download". Also flag bare URLs as link text.
-7. **Mobile:** Desktop-focused. Dismissible banner on small screens (< 768px): "This tool is designed for larger screens." No mobile-specific layout work.
-8. **Dark mode:** Light only for V1.0. Theme CSS structured for easy dark mode addition later.
-9. **Export:** V1.0 feature, not deferred. Export audit results as JSON, CSV, or a PDF summary report.
+5. **Decorative image detection:** V1.0 uses a heuristic (image count vs. figure count). Flag unmatched images as "please verify — may need alt text or artifact marking" (`warning` status). Per-image MCID correlation deferred to V1.1. Done.
+6. **Link text quality:** Simple built-in word list: "click here", "here", "read more", "learn more", "link", "this link", "more info", "download". Also flag bare URLs as link text. Done.
+7. **Mobile:** Desktop-focused. Dismissible banner on small screens (< 768px): "This tool is designed for larger screens." No mobile-specific layout work. Done.
+8. **Dark mode:** Light only for V1.0. Theme CSS structured with CSS custom properties for easy dark mode addition later. Done.
+9. **Export:** V1.0 feature, not deferred. Export audit results as JSON, CSV, or a PDF summary report. Done.
 10. **Service worker:** Deferred. App works offline in practice (static assets, no server). Explicit service worker in V1.1.
-11. **Testing:** TDD with Vitest — tests written before implementation for all audit checks, utilities, and worker protocol. Sample PDFs bundled for both testing and in-app "try it" feature.
-12. **Content stream robustness:** Architect the audit layer defensively — graceful fallbacks (warning findings, not crashes) if pdf-lib or stream parsing hits edge cases. Plan for robustness from the start since we'll be doing intensive checking.
+11. **Testing:** TDD with Vitest — 116 tests across 14 test files covering audit checks, RoleMap utilities, and UI integration (panel contracts, render functions, event bus, export helpers). Worker protocol tests pending. 14 pdf-lib fixture factories in `test/fixtures/`. Uses `happy-dom` for DOM-based UI tests. Sample PDFs for in-app "try it" feature pending.
+12. **Content stream robustness:** Architect the audit layer defensively — graceful fallbacks (warning findings, not crashes) if pdf-lib or stream parsing hits edge cases. Done — each audit module wraps in try/catch, runner catches per-module errors and returns warning findings.

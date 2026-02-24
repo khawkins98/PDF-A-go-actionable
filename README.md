@@ -44,6 +44,11 @@ PDF-A-go-actionable is part of a family of client-side PDF tools:
 
 In short: **PDF-A-go-go** renders PDFs, **PDF-A-go-slim** optimizes them, and **PDF-A-go-actionable** validates their accessibility.
 
+## Development Conventions
+
+- **TDD** — tests are written before implementation (see PRD.md for details)
+- **[Conventional Commits](https://www.conventionalcommits.org/)** — all commit messages use prefixes like `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`
+
 ## Status
 
 Early development. See [PRD.md](PRD.md) for the full product requirements.

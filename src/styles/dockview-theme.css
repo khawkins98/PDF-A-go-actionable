@@ -1,0 +1,17 @@
+/* Custom light theme for dockview-core */
+
+.dv-dockview {
+  --dv-paneview-header-border-color: var(--color-border);
+  --dv-tabs-and-actions-container-font-size: var(--font-size-sm);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--color-surface);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--color-surface-alt);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--color-surface);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--color-surface-alt);
+  --dv-tabs-and-actions-container-background-color: var(--color-surface-alt);
+  --dv-activegroup-visiblepanel-tab-color: var(--color-text);
+  --dv-activegroup-hiddenpanel-tab-color: var(--color-text-secondary);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--color-text-secondary);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--color-text-muted);
+  --dv-separator-border: var(--color-border);
+  --dv-background-color: var(--color-bg);
+}
