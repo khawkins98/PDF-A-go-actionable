@@ -27,6 +27,7 @@ This is a **validation tool**, not a remediation tool. It tells you exactly what
 - **Practical over pedantic.** Cover the checks that matter most in real-world accessibility (the 13-point checklist from validation workflows), not the full 300+ PDF/UA machine rules.
 - **Client-side only.** All processing happens in the browser via Web Workers. No data leaves the user's machine.
 - **Professional UI.** Desktop metaphor with functional panel layout. Clean, modern aesthetic — serious tool for serious work, not a novelty.
+- **Test-driven.** Tests are written before implementation. Every audit check has passing and failing test cases defined upfront. This ensures correctness from the start and prevents regressions as the codebase grows.
 
 ### Audit Checks (13-point PDF accessibility checklist)
 
@@ -261,9 +262,33 @@ The utility modules shared with PDF-A-go-slim are not written in a vacuum — th
 
 ## Testing
 
+### Methodology: Test-Driven Development (TDD)
+
+All audit modules and core logic are developed using **strict TDD** — tests are written before implementation code.
+
+#### TDD Workflow
+
+1. **Red** — Write a failing test that defines the expected behavior of the feature or check. For audit modules, this means: create a test PDF fixture (using pdf-lib), call the audit function, and assert the expected `Finding` result (status, summary, details).
+2. **Green** — Write the minimum implementation code to make the test pass. No more.
+3. **Refactor** — Clean up the implementation while keeping tests green. Extract shared helpers, improve naming, reduce duplication.
+
+#### What Gets Tests First
+
+- **Every audit check** — each of the 10 automated checks and 3 manual-review checks must have tests written before the check is implemented. Tests cover both the passing case (well-formed PDF) and the failing case (PDF with the specific issue).
+- **Utility functions** — `resolveRole()`, `resolve()`, stream decoders, content stream parser. Tests define the contract before writing the logic.
+- **Worker protocol** — message handling (inbound `audit` messages, outbound `progress`/`result`/`error` messages).
+- **Export formats** — JSON, CSV, and PDF report generation tested against expected output structure.
+
+#### TDD Conventions
+
+- Test files live alongside source files: `src/audit/metadata.js` → `src/audit/metadata.test.js`
+- Test PDF fixtures are built inline using pdf-lib factory functions (not static files) so tests are self-contained and document the exact PDF structure being tested.
+- Each test file should be runnable in isolation: `npx vitest run src/audit/metadata.test.js`
+- Commit tests and implementation together — the test is part of the feature, not an afterthought.
+
 ### Framework
 
-**Vitest** — natural fit with Vite. Audit modules are pure functions (PDF buffer in, findings out), ideal for unit tests.
+**Vitest** — natural fit with Vite. Audit modules are pure functions (PDF buffer in, findings out), ideal for unit tests and TDD.
 
 ### Sample PDFs
 
@@ -293,5 +318,5 @@ Cherry-pick a small representative set covering the 10 automated checks. Store i
 8. **Dark mode:** Light only for V1.0. Theme CSS structured for easy dark mode addition later.
 9. **Export:** V1.0 feature, not deferred. Export audit results as JSON, CSV, or a PDF summary report.
 10. **Service worker:** Deferred. App works offline in practice (static assets, no server). Explicit service worker in V1.1.
-11. **Testing:** Vitest for unit tests. Sample PDFs bundled for both testing and in-app "try it" feature.
+11. **Testing:** TDD with Vitest — tests written before implementation for all audit checks, utilities, and worker protocol. Sample PDFs bundled for both testing and in-app "try it" feature.
 12. **Content stream robustness:** Architect the audit layer defensively — graceful fallbacks (warning findings, not crashes) if pdf-lib or stream parsing hits edge cases. Plan for robustness from the start since we'll be doing intensive checking.
