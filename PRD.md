@@ -43,11 +43,11 @@ All 10 automated checks are implemented with tests (`src/audit/`). Each resolves
 | 3 | Security permits accessibility | Encryption dict `/P` permissions bit 5 + bit 10 | Done |
 | 4 | PDF is tagged | `/MarkInfo << /Marked true >>` | Done |
 | 5 | Structure tree present | Catalog `/StructTreeRoot` | Done |
-| 6 | All meaningful images have alt text | `/Figure` StructElems with/without `/Alt` (resolved via RoleMap) | Done |
+| 6 | All meaningful images have alt text | `/Figure` StructElems with/without `/Alt` (resolved via RoleMap); generic alt text ("image", "photo", etc.) flagged as warning | Done |
 | 7 | Decorative images flagged for review | Images not in structure tree flagged as "please verify --may need alt text or artifact marking" (`warning` status) | Done |
 | 8 | Headings use correct hierarchy | H1-H6 StructElems in document order; skip detection (via tree walk) | Done |
-| 9 | Tables have proper header cells | `/Table` StructElems with `/TH` children and `/Scope` (resolved via RoleMap) | Done |
-| 10 | Lists are properly tagged | `/L` > `/LI` > `/Lbl` + `/LBody` structure (resolved via RoleMap) | Done |
+| 9 | Tables have proper header cells | `/Table` StructElems with `/TH` children and valid `/Scope` value (Row/Column/Both); resolved via RoleMap | Done |
+| 10 | Lists are properly tagged | `/L` > `/LI` > `/Lbl` + `/LBody` structure (both required per PDF/UA 7.6); resolved via RoleMap | Done |
 
 #### Automated --Informational
 
@@ -61,7 +61,7 @@ All 10 automated checks are implemented with tests (`src/audit/`). Each resolves
 | Bookmark/outline presence | Catalog `/Outlines` | Done |
 | Tab order set to structure | Per-page `/Tabs /S` | Done |
 | Form field labeling | `/AcroForm` fields with/without `/TU` tooltips | Done |
-| Link text quality | `/Link` StructElem text content; flag generic ("click here", "here", "read more", "learn more", "link", "this link", "more info", "download") and bare URLs | Done |
+| Link text quality | `/Link` StructElem text content; flag generic ("click here", "here", "read more", "learn more", "link", "this link", "more info", "download", "more"), bare URLs (http/https/ftp), and links with no text | Done |
 | Structure tree summary | Element count, types, max depth | Done |
 | Per-element language | `/Lang` on individual StructElems | **Pending** |
 
@@ -326,8 +326,8 @@ All audit modules and core logic are developed using **strict TDD** --tests are 
 
 | Area | Status |
 |---|---|
-| Every audit check --pass and fail cases | Done (65 tests across 10 test files) |
-| Utility functions --`resolveRole()`, `buildRoleMap()`, cycle detection | Done (11 tests in `role-map.test.js`) |
+| Every audit check --pass and fail cases | Done (90 tests across 10 test files) |
+| Utility functions --`resolveRole()`, `buildRoleMap()`, cycle detection, `resolve()`, accessibility detection, struct-tree walker, stream decode | Done (58 tests across 5 test files) |
 | UI integration --panel creation contracts, render functions, event bus (including scoped session buses), export helpers | Done (137 tests across 12 test files) |
 | Worker protocol --message handling | Pending |
 
@@ -355,7 +355,7 @@ Any code that interfaces with a third-party UI library or renders DOM has contra
 #### TDD Conventions
 
 - Test files live alongside source files: `src/audit/metadata.js` → `src/audit/metadata.test.js` | Done
-- Test PDF fixtures are built inline using pdf-lib factory functions (14 factories in `test/fixtures/create-test-pdfs.js`) | Done
+- Test PDF fixtures are built inline using pdf-lib factory functions (21 factories in `test/fixtures/create-test-pdfs.js`) | Done
 - Shared test helper: `test/helpers/context.js` with `buildTestContext()` matching runner.js logic | Done
 - UI tests use `// @vitest-environment happy-dom` directive for DOM access | Done
 - Each test file runnable in isolation: `npx vitest run src/audit/metadata.test.js` | Done
@@ -389,10 +389,10 @@ Cherry-pick a small representative set covering the 10 automated checks. Store i
 3. **PDF.js / visual preview:** Not needed for V1.0 --all checks are structural analysis via pdf-lib, and reading order is presented as a list comparison, not a visual overlay. PDF-A-go-slim embeds PDF-A-go-go (a PDF.js-based viewer) for before/after preview, but that viewer is designed for simple display, not deep integration with audit results. When visual preview is added (V1.1+), build directly on PDF.js rather than wrapping PDF-A-go-go --the level of integration needed (element highlighting, structure tree overlays, linking findings to page locations) would fight against PDF-A-go-go's abstraction layer.
 4. **Branding:** Keep "actionable" --it differentiates from "check" (passive) and signals the remediation guidance angle.
 5. **Decorative image detection:** V1.0 uses a heuristic (image count vs. figure count). Flag unmatched images as "please verify --may need alt text or artifact marking" (`warning` status). Per-image MCID correlation deferred to V1.1. Done.
-6. **Link text quality:** Simple built-in word list: "click here", "here", "read more", "learn more", "link", "this link", "more info", "download". Also flag bare URLs as link text. Done.
+6. **Link text quality:** Simple built-in word list: "click here", "here", "read more", "learn more", "link", "this link", "more info", "download", "more". Also flag bare URLs (http, https, ftp) and links with no accessible text. Done.
 7. **Mobile:** Desktop-focused. Dismissible banner on small screens (< 768px): "This tool is designed for larger screens." No mobile-specific layout work. Done.
 8. **Dark mode:** Light only for V1.0. Theme CSS structured with CSS custom properties for easy dark mode addition later. Done.
 9. **Export:** V1.0 feature, not deferred. Export audit results as JSON, CSV, or a PDF summary report. Done.
 10. **Service worker:** Deferred. App works offline in practice (static assets, no server). Explicit service worker in V1.1.
-11. **Testing:** TDD with Vitest --213 tests across 23 test files covering audit checks, RoleMap utilities, and UI integration (panel creation, render functions, scoped event buses, export helpers). Worker protocol tests pending. 14 pdf-lib fixture factories in `test/fixtures/`. Uses `happy-dom` for DOM-based UI tests. Sample PDFs for in-app "try it" feature pending.
+11. **Testing:** TDD with Vitest --285 tests across 27 test files covering audit checks, engine utilities (resolve, accessibility detection, struct-tree walker, stream decode, RoleMap), and UI integration (panel creation, render functions, scoped event buses, export helpers). Worker protocol tests pending. 21 pdf-lib fixture factories in `test/fixtures/`. Uses `happy-dom` for DOM-based UI tests. Sample PDFs for in-app "try it" feature pending.
 12. **Content stream robustness:** Architect the audit layer defensively --graceful fallbacks (warning findings, not crashes) if pdf-lib or stream parsing hits edge cases. Done --each audit module wraps in try/catch, runner catches per-module errors and returns warning findings.

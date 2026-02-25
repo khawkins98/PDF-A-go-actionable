@@ -519,7 +519,7 @@ export function initAppShell(container, worker) {
     `;
 
     new WinBox({
-      title: 'Test PDFs — Bookmarks',
+      title: 'Test PDFs: Bookmarks',
       mount: content,
       root,
       x: 'center',
@@ -717,7 +717,7 @@ export function initAppShell(container, worker) {
       <ol>
         <li>Click <strong>Open File(s)</strong> in the menu bar, or drag PDFs onto the welcome window</li>
         <li>Wait for each analysis to complete</li>
-        <li>Review findings in the results window — click any finding for details</li>
+        <li>Review findings in the results window. Click any finding for details</li>
         <li>Use the toolbar to open Structure Tree, Font, or Image panels</li>
         <li>Export results as JSON, CSV, or PDF</li>
       </ol>
@@ -730,9 +730,9 @@ export function initAppShell(container, worker) {
       </ul>
       <h3>Keyboard Shortcuts</h3>
       <ul>
-        <li><strong>Tab</strong> — navigate between controls</li>
-        <li><strong>Enter / Space</strong> — activate buttons</li>
-        <li><strong>Escape</strong> — close menus</li>
+        <li><strong>Tab</strong> -- navigate between controls</li>
+        <li><strong>Enter / Space</strong> -- activate buttons</li>
+        <li><strong>Escape</strong> -- close menus</li>
       </ul>
     `;
 
@@ -776,7 +776,7 @@ export function initAppShell(container, worker) {
       <h1 class="welcome__title">PDF-A-go-actionable</h1>
       <p class="welcome__tagline">Free, browser-based PDF accessibility checker</p>
       <ul class="welcome__features">
-        <li>Runs entirely in your browser — no file uploads</li>
+        <li>Runs entirely in your browser, no file uploads</li>
         <li>Fix-it guidance for every finding</li>
         <li>Covers the UNDRR 13-point accessibility checklist</li>
       </ul>
@@ -1041,7 +1041,7 @@ export function initAppShell(container, worker) {
     const layout = getFloatingLayout(id, session.cascadeIndex);
 
     const win = new WinBox({
-      title: `${def.title} — ${session.fileName}`,
+      title: `${def.title}: ${session.fileName}`,
       mount: el,
       root,
       class: ['white'],

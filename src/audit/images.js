@@ -117,12 +117,12 @@ export function checkImages(pdfDoc, ctx) {
   } else if (figuresWithoutAlt.length > 0) {
     const details = figuresWithoutAlt.map((f) => ({
       label: 'Figure without alt',
-      value: f.type === 'Figure' ? 'No /Alt attribute' : `Custom type "${f.type}" (maps to Figure) — no /Alt attribute`,
+      value: f.type === 'Figure' ? 'No /Alt attribute' : `Custom type "${f.type}" (maps to Figure), no /Alt attribute`,
     }));
     if (figuresWithGenericAlt.length > 0) {
       details.push(...figuresWithGenericAlt.map((f) => ({
         label: 'Generic alt text',
-        value: `"${f.alt}" — not descriptive`,
+        value: `"${f.alt}" -- not descriptive`,
       })));
     }
     findings.push({

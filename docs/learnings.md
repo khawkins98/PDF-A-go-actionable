@@ -108,7 +108,9 @@ The structure tree is rooted at `/StructTreeRoot` in the document catalog. Walki
 2. Read `/K` (kids) --can be a single child, an array, or an MCID integer
 3. Recursively walk children, resolving refs at each level
 4. Track visited refs (via `Set` on ref tags) to prevent cycles
-5. Cap depth (200) to prevent pathological documents from hanging
+5. Cap depth (200) and element count (50,000) to prevent pathological documents from hanging
+
+**Cycle detection caveat:** When `/K` is a single ref (not an array), `resolve(k, context)` returns the PDFDict directly. The walker then recurses with the dict, not the PDFRef, so `instanceof PDFRef` cycle detection doesn't trigger. Array children preserve PDFRef during iteration, so cycle detection works correctly there. The MAX_DEPTH cap provides a safety net for both cases.
 
 The `/S` key on each StructElem gives the structure type (`/P`, `/H1`, `/Figure`, `/Table`, `/L`, etc.). The `/K` key gives children. `/Alt` provides alternative text. `/Lang` provides per-element language.
 
@@ -133,6 +135,8 @@ A document can have many image XObjects but zero Figure elements (untagged PDF),
 
 When no StructTreeRoot exists, alt text auditing is not applicable --the document isn't tagged at all.
 
+**Generic alt text:** Alt text like "image", "photo", "picture", "graphic", "figure", "icon", "logo", "screenshot", "illustration", "diagram", "chart" is technically present but provides no meaningful description. Flagged as a warning (not a pass).
+
 ### Heading Hierarchy Validation
 
 Structure types `/H1` through `/H6` should follow a logical hierarchy:
@@ -147,7 +151,7 @@ Walk StructElems in document order (depth-first from StructTreeRoot), extract he
 Accessible tables require:
 - `/Table` StructElem as the container
 - `/TH` (header) cells, not just `/TD` (data) cells
-- `/Scope` attribute on `/TH` elements indicating whether they're row or column headers
+- `/Scope` attribute on `/TH` elements with a valid value: `Row`, `Column`, or `Both`. Simply having a `/Scope` key with an arbitrary value is not sufficient --the value must be one of these three per the PDF spec.
 - For complex tables: `/Headers` attribute linking data cells to their header cells
 
 ### List Structure Validation
@@ -208,7 +212,9 @@ Used for stream decompression when parsing content streams. Main functions:
 
 ### Stream Decoding
 
-Content stream parsing requires decompressing streams first. The decoder chain in `stream-decode.js` handles:
+Content stream parsing requires decompressing streams first. The decoder chain in `stream-decode.js` handles multiple filters, applied sequentially (first filter decodes first, result feeds into second filter, etc.). The FlateDecode path uses a fallback chain: `inflateSync` first, then `decompressSync` if that fails. This means corrupted zlib data may not throw --`decompressSync` can auto-detect format and recover. Only truly unsupported filter names will throw.
+
+Supported filters:
 - **FlateDecode** -- zlib/DEFLATE via fflate
 - **LZWDecode** -- custom decoder (PDF's variant has non-standard early code size change)
 - **ASCII85Decode** -- ASCII85 text back into bytes (5 chars to 4 bytes)
@@ -262,6 +268,10 @@ For browser-based tools that need to `fetch()` test PDFs at runtime, CORS header
 ### pdf-lib Lazy Object Creation
 
 pdf-lib creates font dict objects lazily --after `embedFont()` + `drawText()`, the actual PDF objects don't exist in `context` until `save()` is called. Tests that examine font objects require a save/reload cycle.
+
+### Circular References Don't Survive Save/Reload
+
+pdf-lib flattens circular structure references during serialization. If you create a cycle (StructElem A → StructElem B → StructElem A) and save/reload, the cycle won't be present in the reloaded document. Tests for cycle detection must work on the document directly (before save) or use indirect structures that preserve the cycle through serialization.
 
 ### Node.js fetch() Detection
 

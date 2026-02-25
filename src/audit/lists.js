@@ -161,7 +161,7 @@ function validateList(listDict, listNum, context, roleMap) {
   } else if (issues.length === 0) {
     details.push({
       label: `List ${listNum}`,
-      value: `${liCount} list item(s) — structure OK`,
+      value: `${liCount} list item(s), structure OK`,
     });
   }
 

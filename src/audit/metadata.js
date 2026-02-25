@@ -136,7 +136,7 @@ export function checkMetadata(pdfDoc, ctx) {
     details: [],
     remediation: hasBookmarks
       ? null
-      : 'Add bookmarks in your authoring tool. In Word, use heading styles — they become bookmarks automatically on export. In Acrobat: View > Navigation Panels > Bookmarks.',
+      : 'Add bookmarks in your authoring tool. In Word, heading styles become bookmarks automatically on export. In Acrobat: View > Navigation Panels > Bookmarks.',
     wcagRef: '2.4.5',
     pdfuaRef: null,
   });
@@ -158,7 +158,7 @@ function checkSecurity(pdfDoc) {
   if (!encryptRef) {
     return {
       status: 'pass',
-      summary: 'No encryption — accessibility access is unrestricted.',
+      summary: 'No encryption. Accessibility access is unrestricted.',
       details: [],
     };
   }
