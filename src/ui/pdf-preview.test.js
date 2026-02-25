@@ -169,6 +169,40 @@ describe('renderPreviewPanel', () => {
     expect(btn.classList.contains('toolbar-btn--active')).toBe(false);
   });
 
+  it('should render alt text toggle button', () => {
+    const session = makeSession();
+    renderPreviewPanel(el, makeData(), session);
+
+    const btn = el.querySelector('.pdf-preview__alt-text-btn');
+    expect(btn).not.toBeNull();
+    expect(btn.textContent).toBe('Alt Text');
+    expect(btn.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('should toggle alt text button aria-pressed on click', () => {
+    const session = makeSession();
+    renderPreviewPanel(el, makeData(), session);
+
+    const btn = el.querySelector('.pdf-preview__alt-text-btn');
+    btn.click();
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
+    expect(btn.classList.contains('toolbar-btn--active')).toBe(true);
+
+    btn.click();
+    expect(btn.getAttribute('aria-pressed')).toBe('false');
+    expect(btn.classList.contains('toolbar-btn--active')).toBe(false);
+  });
+
+  it('should render open PDF button', () => {
+    const session = makeSession();
+    renderPreviewPanel(el, makeData(), session);
+
+    const btn = el.querySelector('.pdf-preview__open-btn');
+    expect(btn).not.toBeNull();
+    expect(btn.textContent).toBe('Open PDF');
+    expect(btn.getAttribute('aria-label')).toBe('Open PDF in a new tab');
+  });
+
   it('should register selectTreeNode listener on bus', () => {
     const session = makeSession();
     renderPreviewPanel(el, makeData(), session);

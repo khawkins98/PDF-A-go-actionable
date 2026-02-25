@@ -76,6 +76,7 @@ export function renderPreviewPanel(el, data, session) {
   /** @type {Array<{mcid: number, pageIndex: number}>|null} Active highlight MCIDs */
   let activeMcids = null;
   let readingOrderOn = false;
+  let altTextOn = false;
   let zoomMode = ZOOM_FIT; // ZOOM_FIT or a numeric scale multiplier
   let lastFitScale = 1; // cached fit-to-width scale from last render
 
@@ -147,6 +148,20 @@ export function renderPreviewPanel(el, data, session) {
   readingOrderBtn.title = 'Toggle reading order visualization';
   readingOrderBtn.setAttribute('aria-pressed', 'false');
 
+  const altTextBtn = document.createElement('button');
+  altTextBtn.type = 'button';
+  altTextBtn.className = 'toolbar-btn pdf-preview__alt-text-btn';
+  altTextBtn.textContent = 'Alt Text';
+  altTextBtn.title = 'Show alt text labels on images and figures';
+  altTextBtn.setAttribute('aria-pressed', 'false');
+
+  const openPdfBtn = document.createElement('button');
+  openPdfBtn.type = 'button';
+  openPdfBtn.className = 'toolbar-btn pdf-preview__open-btn';
+  openPdfBtn.textContent = 'Open PDF';
+  openPdfBtn.title = 'Open PDF in a new tab';
+  openPdfBtn.setAttribute('aria-label', 'Open PDF in a new tab');
+
   toolbar.appendChild(prevBtn);
   toolbar.appendChild(pageInfo);
   toolbar.appendChild(nextBtn);
@@ -159,6 +174,10 @@ export function renderPreviewPanel(el, data, session) {
 
   toolbar.appendChild(makeSep());
   toolbar.appendChild(readingOrderBtn);
+  toolbar.appendChild(altTextBtn);
+
+  toolbar.appendChild(makeSep());
+  toolbar.appendChild(openPdfBtn);
 
   el.appendChild(toolbar);
 
@@ -219,6 +238,20 @@ export function renderPreviewPanel(el, data, session) {
     readingOrderBtn.setAttribute('aria-pressed', String(readingOrderOn));
     readingOrderBtn.classList.toggle('toolbar-btn--active', readingOrderOn);
     renderOverlay();
+  });
+
+  altTextBtn.addEventListener('click', () => {
+    altTextOn = !altTextOn;
+    altTextBtn.setAttribute('aria-pressed', String(altTextOn));
+    altTextBtn.classList.toggle('toolbar-btn--active', altTextOn);
+    renderOverlay();
+  });
+
+  let openPdfUrl = null;
+  openPdfBtn.addEventListener('click', () => {
+    if (openPdfUrl) URL.revokeObjectURL(openPdfUrl);
+    openPdfUrl = URL.createObjectURL(session.file);
+    window.open(openPdfUrl, '_blank');
   });
 
   // Listen for tree node selection on the session bus
@@ -402,6 +435,11 @@ export function renderPreviewPanel(el, data, session) {
     if (readingOrderOn) {
       drawReadingOrder(textContent);
     }
+
+    // Draw alt text labels if toggled on
+    if (altTextOn) {
+      drawAltText(textContent);
+    }
   }
 
   async function getTextContent(pageNum) {
@@ -574,6 +612,120 @@ export function renderPreviewPanel(el, data, session) {
   }
 
   /**
+   * Draw alt text labels for structure tree elements that have alt text
+   * and MCIDs on the current page.
+   */
+  function drawAltText(textContent) {
+    const tree = data && data.structureTree;
+    if (!tree || !tree.root) return;
+
+    const pageIndex = currentPage - 1;
+    const nodesWithAlt = [];
+    collectAltTextNodes(tree.root, pageIndex, nodesWithAlt);
+    if (nodesWithAlt.length === 0) return;
+
+    const svgHeight = parseFloat(svg.getAttribute('height')) || 0;
+    if (!svgHeight) return;
+
+    const containerWidth = viewportEl.clientWidth - 16 || 400;
+    pdfjsDoc.getPage(currentPage).then((page) => {
+      if (destroyed) return;
+      const unscaled = page.getViewport({ scale: 1 });
+      const scale = zoomMode === ZOOM_FIT
+        ? containerWidth / unscaled.width
+        : zoomMode;
+
+      for (const node of nodesWithAlt) {
+        const pageMcids = node.mcids
+          .filter((m) => m.pageIndex === pageIndex)
+          .map((m) => m.mcid);
+
+        const boxes = getMcidBoundingBoxes(textContent, pageMcids);
+        if (boxes.length === 0) continue;
+
+        // Use union bounding box for positioning
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const b of boxes) {
+          const bx = b.x * scale;
+          const by = svgHeight - (b.y * scale) - (b.height * scale);
+          const bx2 = bx + b.width * scale;
+          const by2 = by + b.height * scale;
+          if (bx < minX) minX = bx;
+          if (by < minY) minY = by;
+          if (bx2 > maxX) maxX = bx2;
+          if (by2 > maxY) maxY = by2;
+        }
+
+        // Draw a highlight rect around the element
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', String(minX));
+        rect.setAttribute('y', String(minY));
+        rect.setAttribute('width', String(maxX - minX));
+        rect.setAttribute('height', String(maxY - minY));
+        rect.setAttribute('class', 'pdf-preview__alt-highlight');
+        svg.appendChild(rect);
+
+        // Draw label below the element
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('class', 'pdf-preview__alt-label');
+
+        const labelY = maxY + 2;
+        const labelWidth = Math.max(maxX - minX, 80);
+
+        // Background rect for label
+        const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        bgRect.setAttribute('x', String(minX));
+        bgRect.setAttribute('y', String(labelY));
+        bgRect.setAttribute('width', String(labelWidth));
+        bgRect.setAttribute('rx', '3');
+        bgRect.setAttribute('class', 'pdf-preview__alt-label-bg');
+        g.appendChild(bgRect);
+
+        // Role tag
+        const roleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        roleText.setAttribute('x', String(minX + 4));
+        roleText.setAttribute('class', 'pdf-preview__alt-label-role');
+        roleText.textContent = node.role || node.type;
+        g.appendChild(roleText);
+
+        // Alt text (truncated)
+        const altStr = node.alt.length > 80 ? node.alt.slice(0, 77) + '\u2026' : node.alt;
+        const altText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        altText.setAttribute('x', String(minX + 4));
+        altText.setAttribute('class', 'pdf-preview__alt-label-text');
+        altText.textContent = altStr;
+        g.appendChild(altText);
+
+        // Position text lines after appending (we need to compute line heights)
+        // Use fixed offsets since SVG text measuring isn't reliable in all envs
+        const lineHeight = 14;
+        roleText.setAttribute('y', String(labelY + lineHeight));
+        altText.setAttribute('y', String(labelY + lineHeight * 2 + 2));
+
+        const totalLabelHeight = lineHeight * 2 + 8;
+        bgRect.setAttribute('height', String(totalLabelHeight));
+
+        svg.appendChild(g);
+      }
+    });
+  }
+
+  /**
+   * Recursively collect tree nodes that have alt text and MCIDs on the given page.
+   */
+  function collectAltTextNodes(node, pageIndex, result) {
+    if (!node) return;
+    if (node.alt && node.mcids && node.mcids.some((m) => m.pageIndex === pageIndex)) {
+      result.push(node);
+    }
+    if (node.children) {
+      for (const child of node.children) {
+        collectAltTextNodes(child, pageIndex, result);
+      }
+    }
+  }
+
+  /**
    * Collect tree nodes that have MCIDs on the given page, in tree order.
    */
   function collectPageElements(node, pageIndex, result) {
@@ -616,5 +768,9 @@ export function renderPreviewPanel(el, data, session) {
       pdfjsDoc = null;
     }
     textContentCache.clear();
+    if (openPdfUrl) {
+      URL.revokeObjectURL(openPdfUrl);
+      openPdfUrl = null;
+    }
   };
 }
