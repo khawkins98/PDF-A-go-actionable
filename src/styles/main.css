@@ -866,6 +866,23 @@ body {
   outline-offset: -2px;
 }
 
+.tree-node__row--selected {
+  background: var(--color-titlebar);
+  color: var(--color-text-inverse);
+}
+
+.tree-node__row--selected .tree-node__type {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: inherit;
+}
+
+.tree-node__row--selected .tree-node__mapping,
+.tree-node__row--selected .tree-node__count,
+.tree-node__row--selected .tree-node__alt {
+  color: rgba(255, 255, 255, 0.8);
+}
+
 .tree-node__toggle {
   display: inline-flex;
   align-items: center;
@@ -942,6 +959,142 @@ body {
 
 [role="group"] {
   padding-left: 16px;
+}
+
+/* === PDF Preview === */
+.pdf-preview {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.pdf-preview__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--color-surface-alt);
+  border-bottom: 2px solid;
+  border-color: var(--color-border-dark);
+  flex-shrink: 0;
+}
+
+.pdf-preview__nav-btn {
+  min-width: 28px;
+  padding: 2px var(--space-xs);
+}
+
+.pdf-preview__page-info {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.pdf-preview__page-input {
+  width: 48px;
+  padding: 2px var(--space-xs);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  text-align: center;
+  -moz-appearance: textfield;
+}
+
+.pdf-preview__page-input::-webkit-inner-spin-button,
+.pdf-preview__page-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.pdf-preview__page-total {
+  white-space: nowrap;
+}
+
+.pdf-preview__reading-order-btn {
+  font-size: var(--font-size-sm);
+}
+
+.pdf-preview__viewport {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  background: var(--color-bg);
+  display: flex;
+  justify-content: center;
+  padding: var(--space-sm);
+}
+
+.pdf-preview__canvas {
+  display: block;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.pdf-preview__overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+/* Position SVG over the canvas via the viewport's padding + centering */
+.pdf-preview__viewport {
+  align-items: flex-start;
+}
+
+.pdf-preview__overlay {
+  /* Positioned via explicit width/height/viewBox set in JS */
+}
+
+.pdf-preview__status {
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.pdf-preview__status:empty {
+  display: none;
+}
+
+/* Highlight overlays */
+.pdf-preview__highlight {
+  fill: rgba(59, 130, 246, 0.25);
+  stroke: rgba(59, 130, 246, 0.7);
+  stroke-width: 1.5;
+}
+
+/* Reading order badges */
+.pdf-preview__reading-order-badge circle {
+  fill: var(--color-primary, #1556a0);
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+
+.pdf-preview__reading-order-badge text {
+  fill: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.pdf-preview__reading-order-line {
+  stroke: var(--color-primary, #1556a0);
+  stroke-width: 1;
+  stroke-dasharray: 4 2;
+  opacity: 0.5;
+}
+
+/* Active toggle button (e.g. Reading Order on) */
+.toolbar-btn--active {
+  background: var(--color-titlebar);
+  color: var(--color-text-inverse);
+  border-color: var(--color-border-dark) var(--color-border-light) var(--color-border-light) var(--color-border-dark);
 }
 
 /* === Utility === */

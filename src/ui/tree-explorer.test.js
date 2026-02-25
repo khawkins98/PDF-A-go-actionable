@@ -578,3 +578,139 @@ describe('renderTreeExplorer — unique IDs', () => {
     expect(label2.htmlFor).toBe(input2.id);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Bus event tests (selectTreeNode)
+// ---------------------------------------------------------------------------
+
+function makeBus() {
+  const listeners = new Map();
+  return {
+    on(event, fn) {
+      if (!listeners.has(event)) listeners.set(event, []);
+      listeners.get(event).push(fn);
+      return () => {
+        const fns = listeners.get(event);
+        const idx = fns.indexOf(fn);
+        if (idx !== -1) fns.splice(idx, 1);
+      };
+    },
+    emit(event, data) {
+      const fns = listeners.get(event);
+      if (fns) fns.forEach((fn) => fn(data));
+    },
+    _listeners: listeners,
+  };
+}
+
+function makeNodeWithMcids(id, type, role, children, opts = {}) {
+  return {
+    id,
+    type,
+    role: role || type,
+    alt: opts.alt || null,
+    lang: opts.lang || null,
+    children: children || [],
+    mcids: opts.mcids || [],
+    pageIndex: opts.pageIndex != null ? opts.pageIndex : null,
+  };
+}
+
+describe('renderTreeExplorer — bus events', () => {
+  it('should emit selectTreeNode on bus when a tree node row is clicked', () => {
+    const bus = makeBus();
+    const received = [];
+    bus.on('selectTreeNode', (data) => received.push(data));
+
+    const tree = makeTree(
+      makeNodeWithMcids(0, 'Document', 'Document', [
+        makeNodeWithMcids(1, 'P', 'P', [], { mcids: [{ mcid: 0, pageIndex: 0 }], pageIndex: 0 }),
+      ], { mcids: [], pageIndex: null }),
+      2,
+      false,
+    );
+
+    const el = document.createElement('div');
+    renderTreeExplorer(el, makeData([], tree), bus);
+
+    // Click the P node row (second row since root is expanded)
+    const rows = el.querySelectorAll('.tree-node__row');
+    expect(rows.length).toBeGreaterThanOrEqual(2);
+    rows[1].click();
+
+    expect(received).toHaveLength(1);
+    expect(received[0].nodeId).toBe(1);
+    expect(received[0].mcids).toEqual([{ mcid: 0, pageIndex: 0 }]);
+    expect(received[0].pageIndex).toBe(0);
+  });
+
+  it('should add selected class to clicked node row', () => {
+    const bus = makeBus();
+    const tree = makeTree(
+      makeNodeWithMcids(0, 'Document', 'Document', [
+        makeNodeWithMcids(1, 'P', 'P', []),
+        makeNodeWithMcids(2, 'H1', 'H1', []),
+      ]),
+      3,
+      false,
+    );
+
+    const el = document.createElement('div');
+    renderTreeExplorer(el, makeData([], tree), bus);
+
+    const rows = el.querySelectorAll('.tree-node__row');
+    rows[1].click();
+    expect(rows[1].classList.contains('tree-node__row--selected')).toBe(true);
+
+    // Click another row — previous selection removed
+    rows[2].click();
+    expect(rows[1].classList.contains('tree-node__row--selected')).toBe(false);
+    expect(rows[2].classList.contains('tree-node__row--selected')).toBe(true);
+  });
+
+  it('should not throw when bus is not provided', () => {
+    const tree = makeTree(
+      makeNodeWithMcids(0, 'Document', 'Document', [
+        makeNodeWithMcids(1, 'P', 'P', []),
+      ]),
+      2,
+      false,
+    );
+
+    const el = document.createElement('div');
+    renderTreeExplorer(el, makeData([], tree)); // no bus
+
+    const rows = el.querySelectorAll('.tree-node__row');
+    expect(() => rows[1].click()).not.toThrow();
+  });
+
+  it('should still toggle expand/collapse on click alongside bus event', () => {
+    const bus = makeBus();
+    const tree = makeTree(
+      makeNodeWithMcids(0, 'Document', 'Document', [
+        makeNodeWithMcids(1, 'P', 'P', [
+          makeNodeWithMcids(2, 'Span', 'Span', []),
+        ]),
+      ]),
+      3,
+      false,
+    );
+
+    const el = document.createElement('div');
+    renderTreeExplorer(el, makeData([], tree), bus);
+
+    // Root is expanded, P is collapsed. Click P row — should expand it AND emit event
+    const received = [];
+    bus.on('selectTreeNode', (d) => received.push(d));
+
+    const pItem = el.querySelector('[data-node-id="1"]');
+    const pRow = pItem.querySelector('.tree-node__row');
+    pRow.click();
+
+    // The row click handler on the tree (event delegation) handles selection,
+    // and the row's direct click handler handles toggle.
+    // Both should fire.
+    expect(received).toHaveLength(1);
+    expect(received[0].nodeId).toBe(1);
+  });
+});

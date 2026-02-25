@@ -11,6 +11,9 @@ export default defineConfig({
   server: {
     open: true,
   },
+  optimizeDeps: {
+    include: ['pdfjs-dist'],
+  },
   build: {
     target: 'es2020',
   },

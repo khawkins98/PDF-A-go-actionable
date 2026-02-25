@@ -12,7 +12,7 @@
  * - Single vs. array root children
  */
 import { describe, it, expect } from 'vitest';
-import { PDFDocument, PDFName, PDFString, PDFHexString } from 'pdf-lib';
+import { PDFDocument, PDFName, PDFString, PDFHexString, PDFNumber } from 'pdf-lib';
 import { buildSerializableTree } from './serialize-tree.js';
 import { getRoleMapFromDoc } from './role-map.js';
 import {
@@ -257,4 +257,167 @@ describe('buildSerializableTree', () => {
     expect(result.root).toBeNull();
     expect(result.totalCount).toBe(0);
   });
+
+  // --- MCID and page index tests ---
+
+  it('should extract MCIDs as integers from /K', async () => {
+    const doc = await PDFDocument.create();
+    const page = doc.addPage();
+    addMarkInfo(doc);
+
+    const { structTreeRoot, structTreeRootRef } = addStructTreeRoot(doc);
+
+    // Create a P element with an integer MCID in /K
+    const pElem = doc.context.obj({
+      Type: 'StructElem',
+      S: PDFName.of('P'),
+      P: structTreeRootRef,
+      Pg: page.ref,
+    });
+    const pRef = doc.context.register(pElem);
+    // /K is a single integer (MCID = 0)
+    pElem.set(PDFName.of('K'), doc.context.obj(0));
+
+    structTreeRoot.set(PDFName.of('K'), pRef);
+
+    const saved = await doc.save();
+    const reloaded = await PDFDocument.load(saved, { updateMetadata: false });
+    const roleMap = getRoleMapFromDoc(reloaded);
+    const result = buildSerializableTree(reloaded, roleMap);
+
+    expect(result.root).not.toBeNull();
+    expect(result.root.mcids).toHaveLength(1);
+    expect(result.root.mcids[0].mcid).toBe(0);
+    expect(result.root.mcids[0].pageIndex).toBe(0);
+  });
+
+  it('should extract MCIDs from MCR dicts in /K array', async () => {
+    const doc = await PDFDocument.create();
+    const page = doc.addPage();
+    addMarkInfo(doc);
+
+    const { structTreeRoot, structTreeRootRef } = addStructTreeRoot(doc);
+
+    const pElem = doc.context.obj({
+      Type: 'StructElem',
+      S: PDFName.of('P'),
+      P: structTreeRootRef,
+    });
+    const pRef = doc.context.register(pElem);
+
+    // /K is an array with an MCR dict
+    const mcrDict = doc.context.obj({
+      Type: 'MCR',
+      MCID: 5,
+      Pg: page.ref,
+    });
+    pElem.set(PDFName.of('K'), doc.context.obj([mcrDict]));
+
+    structTreeRoot.set(PDFName.of('K'), pRef);
+
+    const saved = await doc.save();
+    const reloaded = await PDFDocument.load(saved, { updateMetadata: false });
+    const roleMap = getRoleMapFromDoc(reloaded);
+    const result = buildSerializableTree(reloaded, roleMap);
+
+    expect(result.root).not.toBeNull();
+    expect(result.root.mcids).toHaveLength(1);
+    expect(result.root.mcids[0].mcid).toBe(5);
+    expect(result.root.mcids[0].pageIndex).toBe(0);
+  });
+
+  it('should set pageIndex on nodes from /Pg', async () => {
+    const doc = await PDFDocument.create();
+    const page1 = doc.addPage();
+    const page2 = doc.addPage();
+    addMarkInfo(doc);
+
+    const { structTreeRoot, structTreeRootRef } = addStructTreeRoot(doc);
+
+    // Document element
+    const docElem = doc.context.obj({
+      Type: 'StructElem',
+      S: PDFName.of('Document'),
+      P: structTreeRootRef,
+    });
+    const docRef = doc.context.register(docElem);
+
+    // P on page 2
+    const pElem = doc.context.obj({
+      Type: 'StructElem',
+      S: PDFName.of('P'),
+      P: docRef,
+      Pg: page2.ref,
+    });
+    const pRef = doc.context.register(pElem);
+    pElem.set(PDFName.of('K'), doc.context.obj(3));
+
+    docElem.set(PDFName.of('K'), doc.context.obj([pRef]));
+    structTreeRoot.set(PDFName.of('K'), docRef);
+
+    const saved = await doc.save();
+    const reloaded = await PDFDocument.load(saved, { updateMetadata: false });
+    const roleMap = getRoleMapFromDoc(reloaded);
+    const result = buildSerializableTree(reloaded, roleMap);
+
+    const pNode = result.root.children[0];
+    expect(pNode.role).toBe('P');
+    expect(pNode.pageIndex).toBe(1); // page2 = index 1
+    expect(pNode.mcids).toHaveLength(1);
+    expect(pNode.mcids[0].mcid).toBe(3);
+    expect(pNode.mcids[0].pageIndex).toBe(1);
+  });
+
+  it('should have empty mcids array for elements without MCIDs', async () => {
+    const bytes = await createTaggedPdf();
+    const doc = await PDFDocument.load(bytes, { updateMetadata: false });
+    const roleMap = getRoleMapFromDoc(doc);
+    const result = buildSerializableTree(doc, roleMap);
+
+    expect(result.root).not.toBeNull();
+    expect(Array.isArray(result.root.mcids)).toBe(true);
+  });
+
+  it('should preserve mcids through JSON round-trip', async () => {
+    const doc = await PDFDocument.create();
+    const page = doc.addPage();
+    addMarkInfo(doc);
+
+    const { structTreeRoot, structTreeRootRef } = addStructTreeRoot(doc);
+
+    const pElem = doc.context.obj({
+      Type: 'StructElem',
+      S: PDFName.of('P'),
+      P: structTreeRootRef,
+      Pg: page.ref,
+    });
+    const pRef = doc.context.register(pElem);
+    pElem.set(PDFName.of('K'), doc.context.obj(7));
+
+    structTreeRoot.set(PDFName.of('K'), pRef);
+
+    const saved = await doc.save();
+    const reloaded = await PDFDocument.load(saved, { updateMetadata: false });
+    const roleMap = getRoleMapFromDoc(reloaded);
+    const result = buildSerializableTree(reloaded, roleMap);
+
+    const json = JSON.stringify(result);
+    const parsed = JSON.parse(json);
+
+    expect(parsed.root.mcids).toEqual(result.root.mcids);
+    expect(parsed.root.pageIndex).toBe(result.root.pageIndex);
+  });
 });
+
+// Helpers needed by the MCID tests (same pattern as create-test-pdfs.js)
+function addMarkInfo(doc) {
+  const markInfo = doc.context.obj({ Marked: true });
+  doc.catalog.set(PDFName.of('MarkInfo'), markInfo);
+}
+
+function addStructTreeRoot(doc) {
+  const structTreeRoot = doc.context.obj({ Type: 'StructTreeRoot' });
+  const structTreeRootRef = doc.context.register(structTreeRoot);
+  doc.catalog.set(PDFName.of('StructTreeRoot'), structTreeRootRef);
+  return { structTreeRoot, structTreeRootRef };
+}
