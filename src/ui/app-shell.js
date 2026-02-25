@@ -110,6 +110,16 @@ export function initAppShell(container, worker) {
   container.appendChild(menuBar);
   container.appendChild(root);
 
+  // Persistent live region for announcing errors to screen readers
+  const liveRegion = document.createElement('div');
+  liveRegion.setAttribute('role', 'status');
+  liveRegion.setAttribute('aria-live', 'assertive');
+  liveRegion.className = 'visually-hidden';
+  container.appendChild(liveRegion);
+
+  // Set up arrow-key navigation for the menu bar (ARIA menubar pattern)
+  setupMenuBarKeyNav(menuBar);
+
   // Show welcome on init
   showWelcome();
 
@@ -233,6 +243,72 @@ export function initAppShell(container, worker) {
     return sep;
   }
 
+  // === Menu bar keyboard navigation (ARIA menubar pattern) ===
+
+  /** Move roving tabindex to `index` and focus that item. */
+  function setRovingFocus(items, index) {
+    for (const item of items) item.setAttribute('tabindex', '-1');
+    items[index].setAttribute('tabindex', '0');
+    items[index].focus();
+  }
+
+  /** Set up arrow-key navigation on the menu bar. */
+  function setupMenuBarKeyNav(nav) {
+    const getItems = () => [...nav.querySelectorAll('.app-menubar__btn')];
+
+    // Roving tabindex: first item tabbable, rest removed from tab order
+    const items = getItems();
+    items.forEach((item, i) => {
+      item.setAttribute('tabindex', i === 0 ? '0' : '-1');
+    });
+
+    nav.addEventListener('keydown', (e) => {
+      const items = getItems();
+      const idx = items.indexOf(document.activeElement);
+      if (idx === -1) return;
+
+      let nextIdx;
+      switch (e.key) {
+        case 'ArrowRight':
+          e.preventDefault();
+          nextIdx = (idx + 1) % items.length;
+          setRovingFocus(items, nextIdx);
+          if (activeSubmenu) {
+            closeSubmenu();
+            if (items[nextIdx].getAttribute('aria-haspopup') === 'true') {
+              items[nextIdx].click();
+            }
+          }
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          nextIdx = (idx - 1 + items.length) % items.length;
+          setRovingFocus(items, nextIdx);
+          if (activeSubmenu) {
+            closeSubmenu();
+            if (items[nextIdx].getAttribute('aria-haspopup') === 'true') {
+              items[nextIdx].click();
+            }
+          }
+          break;
+        case 'ArrowDown':
+          if (items[idx].getAttribute('aria-haspopup') === 'true') {
+            e.preventDefault();
+            if (!activeSubmenu) items[idx].click();
+          }
+          break;
+        case 'Home':
+          e.preventDefault();
+          setRovingFocus(items, 0);
+          break;
+        case 'End':
+          e.preventDefault();
+          setRovingFocus(items, items.length - 1);
+          break;
+      }
+    });
+  }
+
   // === Submenus ===
 
   let activeSubmenu = null;
@@ -256,25 +332,78 @@ export function initAppShell(container, worker) {
     activeSubmenuBtn = btn;
     btn.setAttribute('aria-expanded', 'true');
 
-    // Close on outside click (next tick to avoid immediate close)
+    // Keyboard navigation within the submenu (Up/Down/Home/End/Escape/Left/Right)
+    const getSubmenuItems = () =>
+      [...submenuEl.querySelectorAll('.app-menubar__submenu-item:not([disabled])')];
+
+    submenuEl.addEventListener('keydown', (e) => {
+      const items = getSubmenuItems();
+      const idx = items.indexOf(document.activeElement);
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          if (items.length) items[idx < items.length - 1 ? idx + 1 : 0].focus();
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          if (items.length) items[idx > 0 ? idx - 1 : items.length - 1].focus();
+          break;
+        case 'Home':
+          e.preventDefault();
+          if (items.length) items[0].focus();
+          break;
+        case 'End':
+          e.preventDefault();
+          if (items.length) items[items.length - 1].focus();
+          break;
+        case 'Escape':
+          e.preventDefault();
+          closeSubmenu();
+          btn.focus();
+          break;
+        case 'ArrowLeft':
+        case 'ArrowRight': {
+          // Move to adjacent menu bar item (and open its submenu if it has one)
+          e.preventDefault();
+          const menuBtns = [...menuBar.querySelectorAll('.app-menubar__btn')];
+          const btnIdx = menuBtns.indexOf(btn);
+          const delta = e.key === 'ArrowRight' ? 1 : -1;
+          const nextIdx = (btnIdx + delta + menuBtns.length) % menuBtns.length;
+          closeSubmenu();
+          setRovingFocus(menuBtns, nextIdx);
+          if (menuBtns[nextIdx].getAttribute('aria-haspopup') === 'true') {
+            menuBtns[nextIdx].click();
+          }
+          break;
+        }
+      }
+    });
+
+    // Close on outside click and Escape (next tick to avoid immediate close)
     requestAnimationFrame(() => {
       document.addEventListener('click', onSubmenuOutsideClick);
-      document.addEventListener('keydown', onSubmenuEscape);
+      document.addEventListener('keydown', onSubmenuEscapeGlobal);
+      // Focus the first submenu item
+      const items = getSubmenuItems();
+      if (items.length) items[0].focus();
     });
   }
 
   function closeSubmenu() {
     closeNestedSubmenu();
+    const triggerBtn = activeSubmenuBtn;
     if (activeSubmenu) {
       activeSubmenu.remove();
       activeSubmenu = null;
     }
-    if (activeSubmenuBtn) {
-      activeSubmenuBtn.setAttribute('aria-expanded', 'false');
+    if (triggerBtn) {
+      triggerBtn.setAttribute('aria-expanded', 'false');
       activeSubmenuBtn = null;
     }
     document.removeEventListener('click', onSubmenuOutsideClick);
-    document.removeEventListener('keydown', onSubmenuEscape);
+    document.removeEventListener('keydown', onSubmenuEscapeGlobal);
+    return triggerBtn;
   }
 
   function onSubmenuOutsideClick(e) {
@@ -283,9 +412,11 @@ export function initAppShell(container, worker) {
     }
   }
 
-  function onSubmenuEscape(e) {
+  /** Global Escape handler — catches Escape even if focus has left the submenu. */
+  function onSubmenuEscapeGlobal(e) {
     if (e.key === 'Escape') {
-      closeSubmenu();
+      const triggerBtn = closeSubmenu();
+      if (triggerBtn) triggerBtn.focus();
     }
   }
 
@@ -676,13 +807,16 @@ export function initAppShell(container, worker) {
   // === About / Help Dialogs ===
 
   let aboutWin = null;
+  let aboutTrigger = null;
   function showAbout() {
     if (aboutWin) {
       aboutWin.focus();
       return;
     }
+    aboutTrigger = document.activeElement;
     const content = document.createElement('div');
     content.className = 'dialog-content';
+    content.setAttribute('tabindex', '-1');
     content.innerHTML = `
       <h2>PDF-A-go-actionable</h2>
       <p style="color:var(--color-text);font-size:var(--font-size-base);">Version 1.0.0</p>
@@ -713,18 +847,25 @@ export function initAppShell(container, worker) {
       border: 1,
       onclose: function () {
         aboutWin = null;
+        if (aboutTrigger) { aboutTrigger.focus(); aboutTrigger = null; }
       },
     });
+
+    // Move focus into the dialog content
+    requestAnimationFrame(() => content.focus());
   }
 
   let helpWin = null;
+  let helpTrigger = null;
   function showHelp() {
     if (helpWin) {
       helpWin.focus();
       return;
     }
+    helpTrigger = document.activeElement;
     const content = document.createElement('div');
     content.className = 'dialog-content';
+    content.setAttribute('tabindex', '-1');
     content.innerHTML = `
       <h2>How to Use</h2>
       <ol>
@@ -743,9 +884,12 @@ export function initAppShell(container, worker) {
       </ul>
       <h3>Keyboard Shortcuts</h3>
       <ul>
-        <li><strong>Tab</strong> -- navigate between controls</li>
+        <li><strong>Arrow Left / Right</strong> -- navigate menu bar items</li>
+        <li><strong>Arrow Down</strong> -- open submenu</li>
+        <li><strong>Arrow Up / Down</strong> -- navigate within submenus</li>
         <li><strong>Enter / Space</strong> -- activate buttons</li>
-        <li><strong>Escape</strong> -- close menus</li>
+        <li><strong>Escape</strong> -- close menus and dialogs</li>
+        <li><strong>Home / End</strong> -- jump to first or last menu item</li>
       </ul>
     `;
 
@@ -763,8 +907,12 @@ export function initAppShell(container, worker) {
       border: 1,
       onclose: function () {
         helpWin = null;
+        if (helpTrigger) { helpTrigger.focus(); helpTrigger = null; }
       },
     });
+
+    // Move focus into the dialog content
+    requestAnimationFrame(() => content.focus());
   }
 
   // === Welcome ===
@@ -1166,7 +1314,9 @@ export function initAppShell(container, worker) {
   function onError(session, { message }) {
     closeProgressDialog(session);
     sessions.delete(session.id);
-    showWelcome(`Error analyzing ${session.fileName}: ${message}`);
+    const errorMsg = `Error analyzing ${session.fileName}: ${message}`;
+    liveRegion.textContent = errorMsg;
+    showWelcome(errorMsg);
   }
 
   // === Cleanup ===

@@ -13,18 +13,18 @@
   --color-titlebar: #333;
   --color-titlebar-unfocused: #666;
 
-  /* Text colors */
+  /* Text colors — all meet WCAG 2.1 AA 4.5:1 on --color-surface */
   --color-text: #111;
   --color-text-secondary: #333;
-  --color-text-muted: #666;
+  --color-text-muted: #505050;
   --color-text-inverse: #fff;
 
-  /* Status colors — contrast-checked against --color-surface */
+  /* Status colors — contrast-checked against their respective backgrounds */
   --color-pass: #1a7a30;
   --color-fail: #b91c1c;
-  --color-warning: #b45309;
+  --color-warning: #a24d09;
   --color-manual: #1556a0;
-  --color-not-applicable: #6b6b6b;
+  --color-not-applicable: #444;
 
   /* Status backgrounds */
   --color-pass-bg: #d4edda;
@@ -670,7 +670,7 @@ body {
 }
 
 .winbox.white:not(.focus) .wb-title {
-  color: rgba(255, 255, 255, 0.6) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
   text-shadow: none;
 }
 
