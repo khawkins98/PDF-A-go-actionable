@@ -837,11 +837,13 @@ export function initAppShell(container, worker) {
       in your browser. No files are uploaded, no accounts needed.</p>
       <p>Covers the 13-point PDF accessibility checklist: 10 automated
       checks and 3 manual review items.</p>
+      <p style="color:var(--color-text-secondary);font-size:var(--font-size-sm);"><strong>Disclaimer:</strong> This tool is experimental and provided as-is. It is not a substitute for professional accessibility auditing or full PDF/UA validation. Results should be verified independently.</p>
       <h3>Built With</h3>
       <ul>
         <li><a href="https://github.com/Hopding/pdf-lib" target="_blank" rel="noopener noreferrer"><strong>pdf-lib</strong></a> -- PDF object access (MIT)</li>
         <li><a href="https://github.com/101arrowz/fflate" target="_blank" rel="noopener noreferrer"><strong>fflate</strong></a> -- stream decompression (MIT)</li>
-        <li><a href="https://github.com/nicholasdnelson/winbox" target="_blank" rel="noopener noreferrer"><strong>WinBox</strong></a> -- window management (MIT)</li>
+        <li><a href="https://github.com/nextapps-de/winbox" target="_blank" rel="noopener noreferrer"><strong>WinBox</strong></a> -- window management (Apache-2.0)</li>
+        <li><a href="https://mozilla.github.io/pdf.js/" target="_blank" rel="noopener noreferrer"><strong>PDF.js</strong></a> -- PDF rendering (Apache-2.0)</li>
       </ul>
       <p>Source: <a href="https://github.com/khawkins98/PDF-A-go-actionable" target="_blank" rel="noopener noreferrer">github.com/khawkins98/PDF-A-go-actionable</a> (MIT)</p>
     `;
@@ -853,7 +855,7 @@ export function initAppShell(container, worker) {
       x: 'center',
       y: 'center',
       width: 420,
-      height: 380,
+      height: 460,
       top: MENUBAR_HEIGHT,
       overflow: true,
       class: ['white', 'no-full', 'no-max', 'no-min', 'no-resize'],

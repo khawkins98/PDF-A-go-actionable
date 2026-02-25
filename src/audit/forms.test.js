@@ -9,6 +9,7 @@
  * - Tab order not set (warning)
  */
 import { describe, it, expect } from 'vitest';
+import { PDFDocument, PDFName, PDFString, PDFHexString } from 'pdf-lib';
 import { checkForms } from './forms.js';
 import { buildTestContext } from '../../test/helpers/context.js';
 import {
@@ -93,5 +94,43 @@ describe('checkForms', () => {
     expect(formFinding).toBeDefined();
     // Fields without FT should still be counted and warned about missing TU
     expect(formFinding.status).toBe('warning');
+  });
+
+  it('should decode HexString-encoded /TU values correctly', async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage();
+    const field = doc.context.obj({
+      Type: 'Annot',
+      Subtype: PDFName.of('Widget'),
+      FT: PDFName.of('Tx'),
+      T: PDFString.of('name_field'),
+      TU: PDFHexString.fromText('Enter your full name'),
+      Rect: doc.context.obj([0, 0, 100, 20]),
+    });
+    const fieldRef = doc.context.register(field);
+    const acroForm = doc.context.obj({ Fields: doc.context.obj([fieldRef]) });
+    doc.catalog.set(PDFName.of('AcroForm'), doc.context.register(acroForm));
+    const saved = await doc.save();
+    const ctx = await buildTestContext(saved);
+    const findings = checkForms(ctx.pdfDoc, ctx);
+    const f = findings.find(f => f.id === 'form-labels');
+    expect(f).toBeDefined();
+    expect(f.status).toBe('pass');
+    expect(f.details.some(d => d.value && d.value.includes('Enter your full name'))).toBe(true);
+  });
+
+  it('should warn when multi-page PDF has inconsistent tab order', async () => {
+    const doc = await PDFDocument.create();
+    const page1 = doc.addPage();
+    const page2 = doc.addPage();
+    // Only page 1 has /Tabs /S; page 2 does not
+    page1.node.set(PDFName.of('Tabs'), PDFName.of('S'));
+    const saved = await doc.save();
+    const ctx = await buildTestContext(saved);
+    const findings = checkForms(ctx.pdfDoc, ctx);
+    const f = findings.find(f => f.id === 'tab-order');
+    expect(f).toBeDefined();
+    expect(f.status).toBe('warning');
+    expect(f.summary).toContain('1 of 2');
   });
 });

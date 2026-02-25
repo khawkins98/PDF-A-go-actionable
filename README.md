@@ -2,6 +2,8 @@
 
 A free, client-side PDF accessibility checker. Drop a PDF, get an actionable report. No uploads, no accounts, no cost.
 
+> **Experimental.** This tool is provided as-is for informational purposes. It is not a substitute for professional accessibility auditing or full PDF/UA conformance validation. Results should be verified independently. See [LICENSE](LICENSE) for warranty terms.
+
 ## Background
 
 Checking PDF accessibility shouldn't require a $240/year Adobe subscription or a Windows-only desktop tool. Most organizations producing PDFs -- government agencies, NGOs, universities -- need to validate accessibility before publication, but the existing tools have tradeoffs:
@@ -75,24 +77,34 @@ All files are fetched via `cdn.jsdelivr.net` at runtime (CORS-friendly, no local
 
 ## Status
 
-In development. See [PRD.md](PRD.md) for the full product requirements.
+V1.0 feature-complete. See [PRD.md](PRD.md) for the full product requirements.
 
 ## Acknowledgments
 
 This project builds on the work of many others:
 
-- **[pdf-lib](https://github.com/Hopding/pdf-lib)** by Andrew Dillon -- low-level PDF object access that makes client-side PDF analysis possible
-- **[fflate](https://github.com/101arrowz/fflate)** by 101arrowz -- fast compression/decompression for PDF stream decoding
-- **[WinBox](https://github.com/nextapps-de/winbox)** by Nextapps GmbH -- lightweight window manager for the floating panel system
-- **[pdfjs-dist](https://github.com/nicolo-ribaudo/pdfjs-dist)** ([PDF.js](https://mozilla.github.io/pdf.js/)) by Mozilla -- PDF page rendering for the PDF Preview panel
-- **[PDF-A-go-slim](https://github.com/khawkins98/PDF-A-go-slim)** -- sibling project whose utility modules (stream decoding, content stream parsing, structure tree traversal, accessibility detection) are reused by this tool's PDF engine
-- **[PDF-A-go-go](https://github.com/khawkins98/PDF-A-go-go)** -- the first project in this family; building it revealed the PDF accessibility problems this tool checks for
+**Libraries (bundled in production build):**
+- **[pdf-lib](https://github.com/Hopding/pdf-lib)** by Andrew Dillon (MIT) -- low-level PDF object access that makes client-side PDF analysis possible
+- **[fflate](https://github.com/101arrowz/fflate)** by 101arrowz (MIT) -- fast compression/decompression for PDF stream decoding
+- **[pdfjs-dist](https://github.com/nicolo-ribaudo/pdfjs-dist)** ([PDF.js](https://mozilla.github.io/pdf.js/)) by Mozilla (Apache-2.0) -- PDF page rendering for the PDF Preview panel
+- **[WinBox](https://github.com/nextapps-de/winbox)** by Nextapps GmbH (Apache-2.0) -- lightweight window manager for the floating panel system
+
+**Sibling projects:**
+- **[PDF-A-go-slim](https://github.com/khawkins98/PDF-A-go-slim)** (MIT) -- sibling project whose utility modules (stream decoding, content stream parsing, structure tree traversal, accessibility detection) are reused by this tool's PDF engine
+- **[PDF-A-go-go](https://github.com/khawkins98/PDF-A-go-go)** (MIT) -- the first project in this family; building it revealed the PDF accessibility problems this tool checks for
+
+**Reference tools and standards:**
 - **[PAC (PDF Accessibility Checker)](https://pac.pdf-accessibility.org/)** by the PDF/UA Foundation -- the most thorough free PDF/UA validator, and the main reference for this tool's check list
-- **[veraPDF](https://verapdf.org/)** -- open-source PDF/A and PDF/UA validator. The [veraPDF PDF/UA-1 test corpus](https://github.com/veraPDF/veraPDF-corpus) (CC BY 4.0 / GPLv3+) provides atomic pass/fail test files used in the Advanced menu.
+- **[veraPDF](https://verapdf.org/)** -- open-source PDF/A and PDF/UA validator. The [veraPDF PDF/UA-1 test corpus](https://github.com/veraPDF/veraPDF-corpus) (CC BY 4.0 / GPLv3+) provides atomic pass/fail test files used in the Advanced menu
 - **[PDF Association](https://pdfa.org/)** -- the ["Techniques for Accessible PDF"](https://github.com/pdf-association/techniques-for-accessible-pdf) repository (CC BY 4.0) provides real-world accessible/inaccessible PDF examples used in the Advanced menu
 - **[Open Preservation Foundation](https://openpreservation.org/)** -- the ["Cabinet of Horrors" format corpus](https://github.com/openpreserve/format-corpus) (CC0 1.0) provides edge-case test PDFs (encryption, corruption, font embedding) used in the Advanced menu
 - **WCAG**, **PDF/UA (ISO 14289)**, and the **Matterhorn Protocol** -- the standards that define what accessible PDFs look like
 
+**Dev tooling:**
+- **[Vite](https://vite.dev/)** (MIT) -- build tool
+- **[Vitest](https://vitest.dev/)** (MIT) -- test framework
+- **[happy-dom](https://github.com/nicolo-ribaudo/happy-dom)** (MIT) -- DOM implementation for UI tests
+
 ## License
 
-MIT
+[MIT](LICENSE)

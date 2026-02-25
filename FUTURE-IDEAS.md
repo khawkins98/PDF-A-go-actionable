@@ -16,7 +16,7 @@ Features and improvements deferred from V1.0. Kept here so they don't get lost.
 - **Per-image decorative detection** --MCID-to-content-stream correlation to identify exactly which images are untagged (V1.0 uses a count-based heuristic).
 - **Full link text extraction** --parse content streams to extract actual rendered text from `/Link` marked content spans, rather than relying on `/ActualText` attributes.
 - **Color contrast analysis** -- requires full page rendering (PDF.js or similar). Adds ~400 KB to the bundle. Would enable automated WCAG 1.4.3 / 1.4.6 checking.
-- **PDF.js visual preview** --render pages and overlay structure tree regions for visual reading-order verification. Build directly on PDF.js (pdfjs-dist) rather than embedding PDF-A-go-go. PDF-A-go-go is designed as a standalone embeddable viewer with no API for element highlighting or structure overlays --the deep integration this tool needs (mapping findings to page locations, highlighting specific structure elements, overlaying reading order) would fight against its abstraction layer. PDF-A-go-slim's experience with PDF-A-go-go also revealed pain points: canvas size is fixed at init (no auto-resize), requiring destroy/reinit on container resize. Starting from PDF.js directly gives access to the render pipeline, text layer, and annotation layer needed for a tightly integrated audit+preview experience.
+- ~~**PDF.js visual preview**~~ --**Done (V1.0).** Renders pages via pdfjs-dist with MCID highlight overlays, reading order visualization, alt text overlay, and zoom controls. Integrated into the floating panel system.
 
 ### UI & Experience
 - **Dark mode** -- WinBox theme variant. The V1.0 theme CSS already uses custom properties, so this should be straightforward.

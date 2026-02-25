@@ -725,21 +725,6 @@ export function renderPreviewPanel(el, data, session) {
     }
   }
 
-  /**
-   * Collect tree nodes that have MCIDs on the given page, in tree order.
-   */
-  function collectPageElements(node, pageIndex, result) {
-    if (!node) return;
-    if (node.mcids && node.mcids.some((m) => m.pageIndex === pageIndex)) {
-      result.push(node);
-    }
-    if (node.children) {
-      for (const child of node.children) {
-        collectPageElements(child, pageIndex, result);
-      }
-    }
-  }
-
   // --- Helpers ---
 
   function makeSep() {

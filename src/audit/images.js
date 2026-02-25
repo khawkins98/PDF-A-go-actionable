@@ -87,19 +87,22 @@ export function checkImages(pdfDoc, ctx) {
 
     const trimmedAlt = alt ? alt.trim() : '';
     const isGeneric = trimmedAlt.length > 0 && GENERIC_ALT_TEXT.includes(trimmedAlt.toLowerCase());
+    const isShort = trimmedAlt.length > 0 && trimmedAlt.length <= 2 && !isGeneric;
 
     figures.push({
       type: typeName,
       alt,
       hasAlt: !!alt && trimmedAlt.length > 0,
       isGeneric,
+      isShort,
     });
   });
 
   const imageCount = countImageXObjects(context);
-  const figuresWithAlt = figures.filter(f => f.hasAlt && !f.isGeneric);
+  const figuresWithAlt = figures.filter(f => f.hasAlt && !f.isGeneric && !f.isShort);
   const figuresWithoutAlt = figures.filter(f => !f.hasAlt);
   const figuresWithGenericAlt = figures.filter(f => f.hasAlt && f.isGeneric);
+  const figuresWithShortAlt = figures.filter(f => f.isShort);
 
   // #6 — Alt text coverage
   if (figures.length === 0 && imageCount === 0) {
@@ -125,6 +128,12 @@ export function checkImages(pdfDoc, ctx) {
         value: `"${f.alt}" -- not descriptive`,
       })));
     }
+    if (figuresWithShortAlt.length > 0) {
+      details.push(...figuresWithShortAlt.map((f) => ({
+        label: 'Very short alt text',
+        value: `"${f.alt}" — too short to be descriptive`,
+      })));
+    }
     findings.push({
       id: 'image-alt-text',
       category: 'images',
@@ -136,17 +145,23 @@ export function checkImages(pdfDoc, ctx) {
       wcagRef: '1.1.1',
       pdfuaRef: '7.3',
     });
-  } else if (figuresWithGenericAlt.length > 0) {
+  } else if (figuresWithGenericAlt.length > 0 || figuresWithShortAlt.length > 0) {
     findings.push({
       id: 'image-alt-text',
       category: 'images',
       title: 'Image Alt Text',
       status: 'warning',
-      summary: `${figuresWithGenericAlt.length} of ${figures.length} Figure element(s) have generic alt text that may not be descriptive.`,
-      details: figuresWithGenericAlt.map((f, i) => ({
-        label: `Figure with generic alt`,
-        value: `"${f.alt}" -- use descriptive text instead`,
-      })),
+      summary: `${figuresWithGenericAlt.length + figuresWithShortAlt.length} of ${figures.length} Figure element(s) have generic or very short alt text that may not be descriptive.`,
+      details: [
+        ...figuresWithGenericAlt.map((f) => ({
+          label: 'Figure with generic alt',
+          value: `"${f.alt}" -- use descriptive text instead`,
+        })),
+        ...figuresWithShortAlt.map((f) => ({
+          label: 'Very short alt text',
+          value: `"${f.alt}" — too short to be descriptive`,
+        })),
+      ],
       remediation: 'Replace generic alt text (e.g., "image", "photo") with a real description. Say what the image shows or what information it communicates.',
       wcagRef: '1.1.1',
       pdfuaRef: '7.3',
