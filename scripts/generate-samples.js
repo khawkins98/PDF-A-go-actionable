@@ -9,7 +9,7 @@
  * Run: node scripts/generate-samples.js
  */
 import { writeFileSync, mkdirSync } from 'node:fs';
-import { PDFDocument, PDFName, PDFString, PDFDict, PDFArray, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, PDFName, PDFString, PDFHexString, PDFDict, PDFArray, rgb, StandardFonts } from 'pdf-lib';
 
 const OUTDIR = new URL('../public/samples/', import.meta.url).pathname;
 mkdirSync(OUTDIR, { recursive: true });
@@ -31,6 +31,30 @@ async function createAccessibleSample() {
 
   // ViewerPreferences: DisplayDocTitle
   catalog.set(PDFName.of('ViewerPreferences'), doc.context.obj({ DisplayDocTitle: true }));
+
+  // --- Structure tree: Document > H1 + P + P + P + Figure ---
+  const structTreeRoot = doc.context.obj({ Type: 'StructTreeRoot' });
+  const structTreeRootRef = doc.context.register(structTreeRoot);
+  catalog.set(PDFName.of('StructTreeRoot'), structTreeRootRef);
+
+  function addStructElem(type, parentRef, extras = {}) {
+    const entries = { Type: 'StructElem', S: PDFName.of(type), P: parentRef, ...extras };
+    const elem = doc.context.obj(entries);
+    const ref = doc.context.register(elem);
+    return { elem, ref };
+  }
+
+  const { elem: docElem, ref: docRef } = addStructElem('Document', structTreeRootRef);
+  const { ref: h1Ref } = addStructElem('H1', docRef);
+  const { ref: p1Ref } = addStructElem('P', docRef);
+  const { ref: p2Ref } = addStructElem('P', docRef);
+  const { ref: p3Ref } = addStructElem('P', docRef);
+  const { ref: figRef } = addStructElem('Figure', docRef, {
+    Alt: PDFHexString.fromText('A green rectangle placeholder'),
+  });
+
+  docElem.set(PDFName.of('K'), doc.context.obj([h1Ref, p1Ref, p2Ref, p3Ref, figRef]));
+  structTreeRoot.set(PDFName.of('K'), doc.context.obj([docRef]));
 
   // Page 1
   const page = doc.addPage([612, 792]);
