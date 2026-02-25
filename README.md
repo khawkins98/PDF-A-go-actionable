@@ -2,6 +2,8 @@
 
 A free, client-side PDF accessibility checker. Drop a PDF, get an actionable report. No uploads, no accounts, no cost.
 
+> **Experimental.** This tool is provided as-is for informational purposes. It is not a substitute for professional accessibility auditing or full PDF/UA conformance validation. Results should be verified independently. See [LICENSE](LICENSE) for warranty terms.
+
 ## Background
 
 Checking PDF accessibility shouldn't require a $240/year Adobe subscription or a Windows-only desktop tool. Most organizations producing PDFs -- government agencies, NGOs, universities -- need to validate accessibility before publication, but the existing tools have tradeoffs:
