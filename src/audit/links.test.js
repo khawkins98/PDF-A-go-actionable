@@ -150,4 +150,17 @@ describe('checkLinks', () => {
     expect(linkFinding.status).toBe('fail'); // missing text makes it a fail
     expect(linkFinding.summary).toContain('3 of 4');
   });
+
+  it('should fail when link text is whitespace-only', async () => {
+    const bytes = await createPdfWithMixedLinks([
+      { text: '   ' },
+    ]);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkLinks(ctx.pdfDoc, ctx);
+
+    const linkFinding = findings.find(f => f.id === 'link-text');
+    expect(linkFinding).toBeDefined();
+    // Whitespace-only text is effectively empty
+    expect(linkFinding.status).toBe('fail');
+  });
 });

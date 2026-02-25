@@ -41,7 +41,7 @@ XMP parsing and trait detection --runner populates `context.traits` from this.
 - [x] Language from catalog `/Lang`
 - [x] DisplayDocTitle preference
 - [x] ToUnicode coverage --all fonts have it
-- [ ] ToUnicode coverage --some fonts missing it
+- [x] ToUnicode coverage --some fonts missing it
 - [x] ToUnicode coverage --no fonts
 
 ### `src/engine/utils/stream-decode.js`
@@ -84,9 +84,9 @@ Worker message protocol --bridges main thread and audit pipeline.
 ### Audit modules: RoleMap resolution
 No audit module tests verify that custom element types resolve through RoleMap.
 - [x] `structure.test.js` --custom heading name (e.g., "Heading1" → "H1") detected in hierarchy
-- [ ] `images.test.js` --custom figure type (e.g., "Image" → "Figure") counted
-- [ ] `tables.test.js` --custom table type (e.g., "DataTable" → "Table") detected
-- [ ] `lists.test.js` --custom list type (e.g., "ItemList" → "L") detected
+- [x] `images.test.js` --custom figure type (e.g., "Image" → "Figure") counted
+- [x] `tables.test.js` --custom table type (e.g., "DataTable" → "Table") detected
+- [x] `lists.test.js` --custom list type (e.g., "ItemList" → "L") detected
 
 ### `src/audit/fonts.js` --weakest audit module coverage (3 tests)
 - [x] Multiple fonts with mixed ToUnicode (some have it, some don't)
@@ -153,14 +153,14 @@ These are cases where the check logic itself needs to be tightened, with tests a
 - [x] Case-insensitive generic text matching
 - [x] HTTP/HTTPS/FTP bare URL detection
 - [x] Link with no ActualText AND no Alt --should fail
-- [ ] Link with whitespace-only text --should fail or warn
+- [x] Link with whitespace-only text --should fail or warn
 - [x] Mixed links in same PDF (good, generic, bare URL, empty) --per-link detail
 
 ### `src/audit/lists.js`
 - [x] LI with LBody but no Lbl --should fail per PDF/UA 7.6
-- [ ] LI with Lbl but no LBody --should fail
+- [x] LI with Lbl but no LBody --should fail (existing test: createPdfWithList({ hasLBody: false }))
 - [ ] Nested lists (L within LBody) --should pass
-- [ ] Empty LI (no Lbl, no LBody) --should fail
+- [x] Empty LI (no Lbl, no LBody) --should fail
 - [ ] List with unexpected child types (e.g., Div inside LI) --should warn
 - [ ] Mixed valid and invalid LIs --should report which items are broken
 

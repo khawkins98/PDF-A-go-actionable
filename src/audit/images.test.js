@@ -16,6 +16,7 @@ import {
   createPdfWithFigures,
   createPdfWithFigureAlts,
 } from '../../test/fixtures/create-test-pdfs.js';
+import { PDFDocument, PDFName, PDFHexString } from 'pdf-lib';
 
 describe('checkImages', () => {
   it('should pass when all figures have alt text', async () => {
@@ -127,5 +128,47 @@ describe('checkImages', () => {
     expect(altFinding).toBeDefined();
     // Has at least one figure without alt and one generic
     expect(['fail', 'warning']).toContain(altFinding.status);
+  });
+
+  it('should detect custom figure type via RoleMap (e.g., "Image" → "Figure")', async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage();
+
+    const markInfo = doc.context.obj({ Marked: true });
+    doc.catalog.set(PDFName.of('MarkInfo'), markInfo);
+
+    const structTreeRoot = doc.context.obj({ Type: 'StructTreeRoot' });
+    const strRef = doc.context.register(structTreeRoot);
+    doc.catalog.set(PDFName.of('StructTreeRoot'), strRef);
+
+    const roleMap = doc.context.obj({ Image: PDFName.of('Figure') });
+    structTreeRoot.set(PDFName.of('RoleMap'), roleMap);
+
+    const docElem = doc.context.obj({
+      Type: 'StructElem',
+      S: PDFName.of('Document'),
+      P: strRef,
+    });
+    const docElemRef = doc.context.register(docElem);
+
+    // "Image" custom type without alt → should be detected as Figure via RoleMap
+    const imgElem = doc.context.obj({
+      Type: 'StructElem',
+      S: PDFName.of('Image'),
+      P: docElemRef,
+    });
+    const imgElemRef = doc.context.register(imgElem);
+
+    docElem.set(PDFName.of('K'), doc.context.obj([imgElemRef]));
+    structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+
+    const saved = await doc.save();
+    const ctx = await buildTestContext(saved);
+    const findings = checkImages(ctx.pdfDoc, ctx);
+
+    const altFinding = findings.find(f => f.id === 'image-alt-text');
+    expect(altFinding).toBeDefined();
+    expect(altFinding.status).toBe('fail');
+    expect(altFinding.summary).toContain('1 of 1');
   });
 });

@@ -188,4 +188,38 @@ describe('auditToUnicodeCoverage', () => {
     expect(result.total).toBeGreaterThan(0);
     expect(result.fonts.length).toBeGreaterThan(0);
   });
+
+  it('should report mixed ToUnicode coverage (some fonts missing it)', async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage();
+    // Manually create a font WITH a ToUnicode CMap stream
+    const toUniStream = doc.context.stream(new Uint8Array([0x00]));
+    const toUniStreamRef = doc.context.register(toUniStream);
+    const withToUniFont = doc.context.obj({
+      Type: 'Font',
+      Subtype: PDFName.of('Type1'),
+      BaseFont: PDFName.of('FontWithToUnicode'),
+      ToUnicode: toUniStreamRef,
+    });
+    doc.context.register(withToUniFont);
+    // Manually create a font WITHOUT ToUnicode
+    const noToUniFont = doc.context.obj({
+      Type: 'Font',
+      Subtype: PDFName.of('Type1'),
+      BaseFont: PDFName.of('CustomFont-NoToUnicode'),
+    });
+    doc.context.register(noToUniFont);
+    const saved = await doc.save();
+    const reloaded = await PDFDocument.load(saved, { updateMetadata: false });
+    const result = auditToUnicodeCoverage(reloaded);
+
+    expect(result.total).toBeGreaterThanOrEqual(2);
+    expect(result.withToUnicode).toBeGreaterThan(0);
+    expect(result.withToUnicode).toBeLessThan(result.total);
+    // Should have at least one font with and one without
+    const withTU = result.fonts.filter(f => f.hasToUnicode);
+    const withoutTU = result.fonts.filter(f => !f.hasToUnicode);
+    expect(withTU.length).toBeGreaterThan(0);
+    expect(withoutTU.length).toBeGreaterThan(0);
+  });
 });

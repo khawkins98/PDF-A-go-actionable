@@ -326,8 +326,8 @@ All audit modules and core logic are developed using **strict TDD** --tests are 
 
 | Area | Status |
 |---|---|
-| Every audit check --pass and fail cases | Done (90 tests across 10 test files) |
-| Utility functions --`resolveRole()`, `buildRoleMap()`, cycle detection, `resolve()`, accessibility detection, struct-tree walker, stream decode | Done (58 tests across 5 test files) |
+| Every audit check --pass and fail cases | Done (95 tests across 10 test files) |
+| Utility functions --`resolveRole()`, `buildRoleMap()`, cycle detection, `resolve()`, accessibility detection, struct-tree walker, stream decode | Done (59 tests across 5 test files) |
 | UI integration --panel creation contracts, render functions, event bus (including scoped session buses), export helpers | Done (137 tests across 12 test files) |
 | Worker protocol --message handling | Pending |
 
@@ -394,5 +394,5 @@ Cherry-pick a small representative set covering the 10 automated checks. Store i
 8. **Dark mode:** Light only for V1.0. Theme CSS structured with CSS custom properties for easy dark mode addition later. Done.
 9. **Export:** V1.0 feature, not deferred. Export audit results as JSON, CSV, or a PDF summary report. Done.
 10. **Service worker:** Deferred. App works offline in practice (static assets, no server). Explicit service worker in V1.1.
-11. **Testing:** TDD with Vitest --285 tests across 27 test files covering audit checks, engine utilities (resolve, accessibility detection, struct-tree walker, stream decode, RoleMap), and UI integration (panel creation, render functions, scoped event buses, export helpers). Worker protocol tests pending. 21 pdf-lib fixture factories in `test/fixtures/`. Uses `happy-dom` for DOM-based UI tests. Sample PDFs for in-app "try it" feature pending.
+11. **Testing:** TDD with Vitest --291 tests across 27 test files covering audit checks, engine utilities (resolve, accessibility detection, struct-tree walker, stream decode, RoleMap), and UI integration (panel creation, render functions, scoped event buses, export helpers). Worker protocol tests pending. 21 pdf-lib fixture factories in `test/fixtures/`. Uses `happy-dom` for DOM-based UI tests. Sample PDFs for in-app "try it" feature pending.
 12. **Content stream robustness:** Architect the audit layer defensively --graceful fallbacks (warning findings, not crashes) if pdf-lib or stream parsing hits edge cases. Done --each audit module wraps in try/catch, runner catches per-module errors and returns warning findings.
