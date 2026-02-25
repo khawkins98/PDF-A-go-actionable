@@ -27,7 +27,7 @@ import 'winbox/dist/css/themes/white.min.css';
 
 
 /** Menu bar height in pixels — must match --menubar-height in CSS. */
-const MENUBAR_HEIGHT = 36;
+const MENUBAR_HEIGHT = 28;
 
 /** Map of floating panel names to their render functions. */
 const PANEL_RENDERERS = {
