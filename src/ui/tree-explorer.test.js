@@ -179,6 +179,27 @@ describe('renderTreeExplorer', () => {
     expect(visibleItems[0].textContent).toBe('H1');
   });
 
+  it('should generate unique filter IDs across multiple renders', () => {
+    const el1 = document.createElement('div');
+    const el2 = document.createElement('div');
+
+    renderTreeExplorer(el1, makeData([]));
+    renderTreeExplorer(el2, makeData([]));
+
+    const input1 = el1.querySelector('input[type="search"]');
+    const input2 = el2.querySelector('input[type="search"]');
+
+    expect(input1.id).toBeTruthy();
+    expect(input2.id).toBeTruthy();
+    expect(input1.id).not.toBe(input2.id);
+
+    // Label should reference its own input
+    const label1 = el1.querySelector('label');
+    const label2 = el2.querySelector('label');
+    expect(label1.htmlFor).toBe(input1.id);
+    expect(label2.htmlFor).toBe(input2.id);
+  });
+
   it('should show all items when filter is cleared', () => {
     const el = document.createElement('div');
     renderTreeExplorer(el, makeData([
