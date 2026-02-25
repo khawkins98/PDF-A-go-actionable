@@ -62,6 +62,11 @@ Reading order is determined by the structure tree's depth-first traversal order,
 
 Automated reading order checking can flag discrepancies between these three sequences, but only a human can judge whether the structure tree order is semantically correct.
 
+**Context-aware guidance in manual review findings:** Even though reading order requires manual verification, the audit module can inspect the PDF to provide context-specific guidance alongside the manual-review finding:
+- If the document has form fields but pages lack `/Tabs /S`, the finding warns that form tab order may not follow document structure.
+- If the document has a structure tree but no heading elements (H1-H6), the finding notes that reading order is harder to assess without headings as landmarks.
+This pattern — a `status: 'manual'` finding enriched with automated observations — gives reviewers a head start on what to look for.
+
 ---
 
 ## Accessibility Standards
