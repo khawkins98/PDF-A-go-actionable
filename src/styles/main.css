@@ -577,16 +577,11 @@ body {
 }
 
 /* === WinBox Chrome — NeXTSTEP window chrome === */
-@keyframes window-appear {
-  from { opacity: 0; }
-}
-
 .winbox.white {
   background: var(--color-surface) !important;
   box-shadow: var(--shadow-lg);
   border: 2px solid;
   border-color: var(--color-border-light) var(--color-border-dark) var(--color-border-dark) var(--color-border-light);
-  animation: window-appear 0.15s ease;
   transition: width 0.3s cubic-bezier(0.3, 1, 0.3, 1),
               height 0.3s cubic-bezier(0.3, 1, 0.3, 1),
               left 0.3s cubic-bezier(0.3, 1, 0.3, 1),
@@ -595,10 +590,6 @@ body {
 
 .winbox.white:not(.focus) {
   box-shadow: var(--shadow-sm);
-}
-
-body.wb-lock .winbox {
-  animation: none;
 }
 
 /* Title bar — dark charcoal */

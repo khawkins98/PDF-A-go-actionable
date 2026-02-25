@@ -675,7 +675,12 @@ export function initAppShell(container, worker) {
 
   // === About / Help Dialogs ===
 
+  let aboutWin = null;
   function showAbout() {
+    if (aboutWin) {
+      aboutWin.focus();
+      return;
+    }
     const content = document.createElement('div');
     content.className = 'dialog-content';
     content.innerHTML = `
@@ -694,7 +699,7 @@ export function initAppShell(container, worker) {
       <p>Licensed under MIT.</p>
     `;
 
-    new WinBox({
+    aboutWin = new WinBox({
       title: 'About',
       mount: content,
       root,
@@ -706,10 +711,18 @@ export function initAppShell(container, worker) {
       overflow: true,
       class: ['white', 'no-full', 'no-max', 'no-min', 'no-resize'],
       border: 1,
+      onclose: function () {
+        aboutWin = null;
+      },
     });
   }
 
+  let helpWin = null;
   function showHelp() {
+    if (helpWin) {
+      helpWin.focus();
+      return;
+    }
     const content = document.createElement('div');
     content.className = 'dialog-content';
     content.innerHTML = `
@@ -736,7 +749,7 @@ export function initAppShell(container, worker) {
       </ul>
     `;
 
-    new WinBox({
+    helpWin = new WinBox({
       title: 'Help',
       mount: content,
       root,
@@ -748,6 +761,9 @@ export function initAppShell(container, worker) {
       overflow: true,
       class: ['white', 'no-full', 'no-max', 'no-min'],
       border: 1,
+      onclose: function () {
+        helpWin = null;
+      },
     });
   }
 
