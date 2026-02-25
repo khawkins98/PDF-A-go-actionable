@@ -123,8 +123,8 @@ export function buildSerializableTree(pdfDoc, roleMap) {
       id: nextId++,
       type: typeName,
       role: resolveRole(typeName, roleMap),
-      alt: altObj ? altObj.decodeText() : null,
-      lang: langObj ? langObj.decodeText() : null,
+      alt: altObj && typeof altObj.decodeText === 'function' ? altObj.decodeText() : null,
+      lang: langObj && typeof langObj.decodeText === 'function' ? langObj.decodeText() : null,
       children: [],
       mcids: [],
       pageIndex: effectivePageIndex,
@@ -172,7 +172,7 @@ export function buildSerializableTree(pdfDoc, roleMap) {
     // Integer MCID — appears directly in /K
     const intVal = toInt(childResolved);
     if (intVal != null && !(childResolved instanceof PDFDict) && !(childResolved instanceof PDFArray) && !(childResolved instanceof PDFRef)) {
-      parentNode.mcids.push({ mcid: intVal, pageIndex: inheritedPageIndex != null ? inheritedPageIndex : -1 });
+      parentNode.mcids.push({ mcid: intVal, pageIndex: inheritedPageIndex != null ? inheritedPageIndex : null });
       return;
     }
 
@@ -190,7 +190,7 @@ export function buildSerializableTree(pdfDoc, roleMap) {
           const mcrPageIndex = resolvePageIndex(mcrPg);
           parentNode.mcids.push({
             mcid: mcidInt,
-            pageIndex: mcrPageIndex != null ? mcrPageIndex : (inheritedPageIndex != null ? inheritedPageIndex : -1),
+            pageIndex: mcrPageIndex != null ? mcrPageIndex : (inheritedPageIndex != null ? inheritedPageIndex : null),
           });
         }
         return;

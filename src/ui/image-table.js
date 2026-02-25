@@ -133,8 +133,11 @@ export function renderImageTable(el, data) {
 
   // Body
   const tbody = document.createElement('tbody');
-  for (const row of imageRows) {
+  for (let ri = 0; ri < imageRows.length; ri++) {
+    const row = imageRows[ri];
     const tr = document.createElement('tr');
+    tr.dataset.figureIndex = String(ri);
+    if (row.altText) tr.dataset.alt = row.altText;
 
     // Row color based on alt text status
     if (!row.hasAltText) {

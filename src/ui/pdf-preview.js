@@ -50,6 +50,108 @@ function parseMcid(id) {
   return m ? parseInt(m[1], 10) : null;
 }
 
+/**
+ * Multiply two 2D affine transformation matrices.
+ * Each matrix is [a, b, c, d, e, f] representing:
+ *   [a b 0]
+ *   [c d 0]
+ *   [e f 1]
+ * Returns m1 × m2.
+ */
+function multiplyMatrices(m1, m2) {
+  return [
+    m1[0] * m2[0] + m1[2] * m2[1],
+    m1[1] * m2[0] + m1[3] * m2[1],
+    m1[0] * m2[2] + m1[2] * m2[3],
+    m1[1] * m2[2] + m1[3] * m2[3],
+    m1[0] * m2[4] + m1[2] * m2[5] + m1[4],
+    m1[1] * m2[4] + m1[3] * m2[5] + m1[5],
+  ];
+}
+
+/**
+ * Extract image bounding boxes from a PDF.js operator list,
+ * grouped by MCID. Used as a fallback when getTextContent()
+ * returns no text items for image-only marked content regions
+ * (e.g., Figure elements that contain only an image).
+ *
+ * Tracks the CTM (Current Transformation Matrix) through save/restore
+ * and transform operations to compute each image's position and size.
+ *
+ * @param {{fnArray: number[], argsArray: any[]}} opList
+ * @param {object} OPS - PDF.js OPS constants
+ * @returns {Array<{mcid: number, x: number, y: number, width: number, height: number}>}
+ */
+function extractImageBboxes(opList, OPS) {
+  const boxes = [];
+  const mcidStack = [];
+  const ctmStack = [];
+  let ctm = [1, 0, 0, 1, 0, 0]; // identity
+
+  for (let i = 0; i < opList.fnArray.length; i++) {
+    const fn = opList.fnArray[i];
+    const args = opList.argsArray[i];
+
+    switch (fn) {
+      case OPS.save:
+        ctmStack.push(ctm.slice());
+        break;
+      case OPS.restore:
+        if (ctmStack.length > 0) ctm = ctmStack.pop();
+        break;
+      case OPS.transform:
+        ctm = multiplyMatrices(ctm, args);
+        break;
+      case OPS.beginMarkedContentProps: {
+        // PDF.js passes MCID as raw integer in args[1], not {mcid: N}
+        const mc = args[1];
+        mcidStack.push(typeof mc === 'number' ? mc : (mc?.mcid ?? null));
+        break;
+      }
+      case OPS.beginMarkedContent:
+        mcidStack.push(null);
+        break;
+      case OPS.endMarkedContent:
+        mcidStack.pop();
+        break;
+      case OPS.paintImageXObject:
+      case OPS.paintJpegXObject:
+      case OPS.paintInlineImageXObject: {
+        // Search stack for nearest ancestor with a non-null MCID.
+        // Images can be nested inside MC sections without MCIDs
+        // (e.g., Figure(459) > PlacedPDF(null) > image).
+        let currentMcid = null;
+        for (let j = mcidStack.length - 1; j >= 0; j--) {
+          if (mcidStack[j] != null) {
+            currentMcid = mcidStack[j];
+            break;
+          }
+        }
+        if (currentMcid != null) {
+          // Image is a 1×1 unit square in user space, transformed by CTM.
+          // Compute axis-aligned bounding box of the four corners.
+          const p0 = [ctm[4], ctm[5]];
+          const p1 = [ctm[0] + ctm[4], ctm[1] + ctm[5]];
+          const p2 = [ctm[2] + ctm[4], ctm[3] + ctm[5]];
+          const p3 = [ctm[0] + ctm[2] + ctm[4], ctm[1] + ctm[3] + ctm[5]];
+          const minX = Math.min(p0[0], p1[0], p2[0], p3[0]);
+          const minY = Math.min(p0[1], p1[1], p2[1], p3[1]);
+          const maxX = Math.max(p0[0], p1[0], p2[0], p3[0]);
+          const maxY = Math.max(p0[1], p1[1], p2[1], p3[1]);
+          const w = maxX - minX;
+          const h = maxY - minY;
+          if (w > 0 && h > 0) {
+            boxes.push({ mcid: currentMcid, x: minX, y: minY, width: w, height: h });
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  return boxes;
+}
+
 /** Zoom presets. */
 const ZOOM_LEVELS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0];
 const ZOOM_FIT = -1; // sentinel for fit-to-width
@@ -61,6 +163,9 @@ const ZOOM_FIT = -1; // sentinel for fit-to-width
  * @param {object} data - Audit result data (structureTree, findings, meta)
  * @param {object} session - Session object with .file and .bus
  */
+// Exported for testing
+export { multiplyMatrices, extractImageBboxes };
+
 export function renderPreviewPanel(el, data, session) {
   el.innerHTML = '';
   el.className = 'pdf-preview';
@@ -438,7 +543,7 @@ export function renderPreviewPanel(el, data, session) {
 
     // Draw alt text labels if toggled on
     if (altTextOn) {
-      drawAltText(textContent);
+      await drawAltText(textContent);
     }
   }
 
@@ -614,8 +719,12 @@ export function renderPreviewPanel(el, data, session) {
   /**
    * Draw alt text labels for structure tree elements that have alt text
    * and MCIDs on the current page.
+   *
+   * Uses text content bounding boxes when available, falling back to
+   * image bounding boxes extracted from the operator list for elements
+   * that contain only images (e.g., Figure elements).
    */
-  function drawAltText(textContent) {
+  async function drawAltText(textContent) {
     const tree = data && data.structureTree;
     if (!tree || !tree.root) return;
 
@@ -627,95 +736,150 @@ export function renderPreviewPanel(el, data, session) {
     const svgHeight = parseFloat(svg.getAttribute('height')) || 0;
     if (!svgHeight) return;
 
+    const page = await pdfjsDoc.getPage(currentPage);
+    if (destroyed) return;
+
     const containerWidth = viewportEl.clientWidth - 16 || 400;
-    pdfjsDoc.getPage(currentPage).then((page) => {
-      if (destroyed) return;
-      const unscaled = page.getViewport({ scale: 1 });
-      const scale = zoomMode === ZOOM_FIT
-        ? containerWidth / unscaled.width
-        : zoomMode;
+    const unscaled = page.getViewport({ scale: 1 });
+    const scale = zoomMode === ZOOM_FIT
+      ? containerWidth / unscaled.width
+      : zoomMode;
 
-      for (const node of nodesWithAlt) {
-        const pageMcids = node.mcids
-          .filter((m) => m.pageIndex === pageIndex)
-          .map((m) => m.mcid);
+    // Lazy-fetch operator list for image bounding boxes (only when needed)
+    let imageBboxes = null;
 
-        const boxes = getMcidBoundingBoxes(textContent, pageMcids);
-        if (boxes.length === 0) continue;
+    for (const node of nodesWithAlt) {
+      const pageMcids = node.mcids
+        .filter((m) => m.pageIndex === pageIndex || m.pageIndex == null)
+        .map((m) => m.mcid);
 
-        // Use union bounding box for positioning
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        for (const b of boxes) {
-          const bx = b.x * scale;
-          const by = svgHeight - (b.y * scale) - (b.height * scale);
-          const bx2 = bx + b.width * scale;
-          const by2 = by + b.height * scale;
-          if (bx < minX) minX = bx;
-          if (by < minY) minY = by;
-          if (bx2 > maxX) maxX = bx2;
-          if (by2 > maxY) maxY = by2;
+      // Try text content bounding boxes first
+      let boxes = getMcidBoundingBoxes(textContent, pageMcids);
+
+      // Fall back to image bounding boxes from operator list
+      if (boxes.length === 0) {
+        if (!imageBboxes) {
+          try {
+            const opList = await page.getOperatorList();
+            if (destroyed) return;
+            imageBboxes = extractImageBboxes(opList, pdfjsLib.OPS);
+          } catch (_) {
+            imageBboxes = [];
+          }
         }
-
-        // Draw a highlight rect around the element
-        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        rect.setAttribute('x', String(minX));
-        rect.setAttribute('y', String(minY));
-        rect.setAttribute('width', String(maxX - minX));
-        rect.setAttribute('height', String(maxY - minY));
-        rect.setAttribute('class', 'pdf-preview__alt-highlight');
-        svg.appendChild(rect);
-
-        // Draw label below the element
-        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        g.setAttribute('class', 'pdf-preview__alt-label');
-
-        const labelY = maxY + 2;
-        const labelWidth = Math.max(maxX - minX, 80);
-
-        // Background rect for label
-        const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        bgRect.setAttribute('x', String(minX));
-        bgRect.setAttribute('y', String(labelY));
-        bgRect.setAttribute('width', String(labelWidth));
-        bgRect.setAttribute('rx', '3');
-        bgRect.setAttribute('class', 'pdf-preview__alt-label-bg');
-        g.appendChild(bgRect);
-
-        // Role tag
-        const roleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        roleText.setAttribute('x', String(minX + 4));
-        roleText.setAttribute('class', 'pdf-preview__alt-label-role');
-        roleText.textContent = node.role || node.type;
-        g.appendChild(roleText);
-
-        // Alt text (truncated)
-        const altStr = node.alt.length > 80 ? node.alt.slice(0, 77) + '\u2026' : node.alt;
-        const altText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        altText.setAttribute('x', String(minX + 4));
-        altText.setAttribute('class', 'pdf-preview__alt-label-text');
-        altText.textContent = altStr;
-        g.appendChild(altText);
-
-        // Position text lines after appending (we need to compute line heights)
-        // Use fixed offsets since SVG text measuring isn't reliable in all envs
-        const lineHeight = 14;
-        roleText.setAttribute('y', String(labelY + lineHeight));
-        altText.setAttribute('y', String(labelY + lineHeight * 2 + 2));
-
-        const totalLabelHeight = lineHeight * 2 + 8;
-        bgRect.setAttribute('height', String(totalLabelHeight));
-
-        svg.appendChild(g);
+        const targetSet = new Set(pageMcids);
+        boxes = imageBboxes.filter((b) => targetSet.has(b.mcid));
       }
-    });
+
+      if (boxes.length === 0) continue;
+
+      // Use union bounding box for positioning
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const b of boxes) {
+        const bx = b.x * scale;
+        const by = svgHeight - (b.y * scale) - (b.height * scale);
+        const bx2 = bx + b.width * scale;
+        const by2 = by + b.height * scale;
+        if (bx < minX) minX = bx;
+        if (by < minY) minY = by;
+        if (bx2 > maxX) maxX = bx2;
+        if (by2 > maxY) maxY = by2;
+      }
+
+      // Draw a highlight rect around the element
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', String(minX));
+      rect.setAttribute('y', String(minY));
+      rect.setAttribute('width', String(maxX - minX));
+      rect.setAttribute('height', String(maxY - minY));
+      rect.setAttribute('class', 'pdf-preview__alt-highlight');
+      svg.appendChild(rect);
+
+      // Draw label below the element — clickable to open image inventory
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('class', 'pdf-preview__alt-label');
+      g.style.pointerEvents = 'auto';
+      g.style.cursor = 'pointer';
+      g.setAttribute('role', 'button');
+      g.setAttribute('tabindex', '0');
+      g.setAttribute('aria-label', `View details: ${node.alt}`);
+
+      // Click / Enter opens image inventory and scrolls to this entry
+      const emitFocus = () => {
+        if (bus) bus.emit('focusImageEntry', { alt: node.alt, nodeId: node.id });
+      };
+      g.addEventListener('click', emitFocus);
+      g.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); emitFocus(); }
+      });
+
+      // Truncate alt text to first few words + arrow hint
+      const MAX_ALT_CHARS = 30;
+      const roleStr = node.role || node.type;
+      const altStr = node.alt.length > MAX_ALT_CHARS
+        ? node.alt.slice(0, MAX_ALT_CHARS).replace(/\s+\S*$/, '') + '\u2026'
+        : node.alt;
+      const displayAlt = altStr + ' \u25B6';
+
+      // Estimate label dimensions
+      const roleWidth = roleStr.length * 6.5 + 8;
+      const altWidth = displayAlt.length * 7 + 8;
+      const computedLabelWidth = Math.max(roleWidth, altWidth, 80);
+      const lineHeight = 14;
+      const totalLabelHeight = lineHeight * 2 + 8;
+
+      // Position label: below the image if room, above if not, centered over image if neither
+      const labelGap = 2;
+      let labelY;
+      if (maxY + labelGap + totalLabelHeight <= svgHeight) {
+        // Enough room below
+        labelY = maxY + labelGap;
+      } else if (minY - labelGap - totalLabelHeight >= 0) {
+        // Flip above
+        labelY = minY - labelGap - totalLabelHeight;
+      } else {
+        // Center over the image
+        labelY = minY + (maxY - minY - totalLabelHeight) / 2;
+      }
+
+      // Background rect for label
+      const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      bgRect.setAttribute('x', String(minX));
+      bgRect.setAttribute('y', String(labelY));
+      bgRect.setAttribute('width', String(computedLabelWidth));
+      bgRect.setAttribute('height', String(totalLabelHeight));
+      bgRect.setAttribute('rx', '3');
+      bgRect.setAttribute('class', 'pdf-preview__alt-label-bg');
+      g.appendChild(bgRect);
+
+      // Role tag
+      const roleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      roleText.setAttribute('x', String(minX + 4));
+      roleText.setAttribute('y', String(labelY + lineHeight));
+      roleText.setAttribute('class', 'pdf-preview__alt-label-role');
+      roleText.textContent = roleStr;
+      g.appendChild(roleText);
+
+      // Alt text preview + click hint
+      const altText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      altText.setAttribute('x', String(minX + 4));
+      altText.setAttribute('y', String(labelY + lineHeight * 2 + 2));
+      altText.setAttribute('class', 'pdf-preview__alt-label-text');
+      altText.textContent = displayAlt;
+      g.appendChild(altText);
+
+      svg.appendChild(g);
+    }
   }
 
   /**
    * Recursively collect tree nodes that have alt text and MCIDs on the given page.
+   * Includes nodes with null pageIndex (unknown page) — the bbox lookup will
+   * naturally skip them if the MCIDs don't appear on the current page.
    */
   function collectAltTextNodes(node, pageIndex, result) {
     if (!node) return;
-    if (node.alt && node.mcids && node.mcids.some((m) => m.pageIndex === pageIndex)) {
+    if (node.alt && node.mcids && node.mcids.some((m) => m.pageIndex === pageIndex || m.pageIndex == null)) {
       result.push(node);
     }
     if (node.children) {
