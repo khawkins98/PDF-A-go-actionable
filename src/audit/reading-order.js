@@ -3,7 +3,11 @@
  *
  * Manual review checks #11, #12, #13.
  * Returns manual-status findings with guidance text.
+ * Inspects the PDF for context-specific details (form tab order, headings).
  */
+import { PDFName, PDFDict, PDFArray } from 'pdf-lib';
+import { resolve } from '../engine/utils/resolve.js';
+import { resolveRole } from '../engine/utils/role-map.js';
 
 /**
  * @param {import('pdf-lib').PDFDocument} pdfDoc
@@ -11,6 +15,74 @@
  * @returns {object[]} Array of Finding objects
  */
 export function checkReadingOrder(pdfDoc, ctx) {
+  const { traits, context, roleMap } = ctx;
+
+  // Collect context-specific details for the reading-order finding
+  const extraDetails = [];
+
+  // Check for form fields without /Tabs /S
+  try {
+    const catalog = pdfDoc.catalog;
+    const acroFormRef = catalog.get(PDFName.of('AcroForm'));
+    if (acroFormRef) {
+      const acroForm = resolve(acroFormRef, context);
+      if (acroForm instanceof PDFDict) {
+        const fields = acroForm.get(PDFName.of('Fields'));
+        const resolvedFields = fields ? resolve(fields, context) : null;
+        const hasFields = resolvedFields instanceof PDFArray && resolvedFields.size() > 0;
+
+        if (hasFields) {
+          const pages = pdfDoc.getPages();
+          const allHaveTabs = pages.every(p => {
+            const tabs = p.node.get(PDFName.of('Tabs'));
+            return tabs && tabs.toString() === '/S';
+          });
+          if (!allHaveTabs) {
+            extraDetails.push({
+              label: 'Form tab order',
+              value: 'This document has form fields but not all pages set /Tabs /S. Form field tab order may not follow the document structure. Set tab order to "Use Document Structure" for all pages.',
+            });
+          }
+        }
+      }
+    }
+  } catch (_) {
+    // Non-critical — skip form tab order check if anything goes wrong
+  }
+
+  // Check for documents with no headings
+  try {
+    if (traits.hasStructTree) {
+      let hasHeadings = false;
+      const headingRoles = new Set(['H', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
+
+      for (const [, obj] of context.enumerateIndirectObjects()) {
+        if (hasHeadings) break;
+        if (!(obj instanceof PDFDict)) continue;
+        const s = obj.get(PDFName.of('S'));
+        if (!s) continue;
+        const typeName = s instanceof PDFName ? s.decodeText() : s.toString().replace(/^\//, '');
+        const resolved = resolveRole(typeName, roleMap);
+        if (headingRoles.has(resolved)) hasHeadings = true;
+      }
+
+      if (!hasHeadings) {
+        extraDetails.push({
+          label: 'No headings found',
+          value: 'This document has no heading elements (H1-H6). Without headings as landmarks, reading order is harder to assess. Consider adding headings to provide document structure.',
+        });
+      }
+    }
+  } catch (_) {
+    // Non-critical — skip heading check if anything goes wrong
+  }
+
+  const baseDetails = [
+    { label: 'What to check', value: 'Content should follow a logical reading sequence: headings before body text, table headers before data cells, multi-column layouts left-to-right then top-to-bottom.' },
+    { label: 'How to check', value: 'Use the Structure Tree explorer in this tool to review tag order. Elements are listed in reading order.' },
+    ...extraDetails,
+  ];
+
   return [
     {
       id: 'reading-order',
@@ -18,10 +90,7 @@ export function checkReadingOrder(pdfDoc, ctx) {
       title: 'Logical Reading Order',
       status: 'manual',
       summary: 'Reading order must be verified manually. Use the Structure Tree panel to review element order and compare it to the visual layout.',
-      details: [
-        { label: 'What to check', value: 'Content should follow a logical reading sequence: headings before body text, table headers before data cells, multi-column layouts left-to-right then top-to-bottom.' },
-        { label: 'How to check', value: 'Use the Structure Tree explorer in this tool to review tag order. Elements are listed in reading order.' },
-      ],
+      details: baseDetails,
       remediation: 'If reading order is wrong, fix it in the authoring tool by adjusting the tag order. In Acrobat: View > Navigation Panels > Order, then drag items to reorder. In Word: make sure content is in order in the document (text boxes can break flow).',
       wcagRef: '1.3.2',
       pdfuaRef: '7.2',

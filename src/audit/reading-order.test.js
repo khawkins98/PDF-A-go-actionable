@@ -8,9 +8,10 @@
  * - Each finding has required fields
  */
 import { describe, it, expect, beforeAll } from 'vitest';
+import { PDFDocument, PDFName, PDFString } from 'pdf-lib';
 import { checkReadingOrder } from './reading-order.js';
 import { buildTestContext } from '../../test/helpers/context.js';
-import { createUntaggedPdf } from '../../test/fixtures/create-test-pdfs.js';
+import { createUntaggedPdf, createTaggedPdf } from '../../test/fixtures/create-test-pdfs.js';
 
 describe('checkReadingOrder', () => {
   let findings;
@@ -69,5 +70,57 @@ describe('checkReadingOrder', () => {
       expect(typeof f.summary).toBe('string');
       expect(f.summary.length).toBeGreaterThan(0);
     }
+  });
+
+  it('should include tab order guidance when form fields exist without /Tabs /S', async () => {
+    // Build a PDF with form fields but no /Tabs /S
+    const doc = await PDFDocument.create();
+    doc.addPage();
+
+    // Add MarkInfo + StructTreeRoot to make it tagged
+    const markInfo = doc.context.obj({ Marked: true });
+    doc.catalog.set(PDFName.of('MarkInfo'), markInfo);
+    const str = doc.context.obj({ Type: 'StructTreeRoot' });
+    const strRef = doc.context.register(str);
+    doc.catalog.set(PDFName.of('StructTreeRoot'), strRef);
+    const docElem = doc.context.obj({ Type: 'StructElem', S: PDFName.of('Document'), P: strRef });
+    const docElemRef = doc.context.register(docElem);
+    str.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+
+    // Add form fields
+    const field = doc.context.obj({
+      Type: 'Annot',
+      Subtype: PDFName.of('Widget'),
+      FT: PDFName.of('Tx'),
+      T: PDFString.of('field1'),
+      Rect: doc.context.obj([0, 0, 100, 20]),
+    });
+    const fieldRef = doc.context.register(field);
+    const acroForm = doc.context.obj({ Fields: doc.context.obj([fieldRef]) });
+    doc.catalog.set(PDFName.of('AcroForm'), doc.context.register(acroForm));
+    // No /Tabs /S on page
+
+    const saved = await doc.save();
+    const ctx = await buildTestContext(saved);
+    const formFindings = checkReadingOrder(ctx.pdfDoc, ctx);
+
+    const f = formFindings.find(f => f.id === 'reading-order');
+    expect(f).toBeDefined();
+    const tabDetail = f.details.find(d => d.label === 'Form tab order');
+    expect(tabDetail).toBeDefined();
+    expect(tabDetail.value).toContain('form fields');
+  });
+
+  it('should include no-headings guidance when document has structure but no headings', async () => {
+    // Tagged PDF with only P elements, no headings
+    const bytes = await createTaggedPdf(); // has Document > P, no headings
+    const ctx = await buildTestContext(bytes);
+    const headingFindings = checkReadingOrder(ctx.pdfDoc, ctx);
+
+    const f = headingFindings.find(f => f.id === 'reading-order');
+    expect(f).toBeDefined();
+    const headingDetail = f.details.find(d => d.label === 'No headings found');
+    expect(headingDetail).toBeDefined();
+    expect(headingDetail.value).toContain('heading');
   });
 });

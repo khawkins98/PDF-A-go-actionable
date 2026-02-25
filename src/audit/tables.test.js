@@ -328,4 +328,30 @@ describe('checkTables', () => {
     expect(f).toBeDefined();
     expect(f.status).toBe('pass');
   });
+
+  it('should handle empty table (no TR children) without crashing', async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage();
+    const markInfo = doc.context.obj({ Marked: true });
+    doc.catalog.set(PDFName.of('MarkInfo'), markInfo);
+    const structTreeRoot = doc.context.obj({ Type: 'StructTreeRoot' });
+    const strRef = doc.context.register(structTreeRoot);
+    doc.catalog.set(PDFName.of('StructTreeRoot'), strRef);
+    const docElem = doc.context.obj({ Type: 'StructElem', S: PDFName.of('Document'), P: strRef });
+    const docElemRef = doc.context.register(docElem);
+    // Table with no children (no TR)
+    const tableElem = doc.context.obj({ Type: 'StructElem', S: PDFName.of('Table'), P: docElemRef });
+    const tableElemRef = doc.context.register(tableElem);
+    // No /K on tableElem — it's an empty table
+    docElem.set(PDFName.of('K'), doc.context.obj([tableElemRef]));
+    structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+    const saved = await doc.save();
+    const ctx = await buildTestContext(saved);
+    const findings = checkTables(ctx.pdfDoc, ctx);
+    const f = findings.find(f => f.id === 'table-headers');
+    expect(f).toBeDefined();
+    // An empty table (0 TH, 0 TD) should pass (no issues detected)
+    expect(f.status).toBe('pass');
+    expect(f.details.some(d => d.value && d.value.includes('0 TH, 0 TD'))).toBe(true);
+  });
 });
