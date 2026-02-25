@@ -192,6 +192,54 @@ describe('walkStructureTree', () => {
     expect(types).toContain('P');
   });
 
+  it('should handle wide tree with many siblings and respect element counting', async () => {
+    // Build a PDF with Document + 500 Div children to verify the walker
+    // handles many siblings correctly and counts elements accurately.
+    // The MAX_ELEMENTS cap (50,000) uses the same counter — this test
+    // validates the counting mechanism at moderate scale.
+    const doc = await PDFDocument.create();
+    doc.addPage();
+    const markInfo = doc.context.obj({ Marked: true });
+    doc.catalog.set(PDFName.of('MarkInfo'), markInfo);
+
+    const structTreeRoot = doc.context.obj({ Type: 'StructTreeRoot' });
+    const strRef = doc.context.register(structTreeRoot);
+    doc.catalog.set(PDFName.of('StructTreeRoot'), strRef);
+
+    const docElem = doc.context.obj({
+      Type: 'StructElem',
+      S: PDFName.of('Document'),
+      P: strRef,
+    });
+    const docElemRef = doc.context.register(docElem);
+
+    const childCount = 500;
+    const childRefs = [];
+    for (let i = 0; i < childCount; i++) {
+      const child = doc.context.obj({
+        Type: 'StructElem',
+        S: PDFName.of('Div'),
+        P: docElemRef,
+      });
+      childRefs.push(doc.context.register(child));
+    }
+
+    docElem.set(PDFName.of('K'), doc.context.obj(childRefs));
+    structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+
+    const roleMap = new Map();
+    const elements = walkStructureTree(doc, roleMap);
+
+    // Document + 500 Div children = 501 elements
+    expect(elements.length).toBe(childCount + 1);
+    expect(elements[0].resolvedType).toBe('Document');
+    expect(elements[0].depth).toBe(1);
+    expect(elements.filter(e => e.resolvedType === 'Div').length).toBe(childCount);
+    // All Div children are at depth 2 (children of Document)
+    const divs = elements.filter(e => e.resolvedType === 'Div');
+    expect(divs.every(e => e.depth === 2)).toBe(true);
+  });
+
   it('should stop at MAX_DEPTH (200) and not crash on deep recursion', async () => {
     // Build a PDF with deeply nested single-child elements.
     // The MAX_DEPTH cap should prevent stack overflow.

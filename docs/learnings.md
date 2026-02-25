@@ -18,6 +18,8 @@ PDF fonts come in a few types, each stored differently:
 - **FontFile2** (TrueType) --Glyph outlines as quadratic B-splines in a `glyf` table. Glyph selection by GID (integer index).
 - **FontFile3** (CFF/OpenType) --Glyph outlines as cubic Bezier curves. Subtype `CIDFontType0C` for CID-keyed CFF.
 
+**Font embedding validation:** To check if a font is embedded, look for `FontFile`, `FontFile2`, or `FontFile3` in the font's `/FontDescriptor` dict. CIDFont subtypes (`CIDFontType0`, `CIDFontType2`) and `Type3` fonts should be skipped during embedding checks--CIDFonts are referenced through their parent Type0 font, and Type3 fonts define glyphs procedurally (they don't have external font programs to embed). Standard 14 fonts (Helvetica, Courier, Times-Roman, etc.) often lack a `/FontDescriptor` entirely--this is legal per the spec and shouldn't be flagged as an error.
+
 ### Simple vs Composite Fonts
 
 - **Simple fonts** (Type1, TrueType): Single-byte character codes (0-255), mapped to glyphs via `/Encoding` + optional `/Differences` array.
@@ -170,6 +172,8 @@ The encryption dictionary's `/P` value is a 32-bit integer with permission flags
 
 Note: PDF 2.0 deprecated the distinction between bit 5 and bit 10 --modern readers should allow accessibility regardless. But older readers and validators still check bit 5.
 
+**Edge cases in `/P` validation:** The `/P` value can be malformed (non-numeric string, missing entirely). When parsed via `Number(val.toString())`, non-numeric values produce `NaN`. Since `NaN & 0x200 === 0` (bitwise ops convert `NaN` to `0`), malformed values fail-safe to "blocked"--which is the correct conservative behavior. A missing `/P` entry should be treated as a distinct warning ("permissions could not be read") rather than a hard fail.
+
 ### Real-World Accessibility Patterns
 
 Observations from testing across the pdf.js corpus and real-world documents:
@@ -268,6 +272,21 @@ For browser-based tools that need to `fetch()` test PDFs at runtime, CORS header
 ### pdf-lib Lazy Object Creation
 
 pdf-lib creates font dict objects lazily --after `embedFont()` + `drawText()`, the actual PDF objects don't exist in `context` until `save()` is called. Tests that examine font objects require a save/reload cycle.
+
+### Building Content Streams for Tests
+
+To test the content stream parser without real PDFs, write raw PDF operators as text and wrap them in a `PDFRawStream`:
+
+```js
+function makeContentStream(doc, text) {
+  const bytes = new TextEncoder().encode(text);
+  const dict = doc.context.obj({ Length: bytes.length });
+  return doc.context.register(PDFRawStream.of(dict, bytes));
+}
+// Usage: makeContentStream(doc, '/F1 12 Tf (Hello) Tj')
+```
+
+The font must be wired into the page's `Resources/Font` dict for `Tf` to resolve it. After save/reload, content streams become `PDFRawStream` objects (even if originally created differently). For testing inline font dicts (not behind indirect refs), operate on the pre-save document--save/reload serializes inline dicts as indirect objects, defeating the test.
 
 ### Circular References Don't Survive Save/Reload
 

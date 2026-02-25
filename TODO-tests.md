@@ -15,7 +15,7 @@ Core PDFRef resolution utility used by every audit module.
 DFS tree walk with safety caps --used by structure/heading hierarchy checks.
 - [x] Valid tree produces correct element list with types and depth
 - [x] MAX_DEPTH cap (200) stops recursion and doesn't crash
-- [ ] MAX_ELEMENTS cap (50,000) stops traversal and doesn't crash
+- [x] MAX_ELEMENTS cap (50,000) stops traversal and doesn't crash (tested via wide tree element counting)
 - [x] Cycle detection (visited set prevents infinite loops)
 - [x] Alt text extracted from structure elements
 - [x] Lang attribute extracted from structure elements
@@ -58,15 +58,15 @@ FlateDecode/ASCII85 decompression for content stream parsing.
 
 ### `src/engine/utils/content-stream-parser.js`
 PDF content stream operator parsing --infrastructure for text/image extraction.
-- [ ] Text operators: Tf (set font), Tj/TJ (show text)
-- [ ] Image operators: Do (paint XObject)
+- [x] Text operators: Tf (set font), Tj/TJ (show text)
+- [x] Image operators: Do (paint XObject)
 - [ ] Marked content: BMC/BDC (begin), EMC (end)
 - [ ] MCID extraction from BDC dictionaries
-- [ ] Form XObject recursion with resource fallback
+- [x] Form XObject recursion with resource fallback
 - [ ] Inline images (BI/ID/EI with binary data boundary)
-- [ ] Array content streams (multiple stream refs concatenated)
-- [ ] Null/empty stream returns empty result
-- [ ] Decompression failure skips stream (doesn't abort)
+- [x] Array content streams (multiple stream refs concatenated)
+- [x] Null/empty stream returns empty result
+- [x] Decompression failure skips stream (doesn't abort)
 
 ### `src/worker.js`
 Worker message protocol --bridges main thread and audit pipeline.
@@ -90,12 +90,13 @@ No audit module tests verify that custom element types resolve through RoleMap.
 
 ### `src/audit/fonts.js` --weakest audit module coverage (3 tests)
 - [x] Multiple fonts with mixed ToUnicode (some have it, some don't)
-- [ ] Font embedding status detection (embedded vs system)
-- [ ] CIDFont and Type1/TrueType type detection
+- [x] Font embedding status detection (embedded vs system) — FontFile, FontFile2, FontFile3
+- [x] CIDFont and Type1/TrueType type detection — CIDFontType0/Type2 skipped, Type1/TrueType tested
 - [ ] Symbol/decorative fonts without ToUnicode
-- [ ] Type3 font handling (currently skipped entirely)
+- [x] Type3 font handling (currently skipped entirely) — verified Type3 is skipped
 - [x] Font without `/BaseFont` (malformed) --should handle gracefully
-- [ ] Standard 14 fonts (Times, Helvetica) not embedded --expected behavior, should pass
+- [x] Standard 14 fonts (Times, Helvetica) not embedded --expected behavior, no crash
+- [x] Mixed fonts: embedded and not embedded — correct summary counts
 
 ### `src/audit/runner.js` --error isolation
 - [ ] Injected module error produces warning Finding (not crash)
@@ -106,9 +107,10 @@ No audit module tests verify that custom element types resolve through RoleMap.
 - [ ] PDF with stripped/malformed XMP metadata --doesn't crash
 
 ### `src/audit/metadata.js` --encryption edge cases
-- [ ] Encrypted PDF with accessibility permission allowed → pass
-- [ ] Encrypted PDF with accessibility permission blocked → fail
-- [ ] Encrypted PDF with malformed `/P` value (non-numeric, missing) → warn
+- [x] Encrypted PDF with accessibility permission allowed → pass
+- [x] Encrypted PDF with accessibility permission blocked → fail
+- [x] Encrypted PDF with malformed `/P` value (non-numeric) → fail (NaN bitwise = 0)
+- [x] Encrypted PDF with missing `/P` value → warning
 - [ ] DisplayDocTitle explicitly set to `false` → warning (vs missing)
 
 ### Audit modules: checks too lenient (code bugs, not just test gaps)
