@@ -82,9 +82,10 @@ export function parseTitleFromXmp(xmpBytes) {
 export function detectAccessibilityTraits(pdfDoc) {
   const catalog = pdfDoc.catalog;
 
-  // Check /MarkInfo << /Marked true >>
+  // Check /MarkInfo << /Marked true >> and /Suspects
   let isTagged = false;
   let markedStatus = 'missing';
+  let hasSuspects = false;
   const markInfo = catalog.get(PDFName.of('MarkInfo'));
   if (markInfo) {
     const resolved = markInfo instanceof PDFRef
@@ -97,6 +98,10 @@ export function detectAccessibilityTraits(pdfDoc) {
         markedStatus = 'true';
       } else {
         markedStatus = 'false';
+      }
+      const suspects = resolved.get(PDFName.of('Suspects'));
+      if (suspects && suspects.toString() === 'true') {
+        hasSuspects = true;
       }
     }
   }
@@ -151,7 +156,7 @@ export function detectAccessibilityTraits(pdfDoc) {
     }
   }
 
-  return { isTagged, isPdfA, pdfALevel, isPdfUA, hasStructTree, lang, title, displayDocTitle, markedStatus };
+  return { isTagged, isPdfA, pdfALevel, isPdfUA, hasStructTree, lang, title, displayDocTitle, markedStatus, hasSuspects };
 }
 
 /**

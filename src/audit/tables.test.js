@@ -15,6 +15,7 @@ import {
   createUntaggedPdf,
   createTaggedPdf,
   createPdfWithTable,
+  createPdfWithTableInvalidScope,
 } from '../../test/fixtures/create-test-pdfs.js';
 
 describe('checkTables', () => {
@@ -69,5 +70,16 @@ describe('checkTables', () => {
     const tableFinding = findings.find(f => f.id === 'table-headers');
     expect(tableFinding).toBeDefined();
     expect(tableFinding.status).toBe('not-applicable');
+  });
+
+  it('should fail when TH cells have invalid Scope value', async () => {
+    const bytes = await createPdfWithTableInvalidScope('Invalid');
+    const ctx = await buildTestContext(bytes);
+    const findings = checkTables(ctx.pdfDoc, ctx);
+
+    const tableFinding = findings.find(f => f.id === 'table-headers');
+    expect(tableFinding).toBeDefined();
+    expect(tableFinding.status).toBe('fail');
+    expect(tableFinding.summary).toContain('header issues');
   });
 });

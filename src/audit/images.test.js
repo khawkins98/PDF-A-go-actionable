@@ -14,6 +14,7 @@ import {
   createUntaggedPdf,
   createTaggedPdf,
   createPdfWithFigures,
+  createPdfWithFigureAlts,
 } from '../../test/fixtures/create-test-pdfs.js';
 
 describe('checkImages', () => {
@@ -78,5 +79,53 @@ describe('checkImages', () => {
     expect(altFinding).toBeDefined();
     expect(altFinding.status).toBe('fail');
     expect(altFinding.summary).toContain('2 of 2');
+  });
+
+  // --- Alt text quality checks ---
+
+  it('should treat empty alt text as missing', async () => {
+    const bytes = await createPdfWithFigureAlts([{ alt: '' }]);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkImages(ctx.pdfDoc, ctx);
+
+    const altFinding = findings.find(f => f.id === 'image-alt-text');
+    expect(altFinding).toBeDefined();
+    expect(altFinding.status).toBe('fail');
+  });
+
+  it('should treat whitespace-only alt text as missing', async () => {
+    const bytes = await createPdfWithFigureAlts([{ alt: '   ' }]);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkImages(ctx.pdfDoc, ctx);
+
+    const altFinding = findings.find(f => f.id === 'image-alt-text');
+    expect(altFinding).toBeDefined();
+    expect(altFinding.status).toBe('fail');
+  });
+
+  it('should warn on generic alt text like "image"', async () => {
+    const bytes = await createPdfWithFigureAlts([{ alt: 'image' }]);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkImages(ctx.pdfDoc, ctx);
+
+    const altFinding = findings.find(f => f.id === 'image-alt-text');
+    expect(altFinding).toBeDefined();
+    // Should warn about generic alt text
+    expect(altFinding.status).toBe('warning');
+  });
+
+  it('should report mixed figures with per-figure detail', async () => {
+    const bytes = await createPdfWithFigureAlts([
+      { alt: 'A descriptive caption for the chart' },
+      { alt: null },
+      { alt: 'photo' },
+    ]);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkImages(ctx.pdfDoc, ctx);
+
+    const altFinding = findings.find(f => f.id === 'image-alt-text');
+    expect(altFinding).toBeDefined();
+    // Has at least one figure without alt and one generic
+    expect(['fail', 'warning']).toContain(altFinding.status);
   });
 });

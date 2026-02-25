@@ -113,7 +113,7 @@ function analyzeTable(tableDict, tableNum, context, roleMap) {
       const attrs = element.get(PDFName.of('A'));
       if (attrs) {
         const resolvedAttrs = resolve(attrs, context);
-        if (hasScope(resolvedAttrs, context)) {
+        if (hasValidScope(resolvedAttrs, context)) {
           thWithScope++;
         }
       }
@@ -179,21 +179,31 @@ function walkChildren(dict, context, roleMap, callback, depth = 0) {
   }
 }
 
+/** Valid Scope values per PDF specification. */
+const VALID_SCOPES = new Set(['Row', 'Column', 'Both']);
+
 /**
- * Check if an attributes object/array contains a Scope entry.
+ * Check if an attributes object/array contains a valid Scope entry.
+ * Validates that the Scope value is one of Row, Column, or Both.
  */
-function hasScope(attrs, context) {
+function hasValidScope(attrs, context) {
   if (!attrs) return false;
 
   if (attrs instanceof PDFDict) {
-    return !!attrs.get(PDFName.of('Scope'));
+    const scope = attrs.get(PDFName.of('Scope'));
+    if (!scope) return false;
+    const scopeStr = scope instanceof PDFName ? scope.decodeText() : scope.toString().replace(/^\//, '');
+    return VALID_SCOPES.has(scopeStr);
   }
 
   if (attrs instanceof PDFArray) {
     for (let i = 0; i < attrs.size(); i++) {
       const item = resolve(attrs.get(i), context);
-      if (item instanceof PDFDict && item.get(PDFName.of('Scope'))) {
-        return true;
+      if (item instanceof PDFDict) {
+        const scope = item.get(PDFName.of('Scope'));
+        if (!scope) continue;
+        const scopeStr = scope instanceof PDFName ? scope.decodeText() : scope.toString().replace(/^\//, '');
+        if (VALID_SCOPES.has(scopeStr)) return true;
       }
     }
   }

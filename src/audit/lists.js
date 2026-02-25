@@ -126,12 +126,20 @@ function validateList(listDict, listNum, context, roleMap) {
       }).filter(Boolean);
 
       const hasLBody = childTypes.includes('LBody');
+      const hasLbl = childTypes.includes('Lbl');
 
       if (!hasLBody) {
         issues.push(`List ${listNum}, LI ${liCount}: missing LBody`);
         details.push({
           label: `List ${listNum}, LI ${liCount}`,
           value: `Missing LBody — has: ${childTypes.join(', ') || 'no typed children'}`,
+        });
+      }
+      if (!hasLbl) {
+        issues.push(`List ${listNum}, LI ${liCount}: missing Lbl`);
+        details.push({
+          label: `List ${listNum}, LI ${liCount}`,
+          value: `Missing Lbl — has: ${childTypes.join(', ') || 'no typed children'}`,
         });
       }
     } else if (resolvedType !== 'Caption') {

@@ -14,6 +14,7 @@ import {
   createUntaggedPdf,
   createTaggedPdf,
   createPdfWithList,
+  createPdfWithListNoLbl,
 } from '../../test/fixtures/create-test-pdfs.js';
 
 describe('checkLists', () => {
@@ -58,5 +59,16 @@ describe('checkLists', () => {
     const listFinding = findings.find(f => f.id === 'list-structure');
     expect(listFinding).toBeDefined();
     expect(listFinding.status).toBe('not-applicable');
+  });
+
+  it('should fail when LI has LBody but no Lbl (PDF/UA 7.6)', async () => {
+    const bytes = await createPdfWithListNoLbl();
+    const ctx = await buildTestContext(bytes);
+    const findings = checkLists(ctx.pdfDoc, ctx);
+
+    const listFinding = findings.find(f => f.id === 'list-structure');
+    expect(listFinding).toBeDefined();
+    expect(listFinding.status).toBe('fail');
+    expect(listFinding.summary).toContain('issue');
   });
 });

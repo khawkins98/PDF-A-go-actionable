@@ -10,7 +10,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { runAudit } from './runner.js';
-import { createTaggedPdf, createUntaggedPdf } from '../../test/fixtures/create-test-pdfs.js';
+import { createTaggedPdf, createUntaggedPdf, createPdfWithSuspects } from '../../test/fixtures/create-test-pdfs.js';
 
 describe('runAudit', () => {
   it('should return findings array and meta object', async () => {
@@ -140,5 +140,42 @@ describe('runAudit', () => {
     // When no fileName is provided, runner uses traits.title or 'Unknown'
     expect(result.meta.fileName).toBeTruthy();
     expect(result.meta.fileName).not.toBe('Unknown');
+  });
+
+  it('should report progress at expected percentage milestones', async () => {
+    const bytes = await createTaggedPdf();
+    const percentages = [];
+    await runAudit(bytes.buffer, {
+      onProgress: (_phase, percent) => percentages.push(percent),
+    });
+
+    // Should start at 0 and end at 100
+    expect(percentages[0]).toBe(0);
+    expect(percentages[percentages.length - 1]).toBe(100);
+
+    // Should include specific milestones
+    expect(percentages).toContain(10);
+    expect(percentages).toContain(100);
+  });
+
+  it('should include hasSuspects in meta when Suspects flag is set', async () => {
+    const bytes = await createPdfWithSuspects();
+    const result = await runAudit(bytes.buffer);
+
+    expect(result.meta.hasSuspects).toBe(true);
+  });
+
+  it('should not produce error findings when no modules throw', async () => {
+    const bytes = await createTaggedPdf();
+    const result = await runAudit(bytes.buffer);
+
+    const errorFindings = result.findings.filter(f => f.id.endsWith('-error'));
+    expect(errorFindings).toHaveLength(0);
+
+    // But should have findings from all modules
+    const categories = new Set(result.findings.map(f => f.category));
+    expect(categories.has('structure')).toBe(true);
+    expect(categories.has('images')).toBe(true);
+    expect(categories.has('fonts')).toBe(true);
   });
 });

@@ -146,6 +146,7 @@ export async function runAudit(buffer, options = {}) {
       pdfALevel: traits.pdfALevel,
       isPdfUA: traits.isPdfUA,
       isTagged: traits.isTagged,
+      hasSuspects: traits.hasSuspects,
       hasStructTree: traits.hasStructTree,
       displayDocTitle: traits.displayDocTitle,
     },

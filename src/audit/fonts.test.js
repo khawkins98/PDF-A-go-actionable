@@ -9,6 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { checkFonts } from './fonts.js';
 import { buildTestContext } from '../../test/helpers/context.js';
+import { PDFDocument, PDFName, PDFDict } from 'pdf-lib';
 import { createUntaggedPdf, createTaggedPdf } from '../../test/fixtures/create-test-pdfs.js';
 
 describe('checkFonts', () => {
@@ -59,5 +60,47 @@ describe('checkFonts', () => {
     const findings = checkFonts(ctx.pdfDoc, ctx);
 
     expect(findings[0].pdfuaRef).toBe('7.21.3');
+  });
+
+  it('should handle font without /BaseFont gracefully', async () => {
+    // Create a PDF with a manually added font dict missing /BaseFont
+    const doc = await PDFDocument.create();
+    doc.addPage();
+    const fontDict = doc.context.obj({
+      Type: 'Font',
+      Subtype: PDFName.of('Type1'),
+      // Intentionally missing /BaseFont
+    });
+    doc.context.register(fontDict);
+    const saved = await doc.save();
+
+    const ctx = await buildTestContext(saved);
+    const findings = checkFonts(ctx.pdfDoc, ctx);
+
+    // Should not throw, and should report the font as 'Unknown'
+    expect(findings).toHaveLength(1);
+    expect(findings[0].status).not.toBe('not-applicable'); // has at least one font
+    expect(findings[0].details.some(d => d.label === 'Unknown')).toBe(true);
+  });
+
+  it('should warn when some fonts lack ToUnicode', async () => {
+    // Create a PDF with a font that has no ToUnicode
+    const doc = await PDFDocument.create();
+    const page = doc.addPage();
+    // Add a manually created font without ToUnicode
+    const fontDict = doc.context.obj({
+      Type: 'Font',
+      Subtype: PDFName.of('Type1'),
+      BaseFont: PDFName.of('TestFont-NoToUnicode'),
+    });
+    doc.context.register(fontDict);
+    const saved = await doc.save();
+
+    const ctx = await buildTestContext(saved);
+    const findings = checkFonts(ctx.pdfDoc, ctx);
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0].status).toBe('warning');
+    expect(findings[0].summary).toContain('missing ToUnicode');
   });
 });

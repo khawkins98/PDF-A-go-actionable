@@ -26,20 +26,34 @@ export function checkStructure(pdfDoc, ctx) {
   const findings = [];
 
   // #4 — Tagged PDF
+  const taggedStatus = !traits.isTagged ? 'fail' : traits.hasSuspects ? 'fail' : 'pass';
+  const taggedDetails = [{ label: 'MarkInfo status', value: traits.markedStatus }];
+  if (traits.hasSuspects) {
+    taggedDetails.push({ label: 'Suspects', value: 'true' });
+  }
+
+  let taggedSummary;
+  let taggedRemediation = null;
+  if (!traits.isTagged) {
+    taggedSummary = traits.markedStatus === 'false'
+      ? 'Document has MarkInfo but Marked is false. The PDF may have been partially tagged.'
+      : 'Document is not tagged. Screen readers can\'t determine the document structure.';
+    taggedRemediation = 'Tag the document in your authoring tool. In Word/PowerPoint: use heading styles and export with accessibility. In InDesign: enable "Create Tagged PDF" on export. In Acrobat: Accessibility > Add Tags to Document.';
+  } else if (traits.hasSuspects) {
+    taggedSummary = 'Document is tagged but MarkInfo/Suspects is true — the tag structure may be unreliable and should be reviewed.';
+    taggedRemediation = 'Open the document in Acrobat Pro and run Accessibility > Full Check to identify suspect tags. Review and fix the tag tree, then clear the Suspects flag.';
+  } else {
+    taggedSummary = 'Document is tagged (MarkInfo/Marked is true).';
+  }
+
   findings.push({
     id: 'tagged-pdf',
     category: 'structure',
     title: 'Tagged PDF',
-    status: traits.isTagged ? 'pass' : 'fail',
-    summary: traits.isTagged
-      ? 'Document is tagged (MarkInfo/Marked is true).'
-      : traits.markedStatus === 'false'
-        ? 'Document has MarkInfo but Marked is false. The PDF may have been partially tagged.'
-        : 'Document is not tagged. Screen readers and assistive technology cannot determine the document structure.',
-    details: [{ label: 'MarkInfo status', value: traits.markedStatus }],
-    remediation: traits.isTagged
-      ? null
-      : 'Tag the document in your authoring tool. In Word/PowerPoint: use heading styles and accessibility-aware export. In InDesign: enable "Create Tagged PDF" on export. In Acrobat: Accessibility > Add Tags to Document.',
+    status: taggedStatus,
+    summary: taggedSummary,
+    details: taggedDetails,
+    remediation: taggedRemediation,
     wcagRef: '1.3.1',
     pdfuaRef: '7.1',
   });
@@ -56,7 +70,7 @@ export function checkStructure(pdfDoc, ctx) {
     details: [],
     remediation: traits.hasStructTree
       ? null
-      : 'Ensure the document is properly tagged. The structure tree is created automatically when using heading styles and accessibility-aware export settings.',
+      : 'Tag the document properly. The structure tree gets created automatically when you use heading styles and accessibility-aware export.',
     wcagRef: '1.3.1',
     pdfuaRef: '7.1',
   });
@@ -121,9 +135,9 @@ function checkHeadingHierarchy(pdfDoc, roleMap) {
       category: 'structure',
       title: 'Heading Hierarchy',
       status: 'warning',
-      summary: 'No headings found in the structure tree. Documents should use headings to organize content.',
+      summary: 'No headings found in the structure tree. Use headings to organize content.',
       details: [],
-      remediation: 'Add headings using heading styles (H1, H2, H3, etc.) in your authoring tool to create a navigable document outline.',
+      remediation: 'Add headings using heading styles (H1, H2, H3, etc.) in your authoring tool. They create the navigable outline.',
       wcagRef: '1.3.1',
       pdfuaRef: '7.4.2',
     };
@@ -177,7 +191,7 @@ function checkHeadingHierarchy(pdfDoc, roleMap) {
     status: 'fail',
     summary: `Heading hierarchy has ${issues.length} issue(s): ${issues.map(i => i.value).join('; ')}.`,
     details: issues,
-    remediation: 'Fix heading levels in your source document. Ensure headings start at H1 and increase sequentially (H1 > H2 > H3). Do not skip levels.',
+    remediation: 'Fix heading levels in your source document. Start with H1 and don\'t skip levels (H1 > H2 > H3, not H1 > H3).',
     wcagRef: '1.3.1',
     pdfuaRef: '7.4.2',
   };

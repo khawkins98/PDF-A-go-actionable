@@ -98,7 +98,7 @@ export function renderSummaryPanel(el, data) {
     { label: 'File Name', value: meta.fileName || 'Unknown' },
     { label: 'PDF/A', value: meta.isPdfA ? `Yes (${meta.pdfALevel || 'level unknown'})` : 'No' },
     { label: 'PDF/UA', value: meta.isPdfUA ? 'Yes' : 'No' },
-    { label: 'Tagged', value: meta.isTagged ? 'Yes' : 'No' },
+    { label: 'Tagged', value: meta.isTagged ? (meta.hasSuspects ? 'Yes (suspects)' : 'Yes') : 'No' },
     { label: 'Structure Tree', value: meta.hasStructTree ? 'Yes' : 'No' },
     { label: 'Display Doc Title', value: meta.displayDocTitle ? 'Yes' : 'No' },
   ];
