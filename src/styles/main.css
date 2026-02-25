@@ -615,12 +615,12 @@ body.wb-lock .winbox {
   font-family: var(--font-family);
   font-weight: 600;
   font-size: var(--font-size-sm);
-  color: var(--color-text-inverse);
+  color: var(--color-text-inverse) !important;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .winbox.white:not(.focus) .wb-title {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.6) !important;
   text-shadow: none;
 }
 
@@ -631,7 +631,7 @@ body.wb-lock .winbox {
 
 /* Window controls — NeXTSTEP square buttons */
 .winbox.white .wb-control {
-  filter: none;
+  filter: none !important;
   display: flex;
   align-items: center;
   padding: 0 6px 0 0;
