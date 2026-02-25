@@ -749,6 +749,55 @@ export async function createPdfWithFigureAlts(figures) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Creates a tagged PDF with per-element /Lang attributes on StructElems.
+ * @param {object} options
+ * @param {string} [options.docLang] - Document-level language (catalog /Lang)
+ * @param {Array<{type: string, lang?: string}>} options.elements - StructElems to create
+ */
+export async function createPdfWithPerElementLang(options = {}) {
+  const {
+    docLang = 'en-US',
+    elements = [
+      { type: 'P', lang: 'fr-FR' },
+      { type: 'P' },
+      { type: 'Span', lang: 'de-DE' },
+    ],
+  } = options;
+
+  const doc = await PDFDocument.create();
+  doc.addPage();
+
+  if (docLang) {
+    doc.catalog.set(PDFName.of('Lang'), PDFString.of(docLang));
+  }
+
+  addMarkInfo(doc);
+  const { structTreeRoot, structTreeRootRef } = addStructTreeRoot(doc);
+
+  const { elem: docElem, elemRef: docElemRef } = createStructElem(
+    doc, 'Document', structTreeRootRef,
+  );
+
+  const childRefs = elements.map((el) => {
+    const extras = {};
+    if (el.lang) {
+      extras.Lang = PDFString.of(el.lang);
+    }
+    const { elemRef } = createStructElem(doc, el.type, docElemRef, extras);
+    return elemRef;
+  });
+
+  docElem.set(PDFName.of('K'), doc.context.obj(childRefs));
+  structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+
+  return doc.save();
+}
+
+// ---------------------------------------------------------------------------
+// Factory: PDF with form fields missing /FT (field type)
+// ---------------------------------------------------------------------------
+
+/**
  * Creates a PDF with AcroForm fields that lack /FT (field type).
  */
 export async function createPdfWithFormsNoFT() {

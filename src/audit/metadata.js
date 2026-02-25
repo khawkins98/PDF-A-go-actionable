@@ -11,9 +11,11 @@
  * - PDF/UA conformance
  * - DisplayDocTitle preference
  * - Bookmarks present
+ * - Per-element language specifications
  */
 import { PDFName, PDFDict, PDFRef } from 'pdf-lib';
 import { resolve } from '../engine/utils/resolve.js';
+import { walkStructureTree } from '../engine/utils/struct-tree-walker.js';
 
 /**
  * @param {import('pdf-lib').PDFDocument} pdfDoc
@@ -152,6 +154,9 @@ export function checkMetadata(pdfDoc, ctx) {
     pdfuaRef: null,
   });
 
+  // Informational — Per-element language
+  findings.push(checkPerElementLanguage(pdfDoc, ctx));
+
   return findings;
 }
 
@@ -217,6 +222,73 @@ function checkSecurity(pdfDoc) {
       { label: 'Accessibility extraction', value: 'Blocked' },
       { label: 'Content extraction', value: extractionAllowed ? 'Allowed' : 'Restricted' },
     ],
+  };
+}
+
+/**
+ * Check for per-element /Lang attributes on structure elements.
+ * Walks the structure tree and reports which elements specify a language.
+ */
+function checkPerElementLanguage(pdfDoc, ctx) {
+  const { traits, roleMap } = ctx;
+
+  if (!traits.hasStructTree) {
+    return {
+      id: 'per-element-language',
+      category: 'metadata',
+      title: 'Per-Element Language',
+      status: 'not-applicable',
+      summary: 'No structure tree. Per-element language requires tagged PDF.',
+      details: [],
+      remediation: null,
+      wcagRef: '3.1.2',
+      pdfuaRef: '7.2',
+    };
+  }
+
+  const elements = walkStructureTree(pdfDoc, roleMap);
+  const withLang = elements.filter(el => el.lang);
+
+  if (withLang.length === 0) {
+    return {
+      id: 'per-element-language',
+      category: 'metadata',
+      title: 'Per-Element Language',
+      status: 'warning',
+      summary: 'No structure elements specify a language. This is fine for single-language documents, but multilingual content needs per-element language tags.',
+      details: [],
+      remediation: 'If the document contains content in multiple languages, set the /Lang attribute on the relevant structure elements. In Acrobat: select the element in the Tags panel > Properties > Language.',
+      wcagRef: '3.1.2',
+      pdfuaRef: '7.2',
+    };
+  }
+
+  // Build per-language summary
+  const langMap = new Map();
+  for (const el of withLang) {
+    const list = langMap.get(el.lang) || [];
+    list.push(el.type === el.resolvedType ? el.type : `${el.type} (${el.resolvedType})`);
+    langMap.set(el.lang, list);
+  }
+
+  const details = [];
+  for (const [lang, types] of langMap) {
+    details.push({
+      label: lang,
+      value: `${types.length} element${types.length === 1 ? '' : 's'} (${[...new Set(types)].join(', ')})`,
+    });
+  }
+
+  return {
+    id: 'per-element-language',
+    category: 'metadata',
+    title: 'Per-Element Language',
+    status: 'pass',
+    summary: `${withLang.length} structure element${withLang.length === 1 ? '' : 's'} specify a language attribute.`,
+    details,
+    remediation: null,
+    wcagRef: '3.1.2',
+    pdfuaRef: '7.2',
   };
 }
 

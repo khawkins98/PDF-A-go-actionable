@@ -19,6 +19,7 @@ import {
   createPdfWithLang,
   createTaggedPdf,
   createPdfWithBookmarks,
+  createPdfWithPerElementLang,
 } from '../../test/fixtures/create-test-pdfs.js';
 
 /**
@@ -247,5 +248,98 @@ describe('checkMetadata', () => {
     expect(security).toBeDefined();
     expect(security.status).toBe('warning');
     expect(security.summary).toContain('could not be read');
+  });
+
+  // --- Per-element language check tests ---
+
+  it('should report per-element languages when StructElems have /Lang', async () => {
+    const bytes = await createPdfWithPerElementLang({
+      docLang: 'en-US',
+      elements: [
+        { type: 'P', lang: 'fr-FR' },
+        { type: 'P' },
+        { type: 'Span', lang: 'de-DE' },
+      ],
+    });
+    const ctx = await buildTestContext(bytes);
+    const findings = checkMetadata(ctx.pdfDoc, ctx);
+
+    const langFinding = findings.find(f => f.id === 'per-element-language');
+    expect(langFinding).toBeDefined();
+    expect(langFinding.status).toBe('pass');
+    expect(langFinding.category).toBe('metadata');
+    expect(langFinding.details.length).toBeGreaterThanOrEqual(2);
+    // Should mention the languages found
+    expect(langFinding.summary).toContain('2');
+  });
+
+  it('should warn when no StructElems have /Lang in a tagged PDF', async () => {
+    const bytes = await createPdfWithPerElementLang({
+      docLang: 'en-US',
+      elements: [
+        { type: 'P' },
+        { type: 'Span' },
+      ],
+    });
+    const ctx = await buildTestContext(bytes);
+    const findings = checkMetadata(ctx.pdfDoc, ctx);
+
+    const langFinding = findings.find(f => f.id === 'per-element-language');
+    expect(langFinding).toBeDefined();
+    expect(langFinding.status).toBe('warning');
+    expect(langFinding.remediation).toBeTruthy();
+  });
+
+  it('should be not-applicable when there is no structure tree', async () => {
+    const bytes = await createUntaggedPdf();
+    const ctx = await buildTestContext(bytes);
+    const findings = checkMetadata(ctx.pdfDoc, ctx);
+
+    const langFinding = findings.find(f => f.id === 'per-element-language');
+    expect(langFinding).toBeDefined();
+    expect(langFinding.status).toBe('not-applicable');
+  });
+
+  it('should list distinct languages in details', async () => {
+    const bytes = await createPdfWithPerElementLang({
+      docLang: 'en-US',
+      elements: [
+        { type: 'P', lang: 'fr-FR' },
+        { type: 'Span', lang: 'fr-FR' },
+        { type: 'P', lang: 'de-DE' },
+      ],
+    });
+    const ctx = await buildTestContext(bytes);
+    const findings = checkMetadata(ctx.pdfDoc, ctx);
+
+    const langFinding = findings.find(f => f.id === 'per-element-language');
+    expect(langFinding).toBeDefined();
+    expect(langFinding.status).toBe('pass');
+    // Should have details for each distinct language (language is the label)
+    const labels = langFinding.details.map(d => d.label);
+    expect(labels).toContain('fr-FR');
+    expect(labels).toContain('de-DE');
+  });
+
+  it('should include per-element-language in the finding IDs for tagged PDFs', async () => {
+    const bytes = await createTaggedPdf();
+    const ctx = await buildTestContext(bytes);
+    const findings = checkMetadata(ctx.pdfDoc, ctx);
+
+    const ids = findings.map(f => f.id);
+    expect(ids).toContain('per-element-language');
+  });
+
+  it('should reference WCAG 3.1.2 for per-element language', async () => {
+    const bytes = await createPdfWithPerElementLang({
+      docLang: 'en-US',
+      elements: [{ type: 'P', lang: 'fr-FR' }],
+    });
+    const ctx = await buildTestContext(bytes);
+    const findings = checkMetadata(ctx.pdfDoc, ctx);
+
+    const langFinding = findings.find(f => f.id === 'per-element-language');
+    expect(langFinding.wcagRef).toBe('3.1.2');
+    expect(langFinding.pdfuaRef).toBe('7.2');
   });
 });
