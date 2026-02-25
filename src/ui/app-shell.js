@@ -935,7 +935,7 @@ export function initAppShell(container, worker) {
     // Summary section
     const summaryEl = document.createElement('div');
     summaryEl.className = 'results-summary';
-    renderSummaryPanel(summaryEl, data);
+    renderSummaryPanel(summaryEl, data, session.bus);
     content.appendChild(summaryEl);
 
     // Toolbar (session-scoped actions only)

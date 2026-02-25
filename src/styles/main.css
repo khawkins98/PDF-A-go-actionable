@@ -167,6 +167,28 @@ body {
   background: var(--color-surface-alt);
 }
 
+/* Filter badge toggle buttons (in summary panel) */
+.status-filter {
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+.status-filter:hover {
+  filter: brightness(1.1);
+}
+
+.status-filter--inactive {
+  opacity: 0.35;
+  box-shadow: none;
+  filter: grayscale(0.6);
+}
+
+.status-filter--inactive:hover {
+  opacity: 0.55;
+  filter: grayscale(0.3);
+}
+
 /* === Welcome dialog === */
 .welcome {
   padding: var(--space-lg);
