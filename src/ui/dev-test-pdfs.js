@@ -154,13 +154,13 @@ export const testPdfs = [
   },
   {
     name: 'List missing LBody (fail)',
-    url: `${PDFA}/list/L_F05-Multi-level-list-incorrectly-tagged-nested-list-not-in-LBody/UA1_Tpdf-L_F05.pdf`,
+    url: `${PDFA}/list/L_F05-List-with-missing-LBody/UA1_Tpdf-L_F05.pdf`,
     expect: 'fail',
     category: 'Lists',
   },
   {
     name: 'List tagged as paragraphs (fail)',
-    url: `${PDFA}/list/L_F06-List-incorrectly-tagged-as-paragraphs/UA1_Tpdf-L_F06.pdf`,
+    url: `${PDFA}/list/L_F06-List-incorrectly-tagged-as-P/UA1_Tpdf-L_F06.pdf`,
     expect: 'fail',
     category: 'Lists',
   },
@@ -260,7 +260,7 @@ export const testPdfs = [
   // --- Tab Order ---
   {
     name: 'Tab order set (pass)',
-    url: `${VERAPDF}/7.18%20Annotations/7.18.3%20Tab%20order/7.18.3-t01-pass-a.pdf`,
+    url: `${VERAPDF}/7.18%20Annotations/7.18.3%20Tab%20order/7-18.3-t01-pass-a.pdf`,
     expect: 'pass',
     category: 'Tab Order',
   },
