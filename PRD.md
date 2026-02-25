@@ -231,15 +231,15 @@ Desktop-style layout using WinBox (floating, movable, resizable windows) with a 
 - **About dialog** — app info, version, technology credits | Done
 - **Help dialog** — usage steps, tips, keyboard shortcuts | Done
 
-All WinBox windows are constrained below the menu bar height (36px) for drag and maximize. Draggable windows use `overflow: true` for partial off-screen movement (native OS-like behavior); non-draggable windows (welcome, progress) stay centered. Each results window shows summary + findings list (left 35%) + finding details (right 65%). Finding selection is scoped per session via `EventBus` instances — selecting a finding in one window doesn't affect another. Floating panels open per session and can be repositioned. Closing all results windows returns to the welcome dialog.
+All WinBox windows are constrained below the menu bar height (28px) for drag and maximize. Draggable windows use `overflow: true` for partial off-screen movement (native OS-like behavior); non-draggable windows (welcome, progress) stay centered. Each results window shows summary + findings list (left 35%) + finding details (right 65%). Finding selection is scoped per session via `EventBus` instances — selecting a finding in one window doesn't affect another. Floating panels open per session and can be repositioned. Closing all results windows returns to the welcome dialog.
 
 ### Visual Design
 
-- Soft, high-contrast accessible light theme with CSS custom properties. The tool must pass WCAG 2.1 AA itself. | Done
-- Traffic-light status indicators (green pass #2b8a3e, red fail #c92a2a, amber warning #e67700, blue manual-check #1864ab) — not color-only, includes text labels | Done
+- **NeXTSTEP-inspired theme.** Slate gray workspace background (#838990), dark charcoal title bars (#333) with white text, square corners (zero border-radius), 3D beveled edges (light top/left, dark bottom/right) on windows, buttons, panels, and cards. The WinBox `white` theme base is heavily overridden with `!important` where needed to win the CSS cascade. | Done
+- Status indicators (green pass, red fail, amber warning, blue manual-check) — not color-only, includes text labels. Beveled badge styling. | Done
 - Professional typography — system font stack (-apple-system, BlinkMacSystemFont, Segoe UI, Roboto) | Done
-- **Light mode only for V1.0.** Theme CSS structured with custom properties for easy dark mode addition. | Done
-- **WinBox theme** — white theme via `winbox/dist/css/themes/white.min.css` with CSS overrides for refined chrome (layered shadows, title bar styling, control opacity, top border-radius), window open animation (scale + opacity), focus/blur shadow transitions, and partial off-screen dragging (`overflow: true`) on draggable windows. | Done
+- **Dark menu bar** (28px height) matching title bars. White text, hover highlight. Submenus use NeXTSTEP-style white-on-dark hover inversion. | Done
+- **WinBox theme** — `white` class with extensive CSS overrides: dark title bars, square beveled window controls, hard drop shadows, focus/unfocus distinction via title bar color, partial off-screen dragging (`overflow: true`). Root container has no `overflow: hidden` so windows can extend beyond viewport edges. | Done
 - **Desktop-focused.** On small screens (< 768px), show a dismissible banner: "This tool is designed for larger screens." No mobile-specific layout — users aren't blocked, just informed. | Done
 - **Skip link** for keyboard navigation. Focus-visible outlines. ARIA labels on interactive regions. | Done
 
