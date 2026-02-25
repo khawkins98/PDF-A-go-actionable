@@ -27,7 +27,7 @@ import 'winbox/dist/css/themes/white.min.css';
 
 
 /** Menu bar height in pixels — must match --menubar-height in CSS. */
-const MENUBAR_HEIGHT = 36;
+const MENUBAR_HEIGHT = 28;
 
 /** Map of floating panel names to their render functions. */
 const PANEL_RENDERERS = {
@@ -82,7 +82,7 @@ function generateSessionId() {
 export function initAppShell(container, worker) {
   const root = document.createElement('div');
   root.className = 'app-root';
-  root.style.cssText = 'flex:1;position:relative;overflow:hidden;';
+  root.style.cssText = 'flex:1;position:relative;';
 
   /** @type {Map<string, object>} Active sessions by sessionId */
   const sessions = new Map();
@@ -189,7 +189,11 @@ export function initAppShell(container, worker) {
       const action = btn.dataset.action;
       switch (action) {
         case 'open-files':
-          fileInput.click();
+          if (welcomeWin) {
+            welcomeWin.focus();
+          } else {
+            showWelcome(null, { closable: sessions.size > 0 });
+          }
           break;
         case 'export-all':
           toggleSubmenu(btn, buildExportAllSubmenu());
@@ -523,7 +527,8 @@ export function initAppShell(container, worker) {
       width: 440,
       height: 340,
       top: MENUBAR_HEIGHT,
-      class: ['wb-theme-white', 'no-full', 'no-max', 'no-min'],
+      overflow: true,
+      class: ['white', 'no-full', 'no-max', 'no-min'],
       border: 1,
     });
   }
@@ -698,7 +703,8 @@ export function initAppShell(container, worker) {
       width: 420,
       height: 380,
       top: MENUBAR_HEIGHT,
-      class: ['wb-theme-white', 'no-full', 'no-max', 'no-min', 'no-resize'],
+      overflow: true,
+      class: ['white', 'no-full', 'no-max', 'no-min', 'no-resize'],
       border: 1,
     });
   }
@@ -739,15 +745,19 @@ export function initAppShell(container, worker) {
       width: 480,
       height: 440,
       top: MENUBAR_HEIGHT,
-      class: ['wb-theme-white', 'no-full', 'no-max', 'no-min'],
+      overflow: true,
+      class: ['white', 'no-full', 'no-max', 'no-min'],
       border: 1,
     });
   }
 
   // === Welcome ===
 
-  function showWelcome(errorMessage) {
-    if (welcomeWin) return;
+  function showWelcome(errorMessage, { closable = false } = {}) {
+    if (welcomeWin) {
+      welcomeWin.focus();
+      return;
+    }
 
     const content = document.createElement('div');
     content.className = 'welcome';
@@ -783,6 +793,9 @@ export function initAppShell(container, worker) {
     version.textContent = 'v1.0.0';
     content.appendChild(version);
 
+    const classes = ['white', 'no-full', 'no-max', 'no-min', 'no-resize'];
+    if (!closable) classes.push('no-close');
+
     welcomeWin = new WinBox({
       title: 'Welcome',
       mount: content,
@@ -792,15 +805,18 @@ export function initAppShell(container, worker) {
       width: 480,
       height: 460,
       top: MENUBAR_HEIGHT,
-      class: ['wb-theme-white', 'no-full', 'no-max', 'no-min', 'no-resize', 'no-close'],
+      class: classes,
       border: 1,
+      ...(closable ? { onclose: function () { welcomeWin = null; } } : {}),
     });
   }
 
   function closeWelcome() {
     if (welcomeWin) {
-      welcomeWin.close();
+      const win = welcomeWin;
       welcomeWin = null;
+      win.onclose = null;
+      win.close();
     }
   }
 
@@ -868,7 +884,7 @@ export function initAppShell(container, worker) {
       height: 180,
       top: MENUBAR_HEIGHT,
       class: [
-        'wb-theme-white',
+        'white',
         'no-full',
         'no-max',
         'no-min',
@@ -996,7 +1012,8 @@ export function initAppShell(container, worker) {
         width: w,
         height: h,
         top: MENUBAR_HEIGHT,
-        class: ['wb-theme-white'],
+        overflow: true,
+        class: ['white'],
         border: 1,
         onclose: function () {
           cleanupSession(session);
@@ -1027,9 +1044,10 @@ export function initAppShell(container, worker) {
       title: `${def.title} — ${session.fileName}`,
       mount: el,
       root,
-      class: ['wb-theme-white'],
+      class: ['white'],
       border: 1,
       top: MENUBAR_HEIGHT,
+      overflow: true,
       ...layout,
       onclose: function () {
         session.floatingPanels.delete(id);

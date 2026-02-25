@@ -224,22 +224,22 @@ Outbound (all include `sessionId` for routing to the correct session):
 Desktop-style layout using WinBox (floating, movable, resizable windows) with a persistent application menu bar. Supports multiple PDFs — each gets its own results window. Done.
 
 - **App menu bar** — persistent fixed bar at top of viewport; contains Open File(s), Export All (format submenu), Window (Tile All/Cascade All/Close All + open window list), About, Help | Done
-- **Welcome dialog** — centered window with app info, feature highlights, and multi-file upload zone; reappears when all results windows are closed | Done
+- **Welcome dialog** — centered window with app info, feature highlights, and multi-file upload zone; reopened by "Open File(s)" menu (with close button when results exist); reappears when all results windows are closed | Done
 - **Progress dialog** — per-session centered window with file name, progress bar, and phase info | Done
 - **Results windows** — one per analyzed PDF, cascade-positioned (~85% of viewport); contains summary bar (top), session toolbar (floating panel toggles + per-file export), and split findings/details view; movable and resizable | Done
 - **Floating tool panels** — Structure Tree, Font Inventory, Image Inventory per session; opened from session toolbar buttons; movable, resizable, closeable | Done
 - **About dialog** — app info, version, technology credits | Done
 - **Help dialog** — usage steps, tips, keyboard shortcuts | Done
 
-All WinBox windows are constrained below the menu bar height (36px) for drag and maximize. Each results window shows summary + findings list (left 35%) + finding details (right 65%). Finding selection is scoped per session via `EventBus` instances — selecting a finding in one window doesn't affect another. Floating panels open per session and can be repositioned. Closing all results windows returns to the welcome dialog.
+All WinBox windows are constrained below the menu bar height (28px) for drag and maximize. Draggable windows use `overflow: true` for partial off-screen movement (native OS-like behavior); non-draggable windows (welcome, progress) stay centered. Each results window shows summary + findings list (left 35%) + finding details (right 65%). Finding selection is scoped per session via `EventBus` instances — selecting a finding in one window doesn't affect another. Floating panels open per session and can be repositioned. Closing all results windows returns to the welcome dialog.
 
 ### Visual Design
 
-- Soft, high-contrast accessible light theme with CSS custom properties. The tool must pass WCAG 2.1 AA itself. | Done
-- Traffic-light status indicators (green pass #2b8a3e, red fail #c92a2a, amber warning #e67700, blue manual-check #1864ab) — not color-only, includes text labels | Done
+- **NeXTSTEP-inspired theme.** Slate gray workspace background (#838990), dark charcoal title bars (#333) with white text, square corners (zero border-radius), 3D beveled edges (light top/left, dark bottom/right) on windows, buttons, panels, and cards. The WinBox `white` theme base is heavily overridden with `!important` where needed to win the CSS cascade. | Done
+- Status indicators (green pass, red fail, amber warning, blue manual-check) — not color-only, includes text labels. Beveled badge styling. | Done
 - Professional typography — system font stack (-apple-system, BlinkMacSystemFont, Segoe UI, Roboto) | Done
-- **Light mode only for V1.0.** Theme CSS structured with custom properties for easy dark mode addition. | Done
-- **WinBox theme** — white theme via `winbox/dist/css/themes/white.min.css`. | Done
+- **Dark menu bar** (28px height) matching title bars. White text, hover highlight. Submenus use NeXTSTEP-style white-on-dark hover inversion. | Done
+- **WinBox theme** — `white` class with extensive CSS overrides: dark title bars, square beveled window controls, hard drop shadows, focus/unfocus distinction via title bar color, partial off-screen dragging (`overflow: true`). Root container has no `overflow: hidden` so windows can extend beyond viewport edges. | Done
 - **Desktop-focused.** On small screens (< 768px), show a dismissible banner: "This tool is designed for larger screens." No mobile-specific layout — users aren't blocked, just informed. | Done
 - **Skip link** for keyboard navigation. Focus-visible outlines. ARIA labels on interactive regions. | Done
 
@@ -249,7 +249,7 @@ All steps implemented. Done.
 
 1. App menu bar is always visible at the top of the viewport
 2. Welcome dialog opens with app info and multi-file upload zone
-3. User drops PDFs or uses menu bar "Open File(s)" to browse
+3. User drops PDFs or uses menu bar "Open File(s)" to reopen the welcome dialog (closable when results exist)
 4. Per-file progress dialogs show analysis progress with phase info
 5. Each analyzed PDF spawns its own cascade-positioned results window
 6. User explores findings in any window; finding selection is scoped per session
@@ -326,9 +326,9 @@ All audit modules and core logic are developed using **strict TDD** — tests ar
 
 | Area | Status |
 |---|---|
-| Every audit check — pass and fail cases | Done (52 tests across 8 test files) |
+| Every audit check — pass and fail cases | Done (65 tests across 10 test files) |
 | Utility functions — `resolveRole()`, `buildRoleMap()`, cycle detection | Done (11 tests in `role-map.test.js`) |
-| UI integration — panel creation contracts, render functions, event bus (including scoped session buses), export helpers | Done (67 tests across 6 test files) |
+| UI integration — panel creation contracts, render functions, event bus (including scoped session buses), export helpers | Done (137 tests across 12 test files) |
 | Worker protocol — message handling | Pending |
 
 #### UI Integration Tests
@@ -343,6 +343,12 @@ UI code must have test coverage. The WinBox panel creation, panel render functio
 | `src/ui/report.test.js` | `renderSummaryPanel` status counts, overall badge, metadata rendering, ARIA labels | 9 |
 | `src/ui/findings-list.test.js` | Category grouping, status-priority sorting, card rendering, scoped bus click dispatch, keyboard accessibility | 9 |
 | `src/ui/details.test.js` | Placeholder state, scoped bus finding rendering, late subscriber, content replacement, semantic sections | 10 |
+| `src/ui/tree-explorer.test.js` | Structure tree summary rendering, element counts, heading hierarchy, empty/missing tree states | 11 |
+| `src/ui/font-table.test.js` | Font inventory table rendering, ToUnicode/embedding status, sorting, empty state | 14 |
+| `src/ui/image-table.test.js` | Image inventory table rendering, alt text status, sorting, empty state | 13 |
+| `src/ui/drop-zone.test.js` | Upload zone creation, drag-and-drop events, file filtering, multi-file handling | 13 |
+| `src/ui/guidance.test.js` | Remediation text templates, external tool links, WCAG/PDF-UA references | 11 |
+| `src/ui/dev-test-pdfs.test.js` | Test PDF registry, category grouping, URL validation, expected outcomes | 8 |
 
 **Why this matters:** Any code that interfaces with a third-party UI library or renders DOM must have contract tests to catch integration bugs early.
 
@@ -388,5 +394,5 @@ Cherry-pick a small representative set covering the 10 automated checks. Store i
 8. **Dark mode:** Light only for V1.0. Theme CSS structured with CSS custom properties for easy dark mode addition later. Done.
 9. **Export:** V1.0 feature, not deferred. Export audit results as JSON, CSV, or a PDF summary report. Done.
 10. **Service worker:** Deferred. App works offline in practice (static assets, no server). Explicit service worker in V1.1.
-11. **Testing:** TDD with Vitest — 119 tests across 14 test files covering audit checks, RoleMap utilities, and UI integration (panel creation, render functions, scoped event buses, export helpers). Worker protocol tests pending. 14 pdf-lib fixture factories in `test/fixtures/`. Uses `happy-dom` for DOM-based UI tests. Sample PDFs for in-app "try it" feature pending.
+11. **Testing:** TDD with Vitest — 213 tests across 23 test files covering audit checks, RoleMap utilities, and UI integration (panel creation, render functions, scoped event buses, export helpers). Worker protocol tests pending. 14 pdf-lib fixture factories in `test/fixtures/`. Uses `happy-dom` for DOM-based UI tests. Sample PDFs for in-app "try it" feature pending.
 12. **Content stream robustness:** Architect the audit layer defensively — graceful fallbacks (warning findings, not crashes) if pdf-lib or stream parsing hits edge cases. Done — each audit module wraps in try/catch, runner catches per-module errors and returns warning findings.

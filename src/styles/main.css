@@ -1,36 +1,41 @@
 /* PDF-A-go-actionable — Main Stylesheet */
+/* NeXTSTEP-inspired theme */
 
-/* === CSS Custom Properties (Light Theme) === */
+/* === CSS Custom Properties === */
 :root {
-  /* Base colors */
-  --color-bg: #f8f9fa;
-  --color-surface: #ffffff;
-  --color-surface-alt: #f1f3f5;
-  --color-border: #dee2e6;
-  --color-border-light: #e9ecef;
+  /* Base colors — NeXTSTEP slate gray workspace */
+  --color-bg: #838990;
+  --color-surface: #c8c8c8;
+  --color-surface-alt: #b4b4b4;
+  --color-border: #999;
+  --color-border-light: #ddd;
+  --color-border-dark: #666;
+  --color-titlebar: #333;
+  --color-titlebar-unfocused: #666;
 
   /* Text colors */
-  --color-text: #212529;
-  --color-text-secondary: #495057;
-  --color-text-muted: #868e96;
+  --color-text: #111;
+  --color-text-secondary: #333;
+  --color-text-muted: #666;
+  --color-text-inverse: #fff;
 
-  /* Status colors — accessible on white background (4.5:1 minimum) */
-  --color-pass: #2b8a3e;
-  --color-fail: #c92a2a;
-  --color-warning: #e67700;
-  --color-manual: #1864ab;
-  --color-not-applicable: #868e96;
+  /* Status colors — contrast-checked against --color-surface */
+  --color-pass: #1a7a30;
+  --color-fail: #b91c1c;
+  --color-warning: #b45309;
+  --color-manual: #1556a0;
+  --color-not-applicable: #6b6b6b;
 
-  /* Status backgrounds (light tints) */
-  --color-pass-bg: #ebfbee;
-  --color-fail-bg: #fff5f5;
-  --color-warning-bg: #fff9db;
-  --color-manual-bg: #e7f5ff;
+  /* Status backgrounds */
+  --color-pass-bg: #d4edda;
+  --color-fail-bg: #f8d7da;
+  --color-warning-bg: #fff3cd;
+  --color-manual-bg: #cce5ff;
 
   /* Interactive */
-  --color-primary: #1864ab;
-  --color-primary-hover: #1971c2;
-  --color-focus-ring: #74c0fc;
+  --color-primary: #1556a0;
+  --color-primary-hover: #1a6dc2;
+  --color-focus-ring: #5ba3e6;
 
   /* Spacing */
   --space-xs: 4px;
@@ -49,17 +54,26 @@
   --font-size-xl: 1.25rem;
   --font-size-2xl: 1.5rem;
 
-  /* Border radius */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
+  /* Border radius — NeXTSTEP: square corners */
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
+  /* Shadows — NeXTSTEP uses bevels + hard shadow */
+  --shadow-sm: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 2px 2px 4px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 3px 3px 8px rgba(0, 0, 0, 0.4);
+
+  /* Bevels — the NeXTSTEP signature */
+  --bevel-raised: inset 1px 1px 0 0 rgba(255,255,255,0.5), inset -1px -1px 0 0 rgba(0,0,0,0.25);
+  --bevel-sunken: inset -1px -1px 0 0 rgba(255,255,255,0.5), inset 1px 1px 0 0 rgba(0,0,0,0.25);
+
+  /* Transitions */
+  --transition-fast: 100ms ease;
+  --transition-normal: 200ms ease;
 
   /* Layout */
-  --menubar-height: 36px;
+  --menubar-height: 28px;
 }
 
 /* === Reset === */
@@ -75,6 +89,7 @@
 html,
 body {
   height: 100%;
+  overflow: hidden;
   font-family: var(--font-family);
   font-size: var(--font-size-base);
   color: var(--color-text);
@@ -124,6 +139,7 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+  box-shadow: var(--bevel-raised);
 }
 
 .status-badge--pass {
@@ -155,6 +171,7 @@ body {
 .welcome {
   padding: var(--space-lg);
   text-align: center;
+  background: var(--color-surface);
 }
 
 .welcome__error {
@@ -165,6 +182,7 @@ body {
   border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
   text-align: left;
+  box-shadow: var(--bevel-sunken);
 }
 
 .welcome__title {
@@ -216,16 +234,15 @@ body {
   gap: var(--space-sm);
   min-height: 120px;
   padding: var(--space-md);
-  border: 2px dashed var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
+  border: 2px solid;
+  border-color: var(--color-border-dark) var(--color-border-light) var(--color-border-light) var(--color-border-dark);
+  background: var(--color-surface-alt);
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
+  transition: background var(--transition-fast);
 }
 
 .drop-zone:hover,
 .drop-zone--active {
-  border-color: var(--color-primary);
   background: var(--color-manual-bg);
 }
 
@@ -243,6 +260,7 @@ body {
 .progress-dialog {
   padding: var(--space-lg);
   text-align: center;
+  background: var(--color-surface);
 }
 
 .progress-dialog__file {
@@ -264,11 +282,13 @@ body {
   height: 100%;
   overflow: hidden;
   font-family: var(--font-family);
+  background: var(--color-surface);
 }
 
 .results-summary {
   padding: var(--space-sm) var(--space-md);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 2px solid;
+  border-color: var(--color-border-dark);
   flex-shrink: 0;
   overflow-y: auto;
   max-height: 30%;
@@ -278,35 +298,43 @@ body {
   display: flex;
   align-items: center;
   gap: var(--space-xs);
-  padding: 6px var(--space-sm);
-  border-bottom: 1px solid var(--color-border);
+  padding: 4px var(--space-sm);
+  border-bottom: 1px solid var(--color-border-dark);
   background: var(--color-surface-alt);
   flex-shrink: 0;
   flex-wrap: wrap;
+  box-shadow: var(--bevel-raised);
 }
 
 .toolbar-btn {
-  padding: var(--space-xs) 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  padding: 2px 10px;
+  border: 2px solid;
+  border-color: var(--color-border-light) var(--color-border-dark) var(--color-border-dark) var(--color-border-light);
   background: var(--color-surface);
   color: var(--color-text);
   font-family: var(--font-family);
   font-size: var(--font-size-sm);
   cursor: pointer;
   white-space: nowrap;
+  transition: none;
 }
 
 .toolbar-btn:hover {
+  background: #d8d8d8;
+}
+
+.toolbar-btn:active {
+  border-color: var(--color-border-dark) var(--color-border-light) var(--color-border-light) var(--color-border-dark);
   background: var(--color-surface-alt);
-  border-color: var(--color-primary);
+  transform: none;
 }
 
 .toolbar-separator {
   width: 1px;
   height: 20px;
-  background: var(--color-border);
+  background: var(--color-border-dark);
   margin: 0 var(--space-xs);
+  box-shadow: 1px 0 0 var(--color-border-light);
 }
 
 .results-split {
@@ -319,30 +347,34 @@ body {
   width: 35%;
   min-width: 250px;
   overflow-y: auto;
-  border-right: 1px solid var(--color-border);
+  border-right: 2px solid;
+  border-right-color: var(--color-border-dark);
+  box-shadow: inset -1px 0 0 var(--color-border-light);
   padding: var(--space-sm);
+  background: var(--color-surface);
 }
 
 .results-details {
   flex: 1;
   overflow-y: auto;
   padding: var(--space-md);
+  background: var(--color-surface);
 }
 
 /* === Progress bar === */
 .progress-bar {
   width: 100%;
   max-width: 400px;
-  height: 8px;
+  height: 14px;
   background: var(--color-surface-alt);
-  border-radius: var(--radius-sm);
+  border: 2px solid;
+  border-color: var(--color-border-dark) var(--color-border-light) var(--color-border-light) var(--color-border-dark);
   overflow: hidden;
 }
 
 .progress-bar__fill {
   height: 100%;
   background: var(--color-primary);
-  border-radius: var(--radius-sm);
   transition: width 0.3s ease;
 }
 
@@ -371,7 +403,7 @@ body {
   }
 }
 
-/* === App Menu Bar === */
+/* === App Menu Bar — NeXTSTEP dark shelf === */
 .app-menubar {
   position: fixed;
   top: 0;
@@ -381,29 +413,31 @@ body {
   z-index: 99999;
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 0 var(--space-sm);
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  gap: 1px;
+  padding: 0 var(--space-xs);
+  background: var(--color-titlebar);
+  border-bottom: 2px solid;
+  border-bottom-color: #1a1a1a;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
   font-family: var(--font-family);
   font-size: var(--font-size-sm);
   user-select: none;
+  color: var(--color-text-inverse);
 }
 
 .app-menubar__brand {
   font-weight: 700;
   font-size: var(--font-size-base);
   margin-right: var(--space-sm);
-  color: var(--color-primary);
+  color: var(--color-text-inverse);
   white-space: nowrap;
 }
 
 .app-menubar__btn {
-  padding: var(--space-xs) 10px;
+  padding: 2px 10px;
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--color-text);
+  color: var(--color-text-inverse);
   font-family: var(--font-family);
   font-size: var(--font-size-sm);
   cursor: pointer;
@@ -412,11 +446,16 @@ body {
   align-items: center;
   gap: var(--space-xs);
   line-height: 1;
+  transition: background var(--transition-fast);
 }
 
 .app-menubar__btn:hover {
-  background: var(--color-surface-alt);
-  border-color: var(--color-border-light);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.app-menubar__btn:active {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .app-menubar__btn:focus-visible {
@@ -425,7 +464,7 @@ body {
 }
 
 .app-menubar__btn[disabled] {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: default;
 }
 
@@ -436,28 +475,33 @@ body {
 
 .app-menubar__sep {
   width: 1px;
-  height: 18px;
-  background: var(--color-border-light);
+  height: 16px;
+  background: rgba(255, 255, 255, 0.15);
   margin: 0 2px;
 }
 
-/* Window / Export All submenus */
+/* === Submenus — NeXTSTEP raised panel === */
+@keyframes submenu-appear {
+  from { opacity: 0; }
+}
+
 .app-menubar__submenu {
   position: fixed;
   top: var(--menubar-height);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-md);
+  border: 2px solid;
+  border-color: var(--color-border-light) var(--color-border-dark) var(--color-border-dark) var(--color-border-light);
+  box-shadow: var(--shadow-lg);
   z-index: 100000;
   min-width: 180px;
-  padding: var(--space-xs) 0;
+  padding: 2px;
+  animation: submenu-appear 0.1s ease;
 }
 
 .app-menubar__submenu-item {
   display: block;
   width: 100%;
-  padding: var(--space-xs) var(--space-md);
+  padding: 3px var(--space-sm);
   border: none;
   background: none;
   color: var(--color-text);
@@ -469,7 +513,8 @@ body {
 }
 
 .app-menubar__submenu-item:hover {
-  background: var(--color-surface-alt);
+  background: var(--color-titlebar);
+  color: var(--color-text-inverse);
 }
 
 .app-menubar__submenu-item:focus-visible {
@@ -482,13 +527,15 @@ body {
   float: right;
   margin-left: var(--space-md);
   font-size: 0.65em;
-  opacity: 0.5;
+  opacity: 0.6;
 }
 
 .app-menubar__submenu-divider {
-  height: 1px;
-  background: var(--color-border-light);
-  margin: var(--space-xs) 0;
+  height: 2px;
+  border-top: 1px solid var(--color-border-dark);
+  border-bottom: 1px solid var(--color-border-light);
+  margin: 2px 0;
+  background: none;
 }
 
 /* About / Help dialogs */
@@ -498,6 +545,7 @@ body {
   line-height: 1.6;
   overflow-y: auto;
   height: 100%;
+  background: var(--color-surface);
 }
 
 .dialog-content h2 {
@@ -526,6 +574,203 @@ body {
 .dialog-content li {
   margin-bottom: var(--space-xs);
   font-size: var(--font-size-sm);
+}
+
+/* === WinBox Chrome — NeXTSTEP window chrome === */
+@keyframes window-appear {
+  from { opacity: 0; }
+}
+
+.winbox.white {
+  background: var(--color-surface) !important;
+  box-shadow: var(--shadow-lg);
+  border: 2px solid;
+  border-color: var(--color-border-light) var(--color-border-dark) var(--color-border-dark) var(--color-border-light);
+  animation: window-appear 0.15s ease;
+  transition: width 0.3s cubic-bezier(0.3, 1, 0.3, 1),
+              height 0.3s cubic-bezier(0.3, 1, 0.3, 1),
+              left 0.3s cubic-bezier(0.3, 1, 0.3, 1),
+              top 0.3s cubic-bezier(0.3, 1, 0.3, 1);
+}
+
+.winbox.white:not(.focus) {
+  box-shadow: var(--shadow-sm);
+}
+
+body.wb-lock .winbox {
+  animation: none;
+}
+
+/* Title bar — dark charcoal */
+.winbox.white .wb-header {
+  background: var(--color-titlebar);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.3);
+}
+
+.winbox.white:not(.focus) .wb-header {
+  background: var(--color-titlebar-unfocused);
+}
+
+.winbox.white .wb-title {
+  font-family: var(--font-family);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-inverse) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.winbox.white:not(.focus) .wb-title {
+  color: rgba(255, 255, 255, 0.6) !important;
+  text-shadow: none;
+}
+
+/* Window body */
+.winbox.white .wb-body {
+  background: var(--color-surface);
+}
+
+/* Window controls — NeXTSTEP square buttons */
+.winbox.white .wb-control {
+  filter: none !important;
+  display: flex;
+  align-items: center;
+  padding: 0 6px 0 0;
+  gap: 2px;
+}
+
+.winbox.white .wb-control * {
+  width: 16px;
+  height: 16px;
+  border-radius: 0;
+  border: 1px solid;
+  border-color: rgba(255,255,255,0.3) rgba(0,0,0,0.3) rgba(0,0,0,0.3) rgba(255,255,255,0.3);
+  background-color: var(--color-titlebar);
+  background-size: 9px 9px !important;
+  background-position: center !important;
+  opacity: 1;
+  transition: background-color var(--transition-fast);
+}
+
+/* Keep the default WinBox SVG icons — they're white, visible on dark titlebar */
+.winbox.white .wb-min {
+  background-size: 10px auto !important;
+  background-position: center calc(50% + 3px) !important;
+}
+
+.winbox.white .wb-max {
+  background-size: 11px auto !important;
+}
+
+.winbox.white .wb-close {
+  background-size: 10px auto !important;
+  background-position: center !important;
+}
+
+.winbox.white .wb-full {
+  background-size: 10px auto !important;
+}
+
+/* Control hover: lighten */
+.winbox.white .wb-control *:hover {
+  background-color: #555;
+  border-color: rgba(255,255,255,0.4) rgba(0,0,0,0.4) rgba(0,0,0,0.4) rgba(255,255,255,0.4);
+}
+
+/* Close hover: red tint */
+.winbox.white .wb-close:hover {
+  background-color: #8b2020;
+}
+
+/* Active: sunken bevel */
+.winbox.white .wb-control *:active {
+  border-color: rgba(0,0,0,0.3) rgba(255,255,255,0.3) rgba(255,255,255,0.3) rgba(0,0,0,0.3);
+  background-color: #222;
+}
+
+/* Unfocused: dim controls */
+.winbox.white:not(.focus) .wb-control * {
+  opacity: 0.5;
+}
+
+/* Minimized windows — NeXTSTEP miniature style */
+.winbox.white.min {
+  max-width: 140px !important;
+  min-height: 48px !important;
+  height: 48px !important;
+  border: 2px solid;
+  border-color: var(--color-border-light) var(--color-border-dark) var(--color-border-dark) var(--color-border-light);
+  box-shadow: var(--shadow-md);
+}
+
+.winbox.white.min .wb-header {
+  height: 100% !important;
+  background: var(--color-titlebar);
+  box-shadow: var(--bevel-raised);
+}
+
+.winbox.white.min .wb-title {
+  font-size: 11px;
+  line-height: 48px;
+  padding: 0 4px 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.winbox.white.min .wb-control {
+  padding: 0 4px 0 0;
+}
+
+.winbox.white.min .wb-control * {
+  width: 14px;
+  height: 14px;
+}
+
+/* Resize handles */
+.winbox.white .wb-n,
+.winbox.white .wb-s,
+.winbox.white .wb-e,
+.winbox.white .wb-w,
+.winbox.white .wb-nw,
+.winbox.white .wb-ne,
+.winbox.white .wb-sw,
+.winbox.white .wb-se {
+  background: transparent;
+}
+
+/* === Finding Cards === */
+.finding-card {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  border: 2px solid;
+  border-color: var(--color-border-light) var(--color-border-dark) var(--color-border-dark) var(--color-border-light);
+  cursor: pointer;
+  color: var(--color-text);
+  transition: background var(--transition-fast);
+}
+
+.finding-card:hover {
+  background: #d8d8d8;
+}
+
+.finding-card:active {
+  border-color: var(--color-border-dark) var(--color-border-light) var(--color-border-light) var(--color-border-dark);
+}
+
+.finding-card--selected {
+  background: var(--color-titlebar);
+  color: var(--color-text-inverse);
+  border-color: var(--color-border-dark) var(--color-border-light) var(--color-border-light) var(--color-border-dark);
+}
+
+.finding-card__summary {
+  color: var(--color-text-secondary);
+}
+.finding-card--selected .finding-card__summary,
+.finding-card--selected strong {
+  color: var(--color-text-inverse);
+}
+.finding-card--selected .status-badge {
+  box-shadow: none;
 }
 
 /* === Utility === */

@@ -116,37 +116,14 @@ export function renderFindingsPanel(el, data, bus) {
         'align-items: flex-start',
         'gap: var(--space-sm)',
         'width: 100%',
-        'padding: var(--space-sm) var(--space-md)',
-        'background: var(--color-surface)',
-        'border: 1px solid var(--color-border-light)',
-        'border-radius: var(--radius-md)',
-        'cursor: pointer',
         'text-align: left',
         'font: inherit',
-        'color: var(--color-text)',
-        'transition: border-color 0.15s, box-shadow 0.15s',
       ].join('; ');
 
-      card.addEventListener('mouseenter', () => {
-        card.style.borderColor = 'var(--color-primary)';
-      });
-      card.addEventListener('mouseleave', () => {
-        if (card !== selectedCard) {
-          card.style.borderColor = 'var(--color-border-light)';
-        }
-      });
-
       card.addEventListener('click', () => {
-        // Clear previous selection
-        if (selectedCard) {
-          selectedCard.style.borderColor = 'var(--color-border-light)';
-          selectedCard.style.boxShadow = 'none';
-        }
-        // Highlight current
-        card.style.borderColor = 'var(--color-primary)';
-        card.style.boxShadow = 'inset 3px 0 0 var(--color-primary)';
+        if (selectedCard) selectedCard.classList.remove('finding-card--selected');
+        card.classList.add('finding-card--selected');
         selectedCard = card;
-
         bus.emit('selectFinding', { findingId: finding.id });
       });
 
@@ -166,7 +143,8 @@ export function renderFindingsPanel(el, data, bus) {
 
       const summary = document.createElement('span');
       summary.textContent = finding.summary;
-      summary.style.cssText = 'display: block; font-size: var(--font-size-sm); color: var(--color-text-secondary); line-height: 1.4; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;';
+      summary.className = 'finding-card__summary';
+      summary.style.cssText = 'display: block; font-size: var(--font-size-sm); line-height: 1.4; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;';
 
       content.appendChild(title);
       content.appendChild(summary);
