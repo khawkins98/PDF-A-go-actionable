@@ -692,11 +692,11 @@ export function initAppShell(container, worker) {
       checks and 3 manual review items.</p>
       <h3>Built With</h3>
       <ul>
-        <li><strong>pdf-lib</strong> -- PDF object access</li>
-        <li><strong>fflate</strong> -- stream decompression</li>
-        <li><strong>WinBox</strong> -- window management</li>
+        <li><a href="https://github.com/Hopding/pdf-lib" target="_blank" rel="noopener noreferrer"><strong>pdf-lib</strong></a> -- PDF object access (MIT)</li>
+        <li><a href="https://github.com/101arrowz/fflate" target="_blank" rel="noopener noreferrer"><strong>fflate</strong></a> -- stream decompression (MIT)</li>
+        <li><a href="https://github.com/nicholasdnelson/winbox" target="_blank" rel="noopener noreferrer"><strong>WinBox</strong></a> -- window management (MIT)</li>
       </ul>
-      <p>Licensed under MIT.</p>
+      <p>Source: <a href="https://github.com/khawkins98/PDF-A-go-actionable" target="_blank" rel="noopener noreferrer">github.com/khawkins98/PDF-A-go-actionable</a> (MIT)</p>
     `;
 
     aboutWin = new WinBox({
@@ -804,9 +804,32 @@ export function initAppShell(container, worker) {
     uploadWrapper.appendChild(createUploadZone(handleFiles));
     content.appendChild(uploadWrapper);
 
+    // Try a sample section
+    const sampleSection = document.createElement('div');
+    sampleSection.className = 'welcome__samples';
+    sampleSection.innerHTML = '<p>Or try a sample:</p>';
+
+    const sampleBtns = document.createElement('div');
+    sampleBtns.className = 'welcome__sample-btns';
+
+    for (const [file, label] of [
+      ['sample-accessible.pdf', 'Accessible PDF'],
+      ['sample-issues.pdf', 'PDF with issues'],
+    ]) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'welcome__sample-btn';
+      btn.textContent = label;
+      btn.addEventListener('click', () => loadSample(file));
+      sampleBtns.appendChild(btn);
+    }
+
+    sampleSection.appendChild(sampleBtns);
+    content.appendChild(sampleSection);
+
     const version = document.createElement('p');
     version.className = 'welcome__version';
-    version.textContent = 'v1.0.0';
+    version.textContent = `v1.0.0 \u00B7 ${typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : 'dev'}`;
     content.appendChild(version);
 
     const classes = ['white', 'no-full', 'no-max', 'no-min', 'no-resize'];
@@ -869,6 +892,21 @@ export function initAppShell(container, worker) {
         { type: 'audit', buffer, fileName: file.name, sessionId },
         [buffer]
       );
+    }
+  }
+
+  // === Sample loading ===
+
+  async function loadSample(fileName) {
+    try {
+      const base = import.meta.env?.BASE_URL || '/';
+      const resp = await fetch(`${base}samples/${fileName}`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      const file = new File([blob], fileName, { type: 'application/pdf' });
+      handleFiles([file]);
+    } catch (err) {
+      showWelcome(`Failed to load sample: ${err.message}`);
     }
   }
 

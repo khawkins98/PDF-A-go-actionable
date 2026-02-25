@@ -13,6 +13,13 @@ export default defineConfig({
   },
   build: {
     target: 'es2020',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'pdf-lib': ['pdf-lib'],
+        },
+      },
+    },
   },
   worker: {
     format: 'es',

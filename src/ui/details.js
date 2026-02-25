@@ -263,6 +263,7 @@ function wcagRefToSlug(ref) {
     '2.4.4': 'link-purpose-in-context',
     '2.4.5': 'multiple-ways',
     '3.1.1': 'language-of-page',
+    '3.1.2': 'language-of-parts',
   };
   return slugMap[ref] || ref;
 }

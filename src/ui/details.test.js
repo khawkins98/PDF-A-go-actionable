@@ -112,6 +112,32 @@ describe('renderDetailsPanel', () => {
     expect(el.textContent).toContain('PDF/UA-1 clause 7.4.2');
   });
 
+  it('should map all known WCAG refs to correct understanding-doc slugs', () => {
+    const knownRefs = {
+      '1.1.1': 'non-text-content',
+      '1.3.1': 'info-and-relationships',
+      '1.3.2': 'meaningful-sequence',
+      '2.4.2': 'page-titled',
+      '2.4.3': 'focus-order',
+      '2.4.4': 'link-purpose-in-context',
+      '2.4.5': 'multiple-ways',
+      '3.1.1': 'language-of-page',
+      '3.1.2': 'language-of-parts',
+    };
+
+    for (const [ref, slug] of Object.entries(knownRefs)) {
+      const el = document.createElement('div');
+      const data = {
+        findings: [makeFinding({ id: 'f1', wcagRef: ref, pdfuaRef: null })],
+      };
+      renderDetailsPanel(el, data, bus);
+      bus.emit('selectFinding', { findingId: 'f1' });
+
+      const link = el.querySelector('a[href*="WCAG21"]');
+      expect(link.href, `wcagRef "${ref}" should map to slug "${slug}"`).toContain(slug);
+    }
+  });
+
   it('should render details array as definition list', () => {
     const el = document.createElement('div');
     const data = {

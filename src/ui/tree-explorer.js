@@ -18,10 +18,15 @@
  * @param {object} data - Audit result data
  * @param {object[]} data.findings - Array of Finding objects
  */
+/** Counter for generating unique IDs across multiple panel instances. */
+let treeFilterIdCounter = 0;
+
 export function renderTreeExplorer(el, data) {
   const { findings } = data;
 
   el.innerHTML = '';
+
+  const filterId = `tree-filter-input-${++treeFilterIdCounter}`;
 
   // Heading
   const heading = document.createElement('h2');
@@ -35,12 +40,12 @@ export function renderTreeExplorer(el, data) {
 
   const filterLabel = document.createElement('label');
   filterLabel.textContent = 'Filter elements:';
-  filterLabel.htmlFor = 'tree-filter-input';
+  filterLabel.htmlFor = filterId;
   filterLabel.style.cssText = 'display: block; font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--space-xs);';
 
   const filterInput = document.createElement('input');
   filterInput.type = 'search';
-  filterInput.id = 'tree-filter-input';
+  filterInput.id = filterId;
   filterInput.placeholder = 'Search element types, alt text...';
   filterInput.setAttribute('aria-label', 'Filter structure tree elements');
   filterInput.style.cssText = [

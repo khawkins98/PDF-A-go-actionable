@@ -241,6 +241,43 @@ body {
   font-weight: 700;
 }
 
+.welcome__samples {
+  margin-top: var(--space-md);
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.welcome__samples p {
+  margin-bottom: var(--space-xs);
+}
+
+.welcome__sample-btns {
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: center;
+}
+
+.welcome__sample-btn {
+  padding: var(--space-xs) var(--space-md);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.welcome__sample-btn:hover {
+  background: var(--color-border-light);
+}
+
+.welcome__sample-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .welcome__version {
   margin-top: var(--space-md);
   font-size: var(--font-size-sm);
