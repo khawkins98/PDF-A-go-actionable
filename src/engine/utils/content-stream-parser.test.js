@@ -328,4 +328,70 @@ describe('extractUsedCharCodes', () => {
     expect(result).toBeInstanceOf(Map);
     expect(result.size).toBe(0);
   });
+
+  it('should handle marked content operators (BMC/BDC/EMC) without crashing', async () => {
+    const doc = await PDFDocument.create();
+    const page = doc.addPage();
+
+    const { fontRef } = createFont(doc, 'Helvetica');
+    setPageResources(doc, page, { F1: fontRef });
+
+    // Content stream with marked content wrapping text
+    const streamRef = makeContentStream(doc, '/P BMC /F1 12 Tf (Tagged) Tj EMC');
+    page.node.set(PDFName.of('Contents'), streamRef);
+
+    const saved = await doc.save();
+    const reloaded = await PDFDocument.load(saved, { updateMetadata: false });
+
+    const result = extractUsedCharCodes(reloaded);
+    expect(result.size).toBe(1);
+
+    const [, entry] = [...result.entries()][0];
+    expect(entry.charCodes.length).toBe(1);
+    // "Tagged" = [84, 97, 103, 103, 101, 100]
+    expect(entry.charCodes[0][0]).toBe(84); // T
+  });
+
+  it('should handle BDC with inline dict containing MCID without crashing', async () => {
+    const doc = await PDFDocument.create();
+    const page = doc.addPage();
+
+    const { fontRef } = createFont(doc, 'Helvetica');
+    setPageResources(doc, page, { F1: fontRef });
+
+    // BDC with property dict << /MCID 0 >> ... EMC
+    const streamRef = makeContentStream(doc, '/P << /MCID 0 >> BDC /F1 12 Tf (Content) Tj EMC');
+    page.node.set(PDFName.of('Contents'), streamRef);
+
+    const saved = await doc.save();
+    const reloaded = await PDFDocument.load(saved, { updateMetadata: false });
+
+    const result = extractUsedCharCodes(reloaded);
+    expect(result.size).toBe(1);
+
+    const [, entry] = [...result.entries()][0];
+    expect(entry.charCodes.length).toBe(1);
+    // "Content" starts with C = 67
+    expect(entry.charCodes[0][0]).toBe(67);
+  });
+
+  it('should not crash on inline images (BI operator)', async () => {
+    const doc = await PDFDocument.create();
+    const page = doc.addPage();
+
+    const { fontRef } = createFont(doc, 'Helvetica');
+    setPageResources(doc, page, { F1: fontRef });
+
+    // Content stream with BI (inline image start) followed by text
+    // The BI handler clears the stack; the remaining tokens are parsed as normal
+    const streamRef = makeContentStream(doc, '/F1 12 Tf BI /W 1 /H 1 /CS /G /BPC 8 ID x EI (After) Tj');
+    page.node.set(PDFName.of('Contents'), streamRef);
+
+    const saved = await doc.save();
+    const reloaded = await PDFDocument.load(saved, { updateMetadata: false });
+
+    // Should not throw
+    const result = extractUsedCharCodes(reloaded);
+    expect(result).toBeInstanceOf(Map);
+  });
 });

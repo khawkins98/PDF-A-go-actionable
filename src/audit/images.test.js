@@ -130,6 +130,17 @@ describe('checkImages', () => {
     expect(['fail', 'warning']).toContain(altFinding.status);
   });
 
+  it('should warn on very short alt text (1-2 characters)', async () => {
+    const bytes = await createPdfWithFigureAlts([{ alt: 'x' }]);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkImages(ctx.pdfDoc, ctx);
+
+    const altFinding = findings.find(f => f.id === 'image-alt-text');
+    expect(altFinding).toBeDefined();
+    expect(altFinding.status).toBe('warning');
+    expect(altFinding.details.some(d => d.label === 'Very short alt text')).toBe(true);
+  });
+
   it('should detect custom figure type via RoleMap (e.g., "Image" → "Figure")', async () => {
     const doc = await PDFDocument.create();
     doc.addPage();

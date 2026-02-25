@@ -390,6 +390,34 @@ describe('checkFonts', () => {
     expect(notEmbeddedDetails).toHaveLength(0);
   });
 
+  it('should count symbol/decorative fonts without ToUnicode as missing', async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage();
+
+    // Symbol-style font without ToUnicode (common for icon fonts, wingdings, etc.)
+    const fontDict = doc.context.obj({
+      Type: 'Font',
+      Subtype: PDFName.of('Type1'),
+      BaseFont: PDFName.of('ZapfDingbats'),
+      Encoding: PDFName.of('ZapfDingbatsEncoding'),
+    });
+    doc.context.register(fontDict);
+
+    const saved = await doc.save();
+    const ctx = await buildTestContext(saved);
+    const findings = checkFonts(ctx.pdfDoc, ctx);
+
+    const tounicode = findings.find(f => f.id === 'font-tounicode');
+    expect(tounicode).toBeDefined();
+    expect(tounicode.status).toBe('warning');
+    expect(tounicode.summary).toContain('missing ToUnicode');
+
+    // Should appear in details
+    const dingbatsDetail = tounicode.details.find(d => d.label === 'ZapfDingbats');
+    expect(dingbatsDetail).toBeDefined();
+    expect(dingbatsDetail.value).toBe('Missing ToUnicode');
+  });
+
   it('should report correct counts in embedding summary for mixed fonts', async () => {
     const doc = await PDFDocument.create();
     doc.addPage();

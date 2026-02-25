@@ -184,4 +184,112 @@ describe('checkLists', () => {
     expect(listFinding).toBeDefined();
     expect(listFinding.status).toBe('fail');
   });
+
+  it('should pass when list has nested L within LBody', async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage();
+    const markInfo = doc.context.obj({ Marked: true });
+    doc.catalog.set(PDFName.of('MarkInfo'), markInfo);
+    const structTreeRoot = doc.context.obj({ Type: 'StructTreeRoot' });
+    const strRef = doc.context.register(structTreeRoot);
+    doc.catalog.set(PDFName.of('StructTreeRoot'), strRef);
+    const docElem = doc.context.obj({ Type: 'StructElem', S: PDFName.of('Document'), P: strRef });
+    const docElemRef = doc.context.register(docElem);
+    // Outer list
+    const outerList = doc.context.obj({ Type: 'StructElem', S: PDFName.of('L'), P: docElemRef });
+    const outerListRef = doc.context.register(outerList);
+    const li = doc.context.obj({ Type: 'StructElem', S: PDFName.of('LI'), P: outerListRef });
+    const liRef = doc.context.register(li);
+    const lbl = doc.context.obj({ Type: 'StructElem', S: PDFName.of('Lbl'), P: liRef });
+    const lblRef = doc.context.register(lbl);
+    const lbody = doc.context.obj({ Type: 'StructElem', S: PDFName.of('LBody'), P: liRef });
+    const lbodyRef = doc.context.register(lbody);
+    // Nested list inside LBody
+    const innerList = doc.context.obj({ Type: 'StructElem', S: PDFName.of('L'), P: lbodyRef });
+    const innerListRef = doc.context.register(innerList);
+    const innerLi = doc.context.obj({ Type: 'StructElem', S: PDFName.of('LI'), P: innerListRef });
+    const innerLiRef = doc.context.register(innerLi);
+    const innerLbl = doc.context.obj({ Type: 'StructElem', S: PDFName.of('Lbl'), P: innerLiRef });
+    const innerLblRef = doc.context.register(innerLbl);
+    const innerLbody = doc.context.obj({ Type: 'StructElem', S: PDFName.of('LBody'), P: innerLiRef });
+    const innerLbodyRef = doc.context.register(innerLbody);
+    innerLi.set(PDFName.of('K'), doc.context.obj([innerLblRef, innerLbodyRef]));
+    innerList.set(PDFName.of('K'), doc.context.obj([innerLiRef]));
+    lbody.set(PDFName.of('K'), doc.context.obj([innerListRef]));
+    li.set(PDFName.of('K'), doc.context.obj([lblRef, lbodyRef]));
+    outerList.set(PDFName.of('K'), doc.context.obj([liRef]));
+    docElem.set(PDFName.of('K'), doc.context.obj([outerListRef]));
+    structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+    const saved = await doc.save();
+    const ctx = await buildTestContext(saved);
+    const findings = checkLists(ctx.pdfDoc, ctx);
+    // Both outer and inner lists should pass (nested L within LBody is valid)
+    const f = findings.find(f => f.id === 'list-structure');
+    expect(f).toBeDefined();
+    // The outer list passes. The inner list is a separate L found by flat scan.
+    expect(f.status).toBe('pass');
+  });
+
+  it('should fail with unexpected child type inside L (e.g., Div instead of LI)', async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage();
+    const markInfo = doc.context.obj({ Marked: true });
+    doc.catalog.set(PDFName.of('MarkInfo'), markInfo);
+    const structTreeRoot = doc.context.obj({ Type: 'StructTreeRoot' });
+    const strRef = doc.context.register(structTreeRoot);
+    doc.catalog.set(PDFName.of('StructTreeRoot'), strRef);
+    const docElem = doc.context.obj({ Type: 'StructElem', S: PDFName.of('Document'), P: strRef });
+    const docElemRef = doc.context.register(docElem);
+    const listElem = doc.context.obj({ Type: 'StructElem', S: PDFName.of('L'), P: docElemRef });
+    const listElemRef = doc.context.register(listElem);
+    // Add a Div directly as child of L (invalid — should be LI)
+    const divElem = doc.context.obj({ Type: 'StructElem', S: PDFName.of('Div'), P: listElemRef });
+    const divElemRef = doc.context.register(divElem);
+    listElem.set(PDFName.of('K'), doc.context.obj([divElemRef]));
+    docElem.set(PDFName.of('K'), doc.context.obj([listElemRef]));
+    structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+    const saved = await doc.save();
+    const ctx = await buildTestContext(saved);
+    const findings = checkLists(ctx.pdfDoc, ctx);
+    const f = findings.find(f => f.id === 'list-structure');
+    expect(f).toBeDefined();
+    expect(f.status).toBe('fail');
+    expect(f.details.some(d => d.value && d.value.includes('Unexpected child type'))).toBe(true);
+  });
+
+  it('should report which LIs are broken in mixed valid/invalid list', async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage();
+    const markInfo = doc.context.obj({ Marked: true });
+    doc.catalog.set(PDFName.of('MarkInfo'), markInfo);
+    const structTreeRoot = doc.context.obj({ Type: 'StructTreeRoot' });
+    const strRef = doc.context.register(structTreeRoot);
+    doc.catalog.set(PDFName.of('StructTreeRoot'), strRef);
+    const docElem = doc.context.obj({ Type: 'StructElem', S: PDFName.of('Document'), P: strRef });
+    const docElemRef = doc.context.register(docElem);
+    const listElem = doc.context.obj({ Type: 'StructElem', S: PDFName.of('L'), P: docElemRef });
+    const listElemRef = doc.context.register(listElem);
+    // LI 1: valid (Lbl + LBody)
+    const li1 = doc.context.obj({ Type: 'StructElem', S: PDFName.of('LI'), P: listElemRef });
+    const li1Ref = doc.context.register(li1);
+    const lbl1 = doc.context.obj({ Type: 'StructElem', S: PDFName.of('Lbl'), P: li1Ref });
+    const lbody1 = doc.context.obj({ Type: 'StructElem', S: PDFName.of('LBody'), P: li1Ref });
+    li1.set(PDFName.of('K'), doc.context.obj([doc.context.register(lbl1), doc.context.register(lbody1)]));
+    // LI 2: invalid (missing Lbl)
+    const li2 = doc.context.obj({ Type: 'StructElem', S: PDFName.of('LI'), P: listElemRef });
+    const li2Ref = doc.context.register(li2);
+    const lbody2 = doc.context.obj({ Type: 'StructElem', S: PDFName.of('LBody'), P: li2Ref });
+    li2.set(PDFName.of('K'), doc.context.obj([doc.context.register(lbody2)]));
+    listElem.set(PDFName.of('K'), doc.context.obj([li1Ref, li2Ref]));
+    docElem.set(PDFName.of('K'), doc.context.obj([listElemRef]));
+    structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+    const saved = await doc.save();
+    const ctx = await buildTestContext(saved);
+    const findings = checkLists(ctx.pdfDoc, ctx);
+    const f = findings.find(f => f.id === 'list-structure');
+    expect(f).toBeDefined();
+    expect(f.status).toBe('fail');
+    // Should identify which LI is broken (LI 2)
+    expect(f.details.some(d => d.label && d.label.includes('LI 2') && d.value && d.value.includes('Missing Lbl'))).toBe(true);
+  });
 });

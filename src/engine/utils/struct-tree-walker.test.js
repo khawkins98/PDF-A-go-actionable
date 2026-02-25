@@ -280,4 +280,48 @@ describe('walkStructureTree', () => {
     expect(elements.length).toBeGreaterThan(0);
     expect(elements.length).toBeLessThanOrEqual(10);
   });
+
+  it('should silently skip integer MCID children in /K arrays', async () => {
+    // Build a PDF with a StructElem whose /K contains both a ref and an integer (MCID)
+    const doc = await PDFDocument.create();
+    doc.addPage();
+    const markInfo = doc.context.obj({ Marked: true });
+    doc.catalog.set(PDFName.of('MarkInfo'), markInfo);
+
+    const structTreeRoot = doc.context.obj({ Type: 'StructTreeRoot' });
+    const strRef = doc.context.register(structTreeRoot);
+    doc.catalog.set(PDFName.of('StructTreeRoot'), strRef);
+
+    const docElem = doc.context.obj({
+      Type: 'StructElem',
+      S: PDFName.of('Document'),
+      P: strRef,
+    });
+    const docElemRef = doc.context.register(docElem);
+
+    const pElem = doc.context.obj({
+      Type: 'StructElem',
+      S: PDFName.of('P'),
+      P: docElemRef,
+    });
+    const pElemRef = doc.context.register(pElem);
+
+    // /K array with a StructElem ref AND an integer (MCID = 0)
+    // The integer should be silently skipped
+    docElem.set(PDFName.of('K'), doc.context.obj([pElemRef, 0]));
+    structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+
+    const saved = await doc.save();
+    const reloaded = await PDFDocument.load(saved, { updateMetadata: false });
+    const roleMap = getRoleMapFromDoc(reloaded);
+    const elements = walkStructureTree(reloaded, roleMap);
+
+    // Should have Document + P (the integer MCID is silently skipped)
+    expect(elements.length).toBe(2);
+    expect(elements[0].resolvedType).toBe('Document');
+    expect(elements[1].resolvedType).toBe('P');
+    // The mcid field on StructElems stays null (walker doesn't extract MCIDs from integers)
+    expect(elements[0].mcid).toBeNull();
+    expect(elements[1].mcid).toBeNull();
+  });
 });

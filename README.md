@@ -75,7 +75,7 @@ All files are fetched via `cdn.jsdelivr.net` at runtime (CORS-friendly, no local
 
 ## Status
 
-In development. See [PRD.md](PRD.md) for the full product requirements.
+V1.0 feature-complete. See [PRD.md](PRD.md) for the full product requirements.
 
 ## Acknowledgments
 

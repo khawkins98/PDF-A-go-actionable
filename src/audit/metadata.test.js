@@ -163,6 +163,24 @@ describe('checkMetadata', () => {
     expect(ids).toContain('bookmarks');
   });
 
+  it('should warn when DisplayDocTitle is explicitly set to false', async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage();
+
+    // Explicitly set DisplayDocTitle to false in ViewerPreferences
+    const viewerPrefs = doc.context.obj({ DisplayDocTitle: false });
+    doc.catalog.set(PDFName.of('ViewerPreferences'), viewerPrefs);
+
+    const saved = await doc.save();
+    const ctx = await buildTestContext(saved);
+    const findings = checkMetadata(ctx.pdfDoc, ctx);
+
+    const displayFinding = findings.find(f => f.id === 'display-doc-title');
+    expect(displayFinding).toBeDefined();
+    expect(displayFinding.status).toBe('warning');
+    expect(displayFinding.summary).toContain('not set');
+  });
+
   // --- Encryption edge case tests ---
   // These tests inject an Encrypt dict into trailerInfo after loading
   // to simulate encrypted PDFs without actual encryption processing.

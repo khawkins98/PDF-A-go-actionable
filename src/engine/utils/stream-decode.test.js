@@ -58,6 +58,16 @@ describe('decodeStream', () => {
     const result = decodeStream(hexBytes, ['ASCIIHexDecode', 'FlateDecode']);
     expect(new TextDecoder().decode(result)).toBe('Chained filter test');
   });
+
+  it('should handle zlib-wrapped data via fallback chain', () => {
+    // zlibSync produces zlib-wrapped data (with header).
+    // inflateSync in fflate handles this, but if it fails,
+    // decompressSync is the fallback. Verify the chain works.
+    const original = new TextEncoder().encode('Fallback chain test data 12345');
+    const compressed = zlibSync(original);
+    const result = decodeStream(compressed, ['FlateDecode']);
+    expect(new TextDecoder().decode(result)).toBe('Fallback chain test data 12345');
+  });
 });
 
 describe('getFilterNames', () => {
