@@ -20,8 +20,11 @@ import { renderFontTable } from './font-table.js';
 import { renderImageTable } from './image-table.js';
 import { initExport } from './export.js';
 
+import { getTestPdfsByCategory, fetchTestPdf, testPdfs } from './dev-test-pdfs.js';
+
 import 'winbox/dist/css/winbox.min.css';
 import 'winbox/dist/css/themes/white.min.css';
+
 
 /** Menu bar height in pixels — must match --menubar-height in CSS. */
 const MENUBAR_HEIGHT = 36;
@@ -171,6 +174,13 @@ export function initAppShell(container, worker) {
     // Help
     nav.appendChild(menuBtn('Help', 'help'));
 
+    // Advanced
+    nav.appendChild(menuSep());
+    const advancedBtn = menuBtn('Advanced', 'advanced-menu');
+    advancedBtn.setAttribute('aria-haspopup', 'true');
+    advancedBtn.setAttribute('aria-expanded', 'false');
+    nav.appendChild(advancedBtn);
+
     // Click delegation
     nav.addEventListener('click', (e) => {
       const btn = e.target.closest('.app-menubar__btn');
@@ -192,6 +202,9 @@ export function initAppShell(container, worker) {
           break;
         case 'help':
           showHelp();
+          break;
+        case 'advanced-menu':
+          toggleSubmenu(btn, buildAdvancedSubmenu());
           break;
       }
     });
@@ -247,6 +260,7 @@ export function initAppShell(container, worker) {
   }
 
   function closeSubmenu() {
+    closeNestedSubmenu();
     if (activeSubmenu) {
       activeSubmenu.remove();
       activeSubmenu = null;
@@ -348,6 +362,215 @@ export function initAppShell(container, worker) {
     }
 
     return menu;
+  }
+
+  function buildAdvancedSubmenu() {
+    const menu = document.createElement('div');
+    menu.className = 'app-menubar__submenu';
+    menu.setAttribute('role', 'menu');
+
+    // Testing Tools — opens a nested submenu
+    const testingItem = document.createElement('button');
+    testingItem.type = 'button';
+    testingItem.className = 'app-menubar__submenu-item app-menubar__submenu-item--parent';
+    testingItem.setAttribute('role', 'menuitem');
+    testingItem.setAttribute('aria-haspopup', 'true');
+    testingItem.textContent = 'Testing Tools';
+    testingItem.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleNestedSubmenu(testingItem, buildTestingToolsSubmenu());
+    });
+    menu.appendChild(testingItem);
+
+    return menu;
+  }
+
+  // --- Nested submenu support ---
+
+  let activeNestedSubmenu = null;
+  let activeNestedBtn = null;
+
+  function toggleNestedSubmenu(btn, submenuEl) {
+    if (activeNestedBtn === btn) {
+      closeNestedSubmenu();
+      return;
+    }
+    closeNestedSubmenu();
+
+    const rect = btn.getBoundingClientRect();
+    submenuEl.style.left = `${rect.right + 2}px`;
+    submenuEl.style.top = `${rect.top}px`;
+
+    document.body.appendChild(submenuEl);
+    activeNestedSubmenu = submenuEl;
+    activeNestedBtn = btn;
+
+    // Reposition if it overflows the right edge
+    requestAnimationFrame(() => {
+      const menuRect = submenuEl.getBoundingClientRect();
+      if (menuRect.right > window.innerWidth) {
+        submenuEl.style.left = `${rect.left - menuRect.width - 2}px`;
+      }
+      // Reposition if it overflows the bottom edge
+      if (menuRect.bottom > window.innerHeight) {
+        submenuEl.style.top = `${Math.max(MENUBAR_HEIGHT, window.innerHeight - menuRect.height)}px`;
+      }
+    });
+  }
+
+  function closeNestedSubmenu() {
+    if (activeNestedSubmenu) {
+      activeNestedSubmenu.remove();
+      activeNestedSubmenu = null;
+      activeNestedBtn = null;
+    }
+  }
+
+  function buildTestingToolsSubmenu() {
+    const menu = document.createElement('div');
+    menu.className = 'app-menubar__submenu';
+    menu.setAttribute('role', 'menu');
+    menu.style.maxHeight = '70vh';
+    menu.style.overflowY = 'auto';
+
+    // Load All
+    menu.appendChild(submenuItem(`Load All (${testPdfs.length})`, () => {
+      closeSubmenu();
+      handleTestPdfs(testPdfs);
+    }));
+
+    // Load All Pass
+    const passPdfs = testPdfs.filter(p => p.expect === 'pass');
+    menu.appendChild(submenuItem(`Load All Pass (${passPdfs.length})`, () => {
+      closeSubmenu();
+      handleTestPdfs(passPdfs);
+    }));
+
+    // Load All Fail
+    const failPdfs = testPdfs.filter(p => p.expect === 'fail');
+    menu.appendChild(submenuItem(`Load All Fail (${failPdfs.length})`, () => {
+      closeSubmenu();
+      handleTestPdfs(failPdfs);
+    }));
+
+    // Individual test PDFs grouped by category
+    const groups = getTestPdfsByCategory();
+    for (const [category, pdfs] of groups) {
+      const divider = document.createElement('div');
+      divider.className = 'app-menubar__submenu-divider';
+      divider.setAttribute('role', 'separator');
+      menu.appendChild(divider);
+
+      const heading = document.createElement('div');
+      heading.className = 'app-menubar__submenu-heading';
+      heading.textContent = category;
+      heading.style.cssText = 'padding: 4px 12px; font-size: 11px; font-weight: 600; color: var(--color-text-muted, #888); text-transform: uppercase; letter-spacing: 0.05em;';
+      menu.appendChild(heading);
+
+      for (const pdf of pdfs) {
+        const badge = pdf.expect === 'pass' ? '\u2705'
+          : pdf.expect === 'fail' ? '\u274C'
+          : pdf.expect === 'error' ? '\u26A0\uFE0F'
+          : '\u2753';
+        menu.appendChild(submenuItem(`${badge}  ${pdf.name}`, () => {
+          closeSubmenu();
+          handleTestPdfs([pdf]);
+        }));
+      }
+    }
+
+    // Bookmarks / Outlines — placeholder (no test PDFs available yet)
+    const bookmarkDivider = document.createElement('div');
+    bookmarkDivider.className = 'app-menubar__submenu-divider';
+    bookmarkDivider.setAttribute('role', 'separator');
+    menu.appendChild(bookmarkDivider);
+
+    const bookmarkHeading = document.createElement('div');
+    bookmarkHeading.className = 'app-menubar__submenu-heading';
+    bookmarkHeading.textContent = 'Bookmarks / Outlines';
+    bookmarkHeading.style.cssText = 'padding: 4px 12px; font-size: 11px; font-weight: 600; color: var(--color-text-muted, #888); text-transform: uppercase; letter-spacing: 0.05em;';
+    menu.appendChild(bookmarkHeading);
+
+    menu.appendChild(submenuItem('\u{1F6A7}  Coming soon\u2026', () => {
+      closeSubmenu();
+      showBookmarkPlaceholder();
+    }));
+
+    return menu;
+  }
+
+  function showBookmarkPlaceholder() {
+    const content = document.createElement('div');
+    content.className = 'dialog-content';
+    content.innerHTML = `
+      <h2>Bookmarks / Outlines</h2>
+      <p>No CORS-friendly test PDFs for bookmarks and outlines
+      have been identified in the public test corpus repositories yet.</p>
+      <p>The audit engine checks for <code>/Outlines</code> in the document catalog
+      and reports whether bookmarks are present. This is a simple metadata check
+      that doesn't require complex pass/fail test fixtures.</p>
+      <h3>Want to help?</h3>
+      <p>If you know of a public, CORS-accessible PDF with bookmarks (or without),
+      please open an issue on GitHub. We'll add it to the test suite.</p>
+    `;
+
+    new WinBox({
+      title: 'Test PDFs — Bookmarks',
+      mount: content,
+      root,
+      x: 'center',
+      y: 'center',
+      width: 440,
+      height: 340,
+      top: MENUBAR_HEIGHT,
+      class: ['wb-theme-white', 'no-full', 'no-max', 'no-min'],
+      border: 1,
+    });
+  }
+
+  async function handleTestPdfs(pdfs) {
+    closeWelcome();
+
+    for (const pdf of pdfs) {
+      const sessionId = generateSessionId();
+      const bus = createSessionBus();
+
+      // Derive a display name from the PDF URL
+      const urlPath = new URL(pdf.url).pathname;
+      const fileName = decodeURIComponent(urlPath.split('/').pop());
+
+      const session = {
+        id: sessionId,
+        fileName,
+        bus,
+        file: null,
+        progressWin: null,
+        progressFill: null,
+        progressPhase: null,
+        progressStatus: null,
+        mainWin: null,
+        floatingPanels: new Map(),
+        data: null,
+        cascadeIndex: sessionCount++,
+      };
+
+      sessions.set(sessionId, session);
+      showProgressDialog(session);
+
+      // Fetch in the background, then post to worker
+      fetchTestPdf(pdf)
+        .then(async (file) => {
+          session.file = file;
+          const buffer = await file.arrayBuffer();
+          worker.postMessage(
+            { type: 'audit', buffer, fileName: file.name, sessionId },
+            [buffer]
+          );
+        })
+        .catch((err) => {
+          onError(session, { message: `Fetch failed: ${err.message}` });
+        });
+    }
   }
 
   function submenuItem(label, onClick) {
@@ -594,6 +817,7 @@ export function initAppShell(container, worker) {
         id: sessionId,
         fileName: file.name,
         bus,
+        file,
         progressWin: null,
         progressFill: null,
         progressPhase: null,
@@ -696,6 +920,16 @@ export function initAppShell(container, worker) {
       btn.textContent = panel.title;
       toolbar.appendChild(btn);
     }
+
+    toolbar.appendChild(toolbarSep());
+
+    // View PDF button
+    const viewPdfBtn = document.createElement('button');
+    viewPdfBtn.type = 'button';
+    viewPdfBtn.className = 'toolbar-btn';
+    viewPdfBtn.dataset.action = 'view-pdf';
+    viewPdfBtn.textContent = 'View PDF';
+    toolbar.appendChild(viewPdfBtn);
 
     toolbar.appendChild(toolbarSep());
 
@@ -825,6 +1059,11 @@ export function initAppShell(container, worker) {
   // === Toolbar actions (per-session) ===
 
   function handleToolbarAction(session, action) {
+    if (action === 'view-pdf') {
+      viewPdf(session);
+      return;
+    }
+
     if (!session.data) return;
 
     const exportFns = initExport(session.data);
@@ -839,6 +1078,15 @@ export function initAppShell(container, worker) {
         exportFns.exportPDF();
         break;
     }
+  }
+
+  function viewPdf(session) {
+    if (!session.file) return;
+    // Reuse existing blob URL or create a new one
+    if (!session.pdfBlobUrl) {
+      session.pdfBlobUrl = URL.createObjectURL(session.file);
+    }
+    window.open(session.pdfBlobUrl, '_blank');
   }
 
   // === Error handling ===
@@ -868,6 +1116,11 @@ export function initAppShell(container, worker) {
     }
     session.floatingPanels.clear();
     session.bus.destroy();
+    if (session.pdfBlobUrl) {
+      URL.revokeObjectURL(session.pdfBlobUrl);
+      session.pdfBlobUrl = null;
+    }
+    session.file = null;
     session.mainWin = null;
     sessions.delete(session.id);
   }

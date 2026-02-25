@@ -477,6 +477,14 @@ body {
   outline-offset: -2px;
 }
 
+.app-menubar__submenu-item--parent::after {
+  content: '\25B6';
+  float: right;
+  margin-left: var(--space-md);
+  font-size: 0.65em;
+  opacity: 0.5;
+}
+
 .app-menubar__submenu-divider {
   height: 1px;
   background: var(--color-border-light);

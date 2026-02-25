@@ -226,6 +226,33 @@ The `parseConformanceFromXmp()` and `parseTitleFromXmp()` utilities handle both 
 
 ---
 
+## CORS-Friendly Test PDF Sources
+
+For browser-based tools that need to `fetch()` test PDFs at runtime, CORS headers are the key constraint. Most PDF hosting sites (pdfa.org, w3.org, government domains) do **not** send `Access-Control-Allow-Origin` headers.
+
+### Domains That Work
+
+- **`cdn.jsdelivr.net`** — wraps any GitHub repo. Returns `Access-Control-Allow-Origin: *`, proper `content-type: application/pdf`, and long cache (604800s). URL format: `https://cdn.jsdelivr.net/gh/{owner}/{repo}@{branch}/{path}`. Spaces in paths must be URL-encoded as `%20`. Preferred over raw GitHub for content-type and caching.
+- **`raw.githubusercontent.com`** — serves raw files from GitHub repos. Returns `Access-Control-Allow-Origin: *` but `content-type: application/octet-stream` (not `application/pdf`). Short cache (300s). Works for `fetch()` + `arrayBuffer()` since content-type doesn't matter for binary reads.
+- **GitHub release assets** (`github.com/{owner}/{repo}/releases/download/...`) — CORS-friendly but requires knowing exact release tag and asset name.
+
+### Domains That Don't Work
+
+- `pdfa.org` — PDF Association's download pages, no CORS
+- `w3.org` — WCAG technique examples, no CORS
+- `drive.google.com` — Google Drive sharing, no CORS
+- Most `.gov` domains — no CORS
+
+### Best Test PDF Repositories
+
+1. **[veraPDF/veraPDF-corpus](https://github.com/veraPDF/veraPDF-corpus)** (staging branch, `PDF_UA-1/` directory) — the most comprehensive source. Hundreds of atomic test files, each targeting a specific PDF/UA-1 clause. Files follow `{section}-t{test}-{pass|fail}-{variant}.pdf` naming. Covers: tagging, language, title, DisplayDocTitle, role mapping, graphics alt text, headings, tables, fonts (embedding, ToUnicode, encoding), security, annotations, tab order.
+
+2. **[pdf-association/techniques-for-accessible-pdf](https://github.com/pdf-association/techniques-for-accessible-pdf)** — files created for the PDF Association's documentation. Each demonstrates a specific accessible or inaccessible technique. Covers real-world scenarios: headings, lists, content tagging, reading order, role mapping. Files named `UA1_Tpdf-{code}.pdf`.
+
+3. **[openpreserve/format-corpus](https://github.com/openpreserve/format-corpus)** (CC0 licensed, `pdfCabinetOfHorrors/` directory) — edge case files: encryption variants (no text access, no copy, open password), font embedding variants (none, all, subset), PDF/A conformance, corruption, JavaScript, external links, file attachments.
+
+---
+
 ## Testing Patterns
 
 ### PDF Number Value Extraction
