@@ -1015,6 +1015,18 @@ body {
   white-space: nowrap;
 }
 
+.pdf-preview__zoom-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  min-width: 32px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pdf-preview__zoom-fit {
+  font-size: var(--font-size-sm);
+}
+
 .pdf-preview__reading-order-btn {
   font-size: var(--font-size-sm);
 }

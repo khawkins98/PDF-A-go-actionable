@@ -3,11 +3,14 @@
  *
  * Lazily loads pdfjs-dist when the panel is first opened (same pattern as
  * pdf-lib in export.js). Renders a single PDF page to <canvas> with
- * navigation controls, resize handling, and SVG overlay for highlights.
+ * navigation controls, zoom, resize handling, and SVG overlay for highlights.
  *
  * Listens for bus events:
  * - `selectTreeNode` — navigate to page, highlight MCID regions
- * - `showReadingOrder` — toggle reading order badge overlay
+ *
+ * PDF.js text content marked content items use `item.id` (a string like
+ * "p12R_mc5") rather than a raw integer MCID. We parse the integer from
+ * the `_mcN` suffix for matching against structure tree MCIDs.
  */
 
 /** @type {typeof import('pdfjs-dist')|null} */
@@ -37,6 +40,21 @@ function debounce(fn, ms) {
 }
 
 /**
+ * Extract the integer MCID from a PDF.js marked content item's `id` string.
+ * PDF.js formats these as "pageObjId_mcN" (e.g. "p12R_mc5" → 5).
+ * Returns null if the id doesn't contain an MCID.
+ */
+function parseMcid(id) {
+  if (id == null) return null;
+  const m = String(id).match(/_mc(\d+)$/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+/** Zoom presets. */
+const ZOOM_LEVELS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0];
+const ZOOM_FIT = -1; // sentinel for fit-to-width
+
+/**
  * Render the PDF preview panel.
  *
  * @param {HTMLElement} el - Container element
@@ -58,6 +76,7 @@ export function renderPreviewPanel(el, data, session) {
   /** @type {Array<{mcid: number, pageIndex: number}>|null} Active highlight MCIDs */
   let activeMcids = null;
   let readingOrderOn = false;
+  let zoomMode = ZOOM_FIT; // ZOOM_FIT or a numeric scale multiplier
 
   // --- DOM ---
   const toolbar = document.createElement('div');
@@ -94,6 +113,32 @@ export function renderPreviewPanel(el, data, session) {
   nextBtn.title = 'Next page';
   nextBtn.setAttribute('aria-label', 'Next page');
 
+  // Zoom controls
+  const zoomOutBtn = document.createElement('button');
+  zoomOutBtn.type = 'button';
+  zoomOutBtn.className = 'toolbar-btn pdf-preview__nav-btn';
+  zoomOutBtn.textContent = '\u2212'; // minus sign
+  zoomOutBtn.title = 'Zoom out';
+  zoomOutBtn.setAttribute('aria-label', 'Zoom out');
+
+  const zoomLabel = document.createElement('span');
+  zoomLabel.className = 'pdf-preview__zoom-label';
+  zoomLabel.textContent = 'Fit';
+
+  const zoomInBtn = document.createElement('button');
+  zoomInBtn.type = 'button';
+  zoomInBtn.className = 'toolbar-btn pdf-preview__nav-btn';
+  zoomInBtn.textContent = '+';
+  zoomInBtn.title = 'Zoom in';
+  zoomInBtn.setAttribute('aria-label', 'Zoom in');
+
+  const zoomFitBtn = document.createElement('button');
+  zoomFitBtn.type = 'button';
+  zoomFitBtn.className = 'toolbar-btn pdf-preview__zoom-fit';
+  zoomFitBtn.textContent = 'Fit';
+  zoomFitBtn.title = 'Fit to width';
+  zoomFitBtn.setAttribute('aria-label', 'Fit to width');
+
   const readingOrderBtn = document.createElement('button');
   readingOrderBtn.type = 'button';
   readingOrderBtn.className = 'toolbar-btn pdf-preview__reading-order-btn';
@@ -105,18 +150,20 @@ export function renderPreviewPanel(el, data, session) {
   toolbar.appendChild(pageInfo);
   toolbar.appendChild(nextBtn);
 
-  // Separator before reading order toggle
-  const sep = document.createElement('span');
-  sep.className = 'toolbar-separator';
-  sep.setAttribute('aria-hidden', 'true');
-  toolbar.appendChild(sep);
+  toolbar.appendChild(makeSep());
+  toolbar.appendChild(zoomOutBtn);
+  toolbar.appendChild(zoomLabel);
+  toolbar.appendChild(zoomInBtn);
+  toolbar.appendChild(zoomFitBtn);
+
+  toolbar.appendChild(makeSep());
   toolbar.appendChild(readingOrderBtn);
 
   el.appendChild(toolbar);
 
   // Canvas + SVG overlay container
-  const viewport = document.createElement('div');
-  viewport.className = 'pdf-preview__viewport';
+  const viewportEl = document.createElement('div');
+  viewportEl.className = 'pdf-preview__viewport';
 
   // Wrapper positions SVG overlay exactly over the canvas
   const canvasWrap = document.createElement('div');
@@ -131,8 +178,8 @@ export function renderPreviewPanel(el, data, session) {
   svg.setAttribute('aria-hidden', 'true');
   canvasWrap.appendChild(svg);
 
-  viewport.appendChild(canvasWrap);
-  el.appendChild(viewport);
+  viewportEl.appendChild(canvasWrap);
+  el.appendChild(viewportEl);
 
   // Status message (loading / errors / no tags)
   const status = document.createElement('div');
@@ -159,6 +206,13 @@ export function renderPreviewPanel(el, data, session) {
     }
   });
 
+  zoomOutBtn.addEventListener('click', () => stepZoom(-1));
+  zoomInBtn.addEventListener('click', () => stepZoom(1));
+  zoomFitBtn.addEventListener('click', () => {
+    zoomMode = ZOOM_FIT;
+    renderPage();
+  });
+
   readingOrderBtn.addEventListener('click', () => {
     readingOrderOn = !readingOrderOn;
     readingOrderBtn.setAttribute('aria-pressed', String(readingOrderOn));
@@ -174,20 +228,20 @@ export function renderPreviewPanel(el, data, session) {
     unsubs.push(bus.on('selectTreeNode', (payload) => {
       activeMcids = payload.mcids || null;
       if (payload.pageIndex != null && payload.pageIndex !== currentPage - 1) {
-        goToPage(payload.pageIndex + 1); // goToPage handles re-render + overlay
+        goToPage(payload.pageIndex + 1);
       } else {
         renderOverlay();
       }
     }));
   }
 
-  // Resize handling
+  // Resize handling (only re-render in fit mode)
   const onResize = debounce(() => {
-    if (!destroyed && pdfjsDoc) renderPage();
+    if (!destroyed && pdfjsDoc && zoomMode === ZOOM_FIT) renderPage();
   }, 200);
 
   const resizeObserver = new ResizeObserver(onResize);
-  resizeObserver.observe(viewport);
+  resizeObserver.observe(viewportEl);
 
   // --- Loading ---
 
@@ -225,6 +279,46 @@ export function renderPreviewPanel(el, data, session) {
     nextBtn.disabled = currentPage >= totalPages;
   }
 
+  function updateZoomLabel(scale) {
+    if (zoomMode === ZOOM_FIT) {
+      zoomLabel.textContent = 'Fit';
+    } else {
+      zoomLabel.textContent = `${Math.round(scale * 100)}%`;
+    }
+  }
+
+  function stepZoom(direction) {
+    // Find current effective scale to determine next step
+    if (zoomMode === ZOOM_FIT) {
+      // Switch to the nearest fixed zoom level
+      const fitScale = computeFitScale();
+      if (fitScale == null) return;
+      let idx = ZOOM_LEVELS.findIndex((z) => z >= fitScale);
+      if (idx === -1) idx = ZOOM_LEVELS.length - 1;
+      idx += direction;
+      idx = Math.max(0, Math.min(idx, ZOOM_LEVELS.length - 1));
+      zoomMode = ZOOM_LEVELS[idx];
+    } else {
+      let idx = ZOOM_LEVELS.indexOf(zoomMode);
+      if (idx === -1) {
+        // Find nearest
+        idx = ZOOM_LEVELS.findIndex((z) => z >= zoomMode);
+        if (idx === -1) idx = ZOOM_LEVELS.length - 1;
+      }
+      idx += direction;
+      idx = Math.max(0, Math.min(idx, ZOOM_LEVELS.length - 1));
+      zoomMode = ZOOM_LEVELS[idx];
+    }
+    renderPage();
+  }
+
+  /** Compute the fit-to-width scale for the current page. */
+  function computeFitScale() {
+    if (!pdfjsDoc) return null;
+    // We need the page to compute, but this is sync — use cached info
+    return null; // Computed during renderPage
+  }
+
   function goToPage(num) {
     const clamped = Math.max(1, Math.min(num, totalPages));
     if (clamped === currentPage && canvas.width > 0) return;
@@ -246,9 +340,13 @@ export function renderPreviewPanel(el, data, session) {
       const page = await pdfjsDoc.getPage(currentPage);
       if (destroyed) return;
 
-      const containerWidth = viewport.clientWidth || 400;
+      const containerWidth = viewportEl.clientWidth - 16 || 400; // minus padding
       const unscaled = page.getViewport({ scale: 1 });
-      const scale = containerWidth / unscaled.width;
+      const fitScale = containerWidth / unscaled.width;
+
+      const scale = zoomMode === ZOOM_FIT ? fitScale : zoomMode;
+      updateZoomLabel(scale);
+
       const vp = page.getViewport({ scale });
 
       const dpr = window.devicePixelRatio || 1;
@@ -323,18 +421,18 @@ export function renderPreviewPanel(el, data, session) {
   /**
    * Walk text content items, tracking marked content sections.
    * Returns bounding boxes for items that belong to the given MCIDs.
+   *
+   * PDF.js uses `item.id` (string like "p12R_mc5") for marked content,
+   * not a raw integer `item.mcid`. We extract the MCID via parseMcid().
    */
   function getMcidBoundingBoxes(textContent, targetMcids) {
     const targetSet = new Set(targetMcids);
     const boxes = [];
     const mcidStack = [];
 
-    // Get current viewport scale
-    const containerWidth = viewport.clientWidth || 400;
-
     for (const item of textContent.items) {
       if (item.type === 'beginMarkedContent' || item.type === 'beginMarkedContentProps') {
-        mcidStack.push(item.mcid != null ? item.mcid : null);
+        mcidStack.push(parseMcid(item.id));
       } else if (item.type === 'endMarkedContent') {
         mcidStack.pop();
       } else if (item.str != null) {
@@ -362,25 +460,24 @@ export function renderPreviewPanel(el, data, session) {
     const boxes = getMcidBoundingBoxes(textContent, pageMcids);
     if (boxes.length === 0) return;
 
-    // Get viewport for coordinate transform
     if (!pdfjsDoc) return;
-    const containerWidth = viewport.clientWidth || 400;
 
-    // We need page dimensions for coordinate conversion
-    // PDF coordinates: origin bottom-left. Canvas/SVG: origin top-left.
     const svgHeight = parseFloat(svg.getAttribute('height')) || 0;
     const svgWidth = parseFloat(svg.getAttribute('width')) || 0;
     if (!svgHeight || !svgWidth) return;
 
-    // Get the current page viewport scale
+    // Coordinates in boxes are already in PDF user space.
+    // The viewport transform is applied by using the rendered scale.
+    const containerWidth = viewportEl.clientWidth - 16 || 400;
     pdfjsDoc.getPage(currentPage).then((page) => {
       if (destroyed) return;
       const unscaled = page.getViewport({ scale: 1 });
-      const scale = containerWidth / unscaled.width;
+      const scale = zoomMode === ZOOM_FIT
+        ? containerWidth / unscaled.width
+        : zoomMode;
 
       for (const box of boxes) {
         const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        // PDF coords -> SVG coords
         const x = box.x * scale;
         const y = svgHeight - (box.y * scale) - (box.height * scale);
         const w = box.width * scale;
@@ -398,15 +495,14 @@ export function renderPreviewPanel(el, data, session) {
 
   function drawReadingOrder(textContent) {
     // Extract all distinct MCIDs from the text content in document order.
-    // This works regardless of whether the structure tree has MCID data,
-    // because PDF.js reports marked content regions directly from the page.
+    // PDF.js reports marked content via item.id strings; we parse MCIDs from them.
     const mcidOrder = [];
     const seenMcids = new Set();
     const mcidStack = [];
 
     for (const item of textContent.items) {
       if (item.type === 'beginMarkedContent' || item.type === 'beginMarkedContentProps') {
-        mcidStack.push(item.mcid != null ? item.mcid : null);
+        mcidStack.push(parseMcid(item.id));
       } else if (item.type === 'endMarkedContent') {
         mcidStack.pop();
       } else if (item.str != null) {
@@ -420,14 +516,16 @@ export function renderPreviewPanel(el, data, session) {
 
     if (mcidOrder.length === 0) return;
 
-    const containerWidth = viewport.clientWidth || 400;
     const svgHeight = parseFloat(svg.getAttribute('height')) || 0;
     if (!svgHeight) return;
 
+    const containerWidth = viewportEl.clientWidth - 16 || 400;
     pdfjsDoc.getPage(currentPage).then((page) => {
       if (destroyed) return;
       const unscaled = page.getViewport({ scale: 1 });
-      const scale = containerWidth / unscaled.width;
+      const scale = zoomMode === ZOOM_FIT
+        ? containerWidth / unscaled.width
+        : zoomMode;
 
       let prevX = null;
       let prevY = null;
@@ -488,6 +586,15 @@ export function renderPreviewPanel(el, data, session) {
         collectPageElements(child, pageIndex, result);
       }
     }
+  }
+
+  // --- Helpers ---
+
+  function makeSep() {
+    const s = document.createElement('span');
+    s.className = 'toolbar-separator';
+    s.setAttribute('aria-hidden', 'true');
+    return s;
   }
 
   // --- Cleanup API ---

@@ -97,9 +97,9 @@ describe('renderPreviewPanel', () => {
     expect(toolbar).not.toBeNull();
     expect(toolbar.getAttribute('aria-label')).toBe('PDF page navigation');
 
-    // Prev/next buttons
+    // Prev/next + zoom in/out buttons
     const navBtns = el.querySelectorAll('.pdf-preview__nav-btn');
-    expect(navBtns.length).toBe(2);
+    expect(navBtns.length).toBe(4); // prev, next, zoom out, zoom in
     expect(navBtns[0].getAttribute('aria-label')).toBe('Previous page');
     expect(navBtns[1].getAttribute('aria-label')).toBe('Next page');
   });
@@ -189,6 +189,25 @@ describe('renderPreviewPanel', () => {
     renderPreviewPanel(el, makeData(), session);
 
     expect(el.className).toBe('pdf-preview');
+  });
+
+  it('should render zoom controls', () => {
+    const session = makeSession();
+    renderPreviewPanel(el, makeData(), session);
+
+    const zoomLabel = el.querySelector('.pdf-preview__zoom-label');
+    expect(zoomLabel).not.toBeNull();
+    expect(zoomLabel.textContent).toBe('Fit');
+
+    const zoomFit = el.querySelector('.pdf-preview__zoom-fit');
+    expect(zoomFit).not.toBeNull();
+    expect(zoomFit.getAttribute('aria-label')).toBe('Fit to width');
+
+    // Zoom in/out are nav-btn class
+    const zoomOut = el.querySelector('[aria-label="Zoom out"]');
+    const zoomIn = el.querySelector('[aria-label="Zoom in"]');
+    expect(zoomOut).not.toBeNull();
+    expect(zoomIn).not.toBeNull();
   });
 
   it('should expose _destroyPreview on container', () => {
