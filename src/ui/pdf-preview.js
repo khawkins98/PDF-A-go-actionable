@@ -813,9 +813,6 @@ export function renderPreviewPanel(el, data, session) {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); emitFocus(); }
       });
 
-      const labelY = maxY + 2;
-      const labelWidth = Math.max(maxX - minX, 80);
-
       // Truncate alt text to first few words + arrow hint
       const MAX_ALT_CHARS = 30;
       const roleStr = node.role || node.type;
@@ -824,16 +821,33 @@ export function renderPreviewPanel(el, data, session) {
         : node.alt;
       const displayAlt = altStr + ' \u25B6';
 
-      // Estimate label width from text length (monospace ~6.5px/char, body ~7px/char)
+      // Estimate label dimensions
       const roleWidth = roleStr.length * 6.5 + 8;
       const altWidth = displayAlt.length * 7 + 8;
       const computedLabelWidth = Math.max(roleWidth, altWidth, 80);
+      const lineHeight = 14;
+      const totalLabelHeight = lineHeight * 2 + 8;
+
+      // Position label: below the image if room, above if not, centered over image if neither
+      const labelGap = 2;
+      let labelY;
+      if (maxY + labelGap + totalLabelHeight <= svgHeight) {
+        // Enough room below
+        labelY = maxY + labelGap;
+      } else if (minY - labelGap - totalLabelHeight >= 0) {
+        // Flip above
+        labelY = minY - labelGap - totalLabelHeight;
+      } else {
+        // Center over the image
+        labelY = minY + (maxY - minY - totalLabelHeight) / 2;
+      }
 
       // Background rect for label
       const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       bgRect.setAttribute('x', String(minX));
       bgRect.setAttribute('y', String(labelY));
       bgRect.setAttribute('width', String(computedLabelWidth));
+      bgRect.setAttribute('height', String(totalLabelHeight));
       bgRect.setAttribute('rx', '3');
       bgRect.setAttribute('class', 'pdf-preview__alt-label-bg');
       g.appendChild(bgRect);
@@ -841,6 +855,7 @@ export function renderPreviewPanel(el, data, session) {
       // Role tag
       const roleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       roleText.setAttribute('x', String(minX + 4));
+      roleText.setAttribute('y', String(labelY + lineHeight));
       roleText.setAttribute('class', 'pdf-preview__alt-label-role');
       roleText.textContent = roleStr;
       g.appendChild(roleText);
@@ -848,17 +863,10 @@ export function renderPreviewPanel(el, data, session) {
       // Alt text preview + click hint
       const altText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       altText.setAttribute('x', String(minX + 4));
+      altText.setAttribute('y', String(labelY + lineHeight * 2 + 2));
       altText.setAttribute('class', 'pdf-preview__alt-label-text');
       altText.textContent = displayAlt;
       g.appendChild(altText);
-
-      // Position text lines
-      const lineHeight = 14;
-      roleText.setAttribute('y', String(labelY + lineHeight));
-      altText.setAttribute('y', String(labelY + lineHeight * 2 + 2));
-
-      const totalLabelHeight = lineHeight * 2 + 8;
-      bgRect.setAttribute('height', String(totalLabelHeight));
 
       svg.appendChild(g);
     }
