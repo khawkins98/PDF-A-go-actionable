@@ -55,8 +55,14 @@
   --radius-lg: 8px;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 20px 48px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.1);
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Layout */
   --menubar-height: 36px;
@@ -129,26 +135,31 @@ body {
 .status-badge--pass {
   color: var(--color-pass);
   background: var(--color-pass-bg);
+  border: 1px solid rgba(43, 138, 62, 0.2);
 }
 
 .status-badge--fail {
   color: var(--color-fail);
   background: var(--color-fail-bg);
+  border: 1px solid rgba(201, 42, 42, 0.2);
 }
 
 .status-badge--warning {
   color: var(--color-warning);
   background: var(--color-warning-bg);
+  border: 1px solid rgba(230, 119, 0, 0.2);
 }
 
 .status-badge--manual {
   color: var(--color-manual);
   background: var(--color-manual-bg);
+  border: 1px solid rgba(24, 100, 171, 0.2);
 }
 
 .status-badge--not-applicable {
   color: var(--color-not-applicable);
   background: var(--color-surface-alt);
+  border: 1px solid rgba(134, 142, 150, 0.2);
 }
 
 /* === Welcome dialog === */
@@ -227,6 +238,7 @@ body {
 .drop-zone--active {
   border-color: var(--color-primary);
   background: var(--color-manual-bg);
+  box-shadow: 0 0 0 4px rgba(24, 100, 171, 0.1);
 }
 
 .drop-zone__title {
@@ -295,11 +307,16 @@ body {
   font-size: var(--font-size-sm);
   cursor: pointer;
   white-space: nowrap;
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
 }
 
 .toolbar-btn:hover {
   background: var(--color-surface-alt);
   border-color: var(--color-primary);
+}
+
+.toolbar-btn:active {
+  transform: scale(0.97);
 }
 
 .toolbar-separator {
@@ -333,7 +350,7 @@ body {
 .progress-bar {
   width: 100%;
   max-width: 400px;
-  height: 8px;
+  height: 6px;
   background: var(--color-surface-alt);
   border-radius: var(--radius-sm);
   overflow: hidden;
@@ -341,7 +358,7 @@ body {
 
 .progress-bar__fill {
   height: 100%;
-  background: var(--color-primary);
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-hover));
   border-radius: var(--radius-sm);
   transition: width 0.3s ease;
 }
@@ -383,11 +400,24 @@ body {
   align-items: center;
   gap: 2px;
   padding: 0 var(--space-sm);
-  background: var(--color-surface);
+  background: rgba(255, 255, 255, 0.85);
   border-bottom: 1px solid var(--color-border);
   font-family: var(--font-family);
   font-size: var(--font-size-sm);
   user-select: none;
+}
+
+@supports (backdrop-filter: blur(12px)) {
+  .app-menubar {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
+
+@supports not (backdrop-filter: blur(12px)) {
+  .app-menubar {
+    background: var(--color-surface);
+  }
 }
 
 .app-menubar__brand {
@@ -414,9 +444,17 @@ body {
   line-height: 1;
 }
 
+.app-menubar__btn {
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
 .app-menubar__btn:hover {
   background: var(--color-surface-alt);
   border-color: var(--color-border-light);
+}
+
+.app-menubar__btn:active {
+  transform: scale(0.97);
 }
 
 .app-menubar__btn:focus-visible {
@@ -442,22 +480,27 @@ body {
 }
 
 /* Window / Export All submenus */
+@keyframes submenu-appear {
+  from { opacity: 0; transform: translateY(-4px); }
+}
+
 .app-menubar__submenu {
   position: fixed;
   top: var(--menubar-height);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
   z-index: 100000;
   min-width: 180px;
-  padding: var(--space-xs) 0;
+  padding: var(--space-xs);
+  animation: submenu-appear 0.15s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 
 .app-menubar__submenu-item {
   display: block;
   width: 100%;
-  padding: var(--space-xs) var(--space-md);
+  padding: var(--space-xs) var(--space-sm);
   border: none;
   background: none;
   color: var(--color-text);
@@ -466,6 +509,7 @@ body {
   text-align: left;
   cursor: pointer;
   white-space: nowrap;
+  border-radius: var(--radius-sm);
 }
 
 .app-menubar__submenu-item:hover {
@@ -526,6 +570,79 @@ body {
 .dialog-content li {
   margin-bottom: var(--space-xs);
   font-size: var(--font-size-sm);
+}
+
+/* === WinBox Chrome Overrides === */
+@keyframes window-appear {
+  from { opacity: 0; transform: scale(0.96); }
+}
+
+.winbox.wb-theme-white {
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  animation: window-appear 0.25s cubic-bezier(0.2, 0.9, 0.3, 1);
+  transition: width 0.3s cubic-bezier(0.3, 1, 0.3, 1),
+              height 0.3s cubic-bezier(0.3, 1, 0.3, 1),
+              left 0.3s cubic-bezier(0.3, 1, 0.3, 1),
+              top 0.3s cubic-bezier(0.3, 1, 0.3, 1),
+              box-shadow var(--transition-normal);
+}
+
+.winbox.wb-theme-white:not(.focus) {
+  box-shadow: var(--shadow-md);
+}
+
+body.wb-lock .winbox {
+  animation: none;
+}
+
+.winbox.wb-theme-white .wb-header {
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.winbox.wb-theme-white .wb-title {
+  font-family: var(--font-family);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+
+.winbox.wb-theme-white .wb-control * {
+  opacity: 0.45;
+  border-radius: var(--radius-sm);
+  transition: opacity var(--transition-fast), background var(--transition-fast);
+}
+
+.winbox.wb-theme-white .wb-control *:hover {
+  opacity: 1;
+}
+
+.winbox.wb-theme-white .wb-close:hover {
+  background: rgba(201, 42, 42, 0.1);
+}
+
+/* === Finding Cards === */
+.finding-card {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--color-text);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+}
+
+.finding-card:hover {
+  border-color: var(--color-primary);
+  background: rgba(24, 100, 171, 0.02);
+}
+
+.finding-card:active {
+  background: rgba(24, 100, 171, 0.05);
+}
+
+.finding-card--selected {
+  border-color: var(--color-primary);
+  box-shadow: inset 3px 0 0 var(--color-primary);
 }
 
 /* === Utility === */
