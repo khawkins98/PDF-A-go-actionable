@@ -70,12 +70,12 @@ PDF content stream operator parsing --infrastructure for text/image extraction.
 
 ### `src/worker.js`
 Worker message protocol --bridges main thread and audit pipeline.
-- [ ] `type: 'audit'` message triggers `runAudit` with buffer
-- [ ] Progress callbacks post `type: 'progress'` with sessionId
-- [ ] Result message includes findings array and meta
-- [ ] Error message includes error string and sessionId
-- [ ] sessionId propagated on all outbound messages
-- [ ] Non-audit message types silently ignored
+- [x] `type: 'audit'` message triggers `runAudit` with buffer
+- [x] Progress callbacks post `type: 'progress'` with sessionId
+- [x] Result message includes findings array and meta
+- [x] Error message includes error string and sessionId
+- [x] sessionId propagated on all outbound messages
+- [x] Non-audit message types silently ignored
 
 ---
 
