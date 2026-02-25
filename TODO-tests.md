@@ -194,21 +194,13 @@ These are cases where the check logic itself needs to be tightened, with tests a
 These modules are copied from PDF-A-go-slim or not yet actively used.
 
 ### `src/engine/utils/unicode-mapper.js`
-- [ ] CID to Unicode mapping
-- [ ] ToUnicode CMap parsing
-- [ ] Identity-H encoding
+- [x] CID to Unicode mapping (parseCMapText, charCodesToUnicode Type0 path)
+- [x] ToUnicode CMap parsing (beginbfchar, beginbfrange, multi-char, surrogate pairs)
+- [x] Identity-H encoding (isIdentityHFont detection)
 
 ### `src/engine/utils/glyph-list.js`
 - [ ] Spot-check common glyph names resolve correctly
 - [ ] Missing glyph name returns undefined
-
-### `src/engine/utils/hash.js`
-- [ ] MD5 known-value test
-- [ ] SHA-256 known-value test
-
-### `src/engine/utils/pdf-traversal.js`
-- [ ] Full object tree traversal
-- [ ] Cycle handling
 
 ### `src/main.js`
 - [ ] Small-screen banner displays below 768px
