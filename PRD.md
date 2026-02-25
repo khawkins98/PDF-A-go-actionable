@@ -245,7 +245,7 @@ All WinBox windows are constrained below the menu bar height (28px) for drag and
 - **Dark menu bar** (28px height) matching title bars. White text, hover highlight. Submenus use NeXTSTEP-style white-on-dark hover inversion. | Done
 - **WinBox theme** --`white` class with extensive CSS overrides: dark title bars, square beveled window controls, hard drop shadows, focus/unfocus distinction via title bar color, partial off-screen dragging (`overflow: true`). Root container has no `overflow: hidden` so windows can extend beyond viewport edges. | Done
 - **Desktop-focused.** On small screens (< 768px), show a dismissible banner: "This tool is designed for larger screens." No mobile-specific layout --users aren't blocked, just informed. | Done
-- **Skip link** for keyboard navigation. Focus-visible outlines. ARIA labels on interactive regions. | Done
+- **Skip link** for keyboard navigation. Focus-visible outlines. ARIA labels on interactive regions. ARIA menubar with roving tabindex and arrow-key navigation. Focus management on dialog open/close. aria-live region for error announcements. Color contrast verified (4.5:1+ on all text). | Done
 
 ### Interaction Flow
 
@@ -285,7 +285,7 @@ All steps implemented. Done.
 | Zero false positives on well-formed tagged PDFs | Pending real-world testing |
 | Processes a 50-page tagged PDF in under 3 seconds | Pending performance profiling |
 | Works offline in practice (static assets, no server calls). Explicit service worker deferred to V1.1 | Done (static build, no server calls) |
-| Passes WCAG 2.1 AA itself (the accessibility checker must be accessible) | Partial (skip link, focus styles, ARIA labels, contrast ratios --needs axe-core audit) |
+| Passes WCAG 2.1 AA itself (the accessibility checker must be accessible) | Done (contrast ratios verified, ARIA menubar keyboard nav, roving tabindex, focus management on dialogs, aria-live error region). Full arrow-key menu nav and focus trapping remain for V1.1 |
 
 ---
 
@@ -333,7 +333,7 @@ All audit modules and core logic are developed using **strict TDD** --tests are 
 | Every audit check --pass and fail cases | Done (95 tests across 10 test files) |
 | Utility functions --`resolveRole()`, `buildRoleMap()`, cycle detection, `resolve()`, accessibility detection, struct-tree walker, stream decode | Done (59 tests across 5 test files) |
 | UI integration --panel creation contracts, render functions, event bus (including scoped session buses), export helpers | Done (137 tests across 12 test files) |
-| Worker protocol --message handling | Pending |
+| Worker protocol --message handling | Done (6 tests in `src/worker.test.js`) |
 
 #### UI Integration Tests
 
@@ -346,7 +346,7 @@ UI code must have test coverage. The WinBox panel creation, panel render functio
 | `src/ui/export.test.js` | `escapeCsvField` quoting/escaping, `buildFilename` generation, `initExport` API shape | 14 |
 | `src/ui/report.test.js` | `renderSummaryPanel` status counts, overall badge, metadata rendering, ARIA labels | 9 |
 | `src/ui/findings-list.test.js` | Category grouping, status-priority sorting, card rendering, scoped bus click dispatch, keyboard accessibility | 9 |
-| `src/ui/details.test.js` | Placeholder state, scoped bus finding rendering, late subscriber, content replacement, semantic sections | 10 |
+| `src/ui/details.test.js` | Placeholder state, scoped bus finding rendering, late subscriber, content replacement, semantic sections, WCAG slug mapping | 11 |
 | `src/ui/tree-explorer.test.js` | Structure tree summary rendering, element counts, heading hierarchy, empty/missing tree states | 11 |
 | `src/ui/font-table.test.js` | Font inventory table rendering, ToUnicode/embedding status, sorting, empty state | 14 |
 | `src/ui/image-table.test.js` | Image inventory table rendering, alt text status, sorting, empty state | 13 |

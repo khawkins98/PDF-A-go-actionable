@@ -205,6 +205,22 @@ Running our audit engine against the veraPDF PDF/UA-1 test corpus and PDF Associ
 - **DisplayDocTitle** --PDF/UA requires `/ViewerPreferences << /DisplayDocTitle true >>`. Report true/false/null (not configured).
 - **Marked status nuance** --distinguish "Marked explicitly false" from "no MarkInfo at all": `markedStatus: 'true' | 'false' | 'missing'`.
 
+### WCAG 2.1 AA Self-Audit (The Tool Must Be Accessible)
+
+An accessibility checker that isn't itself accessible is a credibility problem. Key findings from auditing our own UI:
+
+**Color contrast failures on the NeXTSTEP theme.** The slate gray palette makes contrast tricky. Specific values that failed 4.5:1 minimum:
+- `--color-text-muted: #666` on `--color-surface: #c8c8c8` --3.39:1. Fixed to `#505050` (4.73:1).
+- `--color-not-applicable: #6b6b6b` on `--color-surface-alt: #b4b4b4` --2.65:1. Fixed to `#444` (4.69:1).
+- `--color-warning: #b45309` on `--color-warning-bg: #fff3cd` --4.53:1 (borderline). Darkened to `#a24d09` (5.26:1) for safety margin.
+- Unfocused WinBox title text at `rgba(255,255,255,0.6)` on `#666` --3.24:1. Bumped to `0.85` opacity (4.70:1).
+
+**ARIA menubar requires arrow-key navigation.** Using `role="menubar"` and `role="menuitem"` without implementing the [ARIA menubar keyboard pattern](https://www.w3.org/WAI/ARIA/apg/patterns/menubar/) is misleading to screen reader users. The pattern requires: roving tabindex (only one item in tab order), Left/Right to move between items, Up/Down within submenus, Escape to close, Home/End for first/last.
+
+**Focus management on dialogs.** When a dialog opens, focus must move into it. When it closes, focus must return to the triggering element. Without this, keyboard users lose their place. Implementation: save `document.activeElement` before opening, set `tabindex="-1"` on content div, `.focus()` on open, restore on `onclose`.
+
+**Live regions for state transitions.** When the progress dialog closes and an error appears on the welcome screen, screen readers don't announce this. A persistent `aria-live="assertive"` region that receives error text fixes this.
+
 ---
 
 ## Tooling & Libraries
