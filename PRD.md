@@ -63,7 +63,7 @@ All 10 automated checks are implemented with tests (`src/audit/`). Each resolves
 | Form field labeling | `/AcroForm` fields with/without `/TU` tooltips | Done |
 | Link text quality | `/Link` StructElem text content; flag generic ("click here", "here", "read more", "learn more", "link", "this link", "more info", "download", "more"), bare URLs (http/https/ftp), and links with no text | Done |
 | Structure tree summary | Element count, types, max depth | Done |
-| Per-element language | `/Lang` on individual StructElems | **Pending** |
+| Per-element language | `/Lang` on individual StructElems | Done |
 
 #### Manual Review Required (flagged with guidance)
 
@@ -88,10 +88,9 @@ The audit produces a structured report with:
 
 ### Remaining V1.0 Work
 
-- **Per-element language check** --informational check for `/Lang` on individual StructElems (not yet implemented)
+- ~~**Per-element language check** --informational check for `/Lang` on individual StructElems~~ --Done (warning when no StructElems specify `/Lang`, pass with per-language breakdown)
 - ~~**Interactive structure tree** --full tree rendering with lazy expansion~~ --Done (ARIA tree view with expand/collapse, keyboard nav, search/filter, batch rendering)
-- **Layout persistence** --save/restore WinBox window positions in localStorage
-- **Sample PDFs** --bundled samples in `public/samples/` for "try it now"
+- ~~**Sample PDFs** --bundled samples in `public/samples/` for "try it now"~~ --Done (2 samples: `sample-accessible.pdf` + `sample-issues.pdf`; loaded from Samples menu in-app)
 - ~~**In-app About/Credits panel**~~ --Done (About dialog in menu bar)
 - **Reading order comparison** --automated structure-tree-order vs. page-position-order analysis (currently guidance-only)
 - ~~**Worker protocol tests** --test coverage for worker message handling~~ --Done (6 tests)
@@ -283,7 +282,7 @@ All steps implemented. Done.
 | Criterion | Status |
 |---|---|
 | Covers 10 of 13 checklist items with automated checks | Done (all 10 automated + 3 manual guidance) |
-| Zero false positives on well-formed tagged PDFs | Pending real-world testing |
+| Zero false positives on well-formed tagged PDFs | Done (12 real-world PDF audits from veraPDF corpus pass without false positives; 2 bundled sample PDFs verified) |
 | Processes a 50-page tagged PDF in under 3 seconds | Pending performance profiling |
 | Works offline in practice (static assets, no server calls). Explicit service worker deferred to V1.1 | Done (static build, no server calls) |
 | Passes WCAG 2.1 AA itself (the accessibility checker must be accessible) | Done (contrast ratios verified, ARIA menubar keyboard nav, roving tabindex, focus management on dialogs, aria-live error region). Full arrow-key menu nav and focus trapping remain for V1.1 |
@@ -306,7 +305,7 @@ When this project draws on code, patterns, or ideas from other projects, we cite
 | Location | Status |
 |---|---|
 | **README.md** --"Acknowledgments" section listing key inspirations and dependencies | Done |
-| **In-app** --an "About" panel or footer with credits and dependency licenses | Pending |
+| **In-app** --an "About" dialog in menu bar with version info, credits, and dependency licenses (pdf-lib, fflate, WinBox) | Done |
 | **Source code** --file-level provenance comments in modules copied from PDF-A-go-slim | Done |
 
 ### Upstream awareness
@@ -331,9 +330,9 @@ All audit modules and core logic are developed using **strict TDD** --tests are 
 
 | Area | Status |
 |---|---|
-| Every audit check --pass and fail cases | Done (95 tests across 10 test files) |
-| Utility functions --`resolveRole()`, `buildRoleMap()`, cycle detection, `resolve()`, accessibility detection, struct-tree walker, stream decode | Done (59 tests across 5 test files) |
-| UI integration --panel creation contracts, render functions, event bus (including scoped session buses), export helpers | Done (137 tests across 12 test files) |
+| Every audit check --pass and fail cases | Done (117 tests across 10 test files) |
+| Utility functions --`resolveRole()`, `buildRoleMap()`, cycle detection, `resolve()`, accessibility detection, struct-tree walker, serialize-tree, stream decode, content-stream-parser | Done (80 tests across 7 test files) |
+| UI integration --panel creation contracts, render functions, event bus (including scoped session buses), export helpers | Done (168 tests across 12 test files) |
 | Worker protocol --message handling | Done (6 tests in `src/worker.test.js`) |
 
 #### UI Integration Tests
@@ -360,7 +359,7 @@ Any code that interfaces with a third-party UI library or renders DOM has contra
 #### TDD Conventions
 
 - Test files live alongside source files: `src/audit/metadata.js` → `src/audit/metadata.test.js` | Done
-- Test PDF fixtures are built inline using pdf-lib factory functions (21 factories in `test/fixtures/create-test-pdfs.js`) | Done
+- Test PDF fixtures are built inline using pdf-lib factory functions (22 factories in `test/fixtures/create-test-pdfs.js`) | Done
 - Shared test helper: `test/helpers/context.js` with `buildTestContext()` matching runner.js logic | Done
 - UI tests use `// @vitest-environment happy-dom` directive for DOM access | Done
 - Each test file runnable in isolation: `npx vitest run src/audit/metadata.test.js` | Done
@@ -373,7 +372,7 @@ Any code that interfaces with a third-party UI library or renders DOM has contra
 
 ### Sample PDFs
 
-Bundled sample PDFs serve double duty: test fixtures for development, and a "try it now" feature in the app (users can select a sample PDF from a menu instead of dropping their own). **Pending** --`public/samples/` directory created but not yet populated.
+Bundled sample PDFs serve double duty: test fixtures for development, and a "try it now" feature in the app (users can select a sample PDF from a menu instead of dropping their own). Two sample PDFs bundled in `public/samples/`: `sample-accessible.pdf` (well-tagged, all checks pass) and `sample-issues.pdf` (missing tags/alt text, multiple failures). Additional samples from veraPDF corpus available via the Advanced menu at runtime.
 
 Sources (all CC BY 4.0 or public domain, compatible with this project's license (MIT) with required attribution):
 
@@ -399,5 +398,5 @@ Cherry-pick a small representative set covering the 10 automated checks. Store i
 8. **Dark mode:** Light only for V1.0. Theme CSS structured with CSS custom properties for easy dark mode addition later. Done.
 9. **Export:** V1.0 feature, not deferred. Export audit results as JSON, CSV, or a PDF summary report. Done.
 10. **Service worker:** Deferred. App works offline in practice (static assets, no server). Explicit service worker in V1.1.
-11. **Testing:** TDD with Vitest --437 tests across 33 test files covering audit checks, engine utilities (resolve, accessibility detection, struct-tree walker, serialize-tree, stream decode, RoleMap), UI integration (panel creation, render functions, interactive tree, scoped event buses, export helpers), and worker protocol. 21 pdf-lib fixture factories in `test/fixtures/`. Uses `happy-dom` for DOM-based UI tests. Sample PDFs for in-app "try it" feature pending.
+11. **Testing:** TDD with Vitest --437 tests across 33 test files covering audit checks, engine utilities (resolve, accessibility detection, struct-tree walker, serialize-tree, stream decode, content-stream-parser, RoleMap), UI integration (panel creation, render functions, interactive tree, scoped event buses, export helpers), and worker protocol. 22 pdf-lib fixture factories in `test/fixtures/`. Uses `happy-dom` for DOM-based UI tests. Two sample PDFs bundled in `public/samples/`.
 12. **Content stream robustness:** Architect the audit layer defensively --graceful fallbacks (warning findings, not crashes) if pdf-lib or stream parsing hits edge cases. Done --each audit module wraps in try/catch, runner catches per-module errors and returns warning findings.
