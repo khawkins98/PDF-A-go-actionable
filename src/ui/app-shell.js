@@ -18,6 +18,7 @@ import { renderDetailsPanel } from './details.js';
 import { renderTreeExplorer } from './tree-explorer.js';
 import { renderFontTable } from './font-table.js';
 import { renderImageTable } from './image-table.js';
+import { renderPreviewPanel } from './pdf-preview.js';
 import { initExport } from './export.js';
 
 import { getTestPdfsByCategory, fetchTestPdf, testPdfs } from './dev-test-pdfs.js';
@@ -34,6 +35,7 @@ const PANEL_RENDERERS = {
   structure: renderTreeExplorer,
   fonts: renderFontTable,
   images: renderImageTable,
+  preview: renderPreviewPanel,
 };
 
 /** Floating panel definitions (opened via toolbar). */
@@ -41,6 +43,7 @@ const FLOATING_PANELS = [
   { id: 'structure', title: 'Structure Tree' },
   { id: 'fonts', title: 'Font Inventory' },
   { id: 'images', title: 'Image Inventory' },
+  { id: 'preview', title: 'PDF Preview' },
 ];
 
 /** Cascade offset for stacking multiple results windows. */
@@ -49,21 +52,31 @@ const CASCADE_OFFSET = 30;
 /**
  * Create a floating panel's content element and render into it.
  *
- * Only used for floating tool panels (structure, fonts, images).
+ * Only used for floating tool panels (structure, fonts, images, preview).
+ * The preview panel additionally receives the session object for file access.
  *
- * @param {string} name - Panel identifier (structure | fonts | images)
+ * @param {string} name - Panel identifier (structure | fonts | images | preview)
  * @param {object} data - Audit result data
+ * @param {object} [session] - Session object (required for preview panel)
  * @returns {HTMLElement}
  */
-export function createPanelElement(name, data) {
+export function createPanelElement(name, data, session) {
   const el = document.createElement('div');
   el.style.overflow = 'auto';
-  el.style.padding = '16px';
+  el.style.padding = name === 'preview' ? '0' : '16px';
   el.style.fontFamily = 'var(--font-family)';
   el.style.height = '100%';
 
   const render = PANEL_RENDERERS[name];
-  if (render) render(el, data);
+  if (render) {
+    if (name === 'preview' && session) {
+      render(el, data, session);
+    } else if (name === 'structure' && session) {
+      render(el, data, session.bus);
+    } else {
+      render(el, data);
+    }
+  }
 
   return el;
 }
@@ -1239,7 +1252,9 @@ export function initAppShell(container, worker) {
     const def = FLOATING_PANELS.find((p) => p.id === id);
     if (!def || !session.data) return;
 
-    const el = createPanelElement(id, session.data);
+    // Preview and structure panels need the session for file access / bus
+    const needsSession = id === 'preview' || id === 'structure';
+    const el = createPanelElement(id, session.data, needsSession ? session : undefined);
     const layout = getFloatingLayout(id, session.cascadeIndex);
 
     const win = new WinBox({
@@ -1252,6 +1267,10 @@ export function initAppShell(container, worker) {
       overflow: true,
       ...layout,
       onclose: function () {
+        // Clean up preview resources (PDF.js document)
+        if (id === 'preview' && el._destroyPreview) {
+          el._destroyPreview();
+        }
         session.floatingPanels.delete(id);
       },
     });
@@ -1262,11 +1281,24 @@ export function initAppShell(container, worker) {
   function getFloatingLayout(id, cascadeIndex) {
     const cw = root.clientWidth;
     const ch = root.clientHeight;
+    const cascadeOff = (cascadeIndex % 8) * 15;
+
+    // Preview panel gets a larger default size
+    if (id === 'preview') {
+      const w = Math.min(700, Math.floor(cw * 0.5));
+      const h = Math.min(600, Math.floor(ch * 0.7));
+      return {
+        x: 40 + cascadeOff,
+        y: MENUBAR_HEIGHT + 40 + cascadeOff,
+        width: w,
+        height: h,
+      };
+    }
+
     const w = Math.min(500, Math.floor(cw * 0.4));
     const h = Math.min(450, Math.floor(ch * 0.55));
     const offsets = { structure: 0, fonts: 30, images: 60 };
     const panelOffset = offsets[id] || 0;
-    const cascadeOff = (cascadeIndex % 8) * 15;
 
     return {
       x: Math.floor(cw * 0.55) + panelOffset + cascadeOff,

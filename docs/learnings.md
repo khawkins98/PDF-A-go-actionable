@@ -129,7 +129,9 @@ TreeNode = {
   role: string,         // resolved via RoleMap ("H1", "Sect")
   alt: string | null,
   lang: string | null,
-  children: TreeNode[]
+  children: TreeNode[],
+  mcids: Array<{ mcid: number, pageIndex: number }>,  // marked content IDs with page refs
+  pageIndex: number | null  // page index from /Pg (inherited or direct)
 }
 ```
 
@@ -279,6 +281,22 @@ Supported filters:
 - **ASCIIHexDecode** -- hex pairs to bytes
 - **RunLengthDecode** -- simple RLE
 - **PNG row prediction** (Predictor 10-15) -- reversed after Flate decompression
+
+### pdfjs-dist (PDF.js)
+
+**Marked content item IDs are strings, not integers.** When iterating text content items from `page.getTextContent({ includeMarkedContent: true })`, marked content items have an `id` property that is a string like `"p12R_mc5"`, not a raw MCID integer. The format encodes the page object ref and MCID: `p{pageNum}R_mc{mcid}`. To extract the numeric MCID, parse the string (e.g., `parseInt(item.id.split('_mc')[1], 10)`). The `type` property is `"beginMarkedContent"` or `"endMarkedContent"` -- only items with `type === "beginMarkedContent"` carry the `id`. Regular text items have no `type` property. This is not documented prominently in the PDF.js API docs and is easy to miss if you expect `item.mcid` to be an integer.
+
+**Vite integration.** pdfjs-dist ships a pre-built worker file (`pdfjs-dist/build/pdf.worker.min.mjs`). In Vite, configure the worker source with:
+```js
+import * as pdfjsLib from 'pdfjs-dist';
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).href;
+```
+The `new URL(..., import.meta.url)` pattern lets Vite resolve the worker file as a static asset. Lazy-loading pdfjs-dist via dynamic `import()` keeps the initial bundle small -- the library is only fetched when the user opens the PDF Preview panel.
+
+**Canvas rendering and SVG overlays.** `page.render({ canvasContext, viewport })` draws to a `<canvas>`. To overlay highlights (e.g., MCID regions), use an absolutely-positioned SVG element over the canvas. The viewport's `convertToViewportPoint(x, y)` method maps PDF coordinates (origin at bottom-left) to canvas coordinates (origin at top-left).
 
 ### XMP Metadata Parsing
 

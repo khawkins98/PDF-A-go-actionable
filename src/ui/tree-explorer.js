@@ -25,8 +25,9 @@ let treeFilterIdCounter = 0;
  * @param {object} data - Audit result data
  * @param {object[]} data.findings - Array of Finding objects
  * @param {object} [data.structureTree] - Serialized tree from buildSerializableTree
+ * @param {object} [bus] - Optional session EventBus for emitting selectTreeNode events
  */
-export function renderTreeExplorer(el, data) {
+export function renderTreeExplorer(el, data, bus) {
   const { findings } = data;
   const structTree = data.structureTree;
 
@@ -71,7 +72,7 @@ export function renderTreeExplorer(el, data) {
 
   // Interactive tree mode
   if (structTree && structTree.root) {
-    renderInteractiveTree(el, structTree, filterInput);
+    renderInteractiveTree(el, structTree, filterInput, bus);
     return;
   }
 
@@ -83,7 +84,7 @@ export function renderTreeExplorer(el, data) {
 // Interactive tree rendering
 // ---------------------------------------------------------------------------
 
-function renderInteractiveTree(el, structTree, filterInput) {
+function renderInteractiveTree(el, structTree, filterInput, bus) {
   const { root, totalCount, truncated } = structTree;
 
   // Stats bar
@@ -116,6 +117,30 @@ function renderInteractiveTree(el, structTree, filterInput) {
 
   // Keyboard navigation
   treeEl.addEventListener('keydown', (e) => handleTreeKeydown(e, treeEl));
+
+  // Node selection — emit selectTreeNode on the bus for preview highlighting
+  treeEl.addEventListener('click', (e) => {
+    const row = e.target.closest('.tree-node__row');
+    if (!row) return;
+
+    const nodeId = row.getAttribute('data-node-id');
+    const li = row.parentElement;
+    const node = li?._treeNode;
+
+    // Visual selection state
+    const prevSelected = treeEl.querySelector('.tree-node__row--selected');
+    if (prevSelected) prevSelected.classList.remove('tree-node__row--selected');
+    row.classList.add('tree-node__row--selected');
+
+    // Emit bus event with MCID data for preview highlighting
+    if (bus && node) {
+      bus.emit('selectTreeNode', {
+        nodeId: node.id,
+        mcids: node.mcids || [],
+        pageIndex: node.pageIndex != null ? node.pageIndex : null,
+      });
+    }
+  });
 
   // Filter
   filterInput.addEventListener('input', () => {

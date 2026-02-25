@@ -30,8 +30,13 @@ The tool covers the practical validation workflow used by accessibility professi
 - Link text quality
 - Tab order configuration
 
+**Visual tools:**
+- PDF Preview panel with page navigation and zoom (50%-300% + fit-to-width)
+- Reading order visualization -- numbered badges with connecting lines showing content stream order
+- Structure tree to preview linking -- click a tree node to highlight its MCID regions on the rendered page
+
 **Flagged for manual review:**
-- Reading order (with interactive structure tree explorer to help)
+- Reading order (with interactive structure tree explorer and visual reading order overlay to help)
 - Screen reader testing (with tool recommendations)
 
 ## Related Projects
@@ -79,6 +84,7 @@ This project builds on the work of many others:
 - **[pdf-lib](https://github.com/Hopding/pdf-lib)** by Andrew Dillon -- low-level PDF object access that makes client-side PDF analysis possible
 - **[fflate](https://github.com/101arrowz/fflate)** by 101arrowz -- fast compression/decompression for PDF stream decoding
 - **[WinBox](https://github.com/nextapps-de/winbox)** by Nextapps GmbH -- lightweight window manager for the floating panel system
+- **[pdfjs-dist](https://github.com/nicolo-ribaudo/pdfjs-dist)** ([PDF.js](https://mozilla.github.io/pdf.js/)) by Mozilla -- PDF page rendering for the PDF Preview panel
 - **[PDF-A-go-slim](https://github.com/khawkins98/PDF-A-go-slim)** -- sibling project whose utility modules (stream decoding, content stream parsing, structure tree traversal, accessibility detection) are reused by this tool's PDF engine
 - **[PDF-A-go-go](https://github.com/khawkins98/PDF-A-go-go)** -- the first project in this family; building it revealed the PDF accessibility problems this tool checks for
 - **[PAC (PDF Accessibility Checker)](https://pac.pdf-accessibility.org/)** by the PDF/UA Foundation -- the most thorough free PDF/UA validator, and the main reference for this tool's check list
