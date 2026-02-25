@@ -15,6 +15,8 @@ import {
   createUntaggedPdf,
   createPdfWithForms,
   createPdfWithTabOrder,
+  createPdfWithEmptyAcroForm,
+  createPdfWithFormsNoFT,
 } from '../../test/fixtures/create-test-pdfs.js';
 
 describe('checkForms', () => {
@@ -70,5 +72,26 @@ describe('checkForms', () => {
     expect(tabFinding).toBeDefined();
     expect(tabFinding.status).toBe('warning');
     expect(tabFinding.summary).toContain('missing');
+  });
+
+  it('should report not-applicable for empty AcroForm (Fields array present but empty)', async () => {
+    const bytes = await createPdfWithEmptyAcroForm();
+    const ctx = await buildTestContext(bytes);
+    const findings = checkForms(ctx.pdfDoc, ctx);
+
+    const formFinding = findings.find(f => f.id === 'form-labels');
+    expect(formFinding).toBeDefined();
+    expect(formFinding.status).toBe('not-applicable');
+  });
+
+  it('should warn when form fields lack /FT (field type)', async () => {
+    const bytes = await createPdfWithFormsNoFT();
+    const ctx = await buildTestContext(bytes);
+    const findings = checkForms(ctx.pdfDoc, ctx);
+
+    const formFinding = findings.find(f => f.id === 'form-labels');
+    expect(formFinding).toBeDefined();
+    // Fields without FT should still be counted and warned about missing TU
+    expect(formFinding.status).toBe('warning');
   });
 });

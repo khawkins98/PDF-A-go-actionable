@@ -26,9 +26,11 @@ import {
 
 /**
  * Add MarkInfo << /Marked true >> to the catalog.
+ * @param {object} doc
+ * @param {object} [extras] - additional MarkInfo entries (e.g. { Suspects: true })
  */
-function addMarkInfo(doc) {
-  const markInfo = doc.context.obj({ Marked: true });
+function addMarkInfo(doc, extras = {}) {
+  const markInfo = doc.context.obj({ Marked: true, ...extras });
   doc.catalog.set(PDFName.of('MarkInfo'), markInfo);
 }
 
@@ -505,6 +507,39 @@ export async function createPdfWithLinks(linkTexts = ['Click here', 'Learn more 
 }
 
 // ---------------------------------------------------------------------------
+// Factory: PDF with Suspects flag
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a tagged PDF with MarkInfo/Suspects = true.
+ * This simulates a PDF where tagging exists but is unreliable.
+ */
+export async function createPdfWithSuspects() {
+  const doc = await PDFDocument.create();
+  doc.addPage();
+
+  doc.setTitle('Suspect Tagged Document');
+  doc.catalog.set(PDFName.of('Lang'), PDFString.of('en-US'));
+
+  addMarkInfo(doc, { Suspects: true });
+
+  const { structTreeRoot, structTreeRootRef } = addStructTreeRoot(doc);
+
+  const { elem: docElem, elemRef: docElemRef } = createStructElem(
+    doc, 'Document', structTreeRootRef,
+  );
+
+  const { elemRef: pElemRef } = createStructElem(
+    doc, 'P', docElemRef,
+  );
+
+  docElem.set(PDFName.of('K'), doc.context.obj([pElemRef]));
+  structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+
+  return doc.save();
+}
+
+// ---------------------------------------------------------------------------
 // Factory: PDF with tab order
 // ---------------------------------------------------------------------------
 
@@ -519,6 +554,225 @@ export async function createPdfWithTabOrder(tabsS = true) {
   if (tabsS) {
     page.node.set(PDFName.of('Tabs'), PDFName.of('S'));
   }
+
+  return doc.save();
+}
+
+// ---------------------------------------------------------------------------
+// Factory: PDF with list (no Lbl — only LBody)
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a tagged PDF with L > LI > LBody but no Lbl children.
+ * For testing that lists require both Lbl AND LBody per PDF/UA 7.6.
+ */
+export async function createPdfWithListNoLbl() {
+  const doc = await PDFDocument.create();
+  doc.addPage();
+
+  addMarkInfo(doc);
+  const { structTreeRoot, structTreeRootRef } = addStructTreeRoot(doc);
+
+  const { elem: docElem, elemRef: docElemRef } = createStructElem(
+    doc, 'Document', structTreeRootRef,
+  );
+
+  const { elem: listElem, elemRef: listRef } = createStructElem(
+    doc, 'L', docElemRef,
+  );
+
+  const liRefs = [];
+  for (let i = 0; i < 2; i++) {
+    const { elem: liElem, elemRef: liRef } = createStructElem(
+      doc, 'LI', listRef,
+    );
+    // Only LBody, no Lbl
+    const { elemRef: lBodyRef } = createStructElem(doc, 'LBody', liRef);
+    liElem.set(PDFName.of('K'), doc.context.obj([lBodyRef]));
+    liRefs.push(liRef);
+  }
+
+  listElem.set(PDFName.of('K'), doc.context.obj(liRefs));
+  docElem.set(PDFName.of('K'), doc.context.obj([listRef]));
+  structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+
+  return doc.save();
+}
+
+// ---------------------------------------------------------------------------
+// Factory: PDF with table with invalid Scope value
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a tagged PDF with Table where TH has an invalid Scope value.
+ * @param {string} scopeValue - The invalid scope value (e.g. 'Invalid')
+ */
+export async function createPdfWithTableInvalidScope(scopeValue = 'Invalid') {
+  const doc = await PDFDocument.create();
+  doc.addPage();
+
+  addMarkInfo(doc);
+  const { structTreeRoot, structTreeRootRef } = addStructTreeRoot(doc);
+
+  const { elem: docElem, elemRef: docElemRef } = createStructElem(
+    doc, 'Document', structTreeRootRef,
+  );
+
+  const { elem: tableElem, elemRef: tableRef } = createStructElem(
+    doc, 'Table', docElemRef,
+  );
+
+  const { elem: headerRow, elemRef: headerRowRef } = createStructElem(
+    doc, 'TR', tableRef,
+  );
+
+  const headerCellRefs = [];
+  for (let i = 0; i < 2; i++) {
+    const attrDict = doc.context.obj({
+      O: PDFName.of('Table'),
+      Scope: PDFName.of(scopeValue),
+    });
+    const extras = { A: doc.context.register(attrDict) };
+    const { elemRef: thRef } = createStructElem(doc, 'TH', headerRowRef, extras);
+    headerCellRefs.push(thRef);
+  }
+  headerRow.set(PDFName.of('K'), doc.context.obj(headerCellRefs));
+
+  const { elem: dataRow, elemRef: dataRowRef } = createStructElem(
+    doc, 'TR', tableRef,
+  );
+  const dataCellRefs = [];
+  for (let i = 0; i < 2; i++) {
+    const { elemRef: tdRef } = createStructElem(doc, 'TD', dataRowRef);
+    dataCellRefs.push(tdRef);
+  }
+  dataRow.set(PDFName.of('K'), doc.context.obj(dataCellRefs));
+
+  tableElem.set(PDFName.of('K'), doc.context.obj([headerRowRef, dataRowRef]));
+  docElem.set(PDFName.of('K'), doc.context.obj([tableRef]));
+  structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+
+  return doc.save();
+}
+
+// ---------------------------------------------------------------------------
+// Factory: PDF with empty AcroForm (Fields array present but empty)
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a PDF with an AcroForm that has an empty Fields array.
+ */
+export async function createPdfWithEmptyAcroForm() {
+  const doc = await PDFDocument.create();
+  doc.addPage();
+
+  const acroForm = doc.context.obj({
+    Fields: doc.context.obj([]),
+  });
+  const acroFormRef = doc.context.register(acroForm);
+  doc.catalog.set(PDFName.of('AcroForm'), acroFormRef);
+
+  return doc.save();
+}
+
+// ---------------------------------------------------------------------------
+// Factory: PDF with links (some without text)
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a tagged PDF with Link StructElems, some with ActualText, some without.
+ * @param {Array<{text: string|null}>} links - Link configurations
+ */
+export async function createPdfWithMixedLinks(links) {
+  const doc = await PDFDocument.create();
+  doc.addPage();
+
+  addMarkInfo(doc);
+  const { structTreeRoot, structTreeRootRef } = addStructTreeRoot(doc);
+
+  const { elem: docElem, elemRef: docElemRef } = createStructElem(
+    doc, 'Document', structTreeRootRef,
+  );
+
+  const linkRefs = links.map((link) => {
+    const extras = {};
+    if (link.text !== null && link.text !== undefined) {
+      extras.ActualText = PDFHexString.fromText(link.text);
+    }
+    const { elemRef } = createStructElem(doc, 'Link', docElemRef, extras);
+    return elemRef;
+  });
+
+  docElem.set(PDFName.of('K'), doc.context.obj(linkRefs));
+  structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+
+  return doc.save();
+}
+
+// ---------------------------------------------------------------------------
+// Factory: PDF with figures including empty/generic alt text
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a tagged PDF with Figure StructElems that always set /Alt,
+ * even for empty strings (unlike createPdfWithFigures which skips empty).
+ * @param {Array<{alt: string|null}>} figures - null means no /Alt at all
+ */
+export async function createPdfWithFigureAlts(figures) {
+  const doc = await PDFDocument.create();
+  doc.addPage();
+
+  addMarkInfo(doc);
+  const { structTreeRoot, structTreeRootRef } = addStructTreeRoot(doc);
+
+  const { elem: docElem, elemRef: docElemRef } = createStructElem(
+    doc, 'Document', structTreeRootRef,
+  );
+
+  const figureRefs = figures.map((fig) => {
+    const extras = {};
+    if (fig.alt !== null && fig.alt !== undefined) {
+      extras.Alt = PDFHexString.fromText(fig.alt);
+    }
+    const { elemRef } = createStructElem(doc, 'Figure', docElemRef, extras);
+    return elemRef;
+  });
+
+  docElem.set(PDFName.of('K'), doc.context.obj(figureRefs));
+  structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+
+  return doc.save();
+}
+
+// ---------------------------------------------------------------------------
+// Factory: PDF with form fields missing /FT (field type)
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a PDF with AcroForm fields that lack /FT (field type).
+ */
+export async function createPdfWithFormsNoFT() {
+  const doc = await PDFDocument.create();
+  doc.addPage();
+
+  const fieldDicts = [];
+  for (let i = 0; i < 2; i++) {
+    const field = doc.context.obj({
+      Type: 'Annot',
+      Subtype: PDFName.of('Widget'),
+      // Intentionally missing /FT
+      T: PDFString.of(`field_${i + 1}`),
+      Rect: doc.context.obj([0, 0, 100, 20]),
+    });
+    const fieldRef = doc.context.register(field);
+    fieldDicts.push(fieldRef);
+  }
+
+  const acroForm = doc.context.obj({
+    Fields: doc.context.obj(fieldDicts),
+  });
+  const acroFormRef = doc.context.register(acroForm);
+  doc.catalog.set(PDFName.of('AcroForm'), acroFormRef);
 
   return doc.save();
 }

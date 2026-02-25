@@ -15,7 +15,9 @@ import {
   createUntaggedPdf,
   createTaggedPdf,
   createPdfWithTable,
+  createPdfWithTableInvalidScope,
 } from '../../test/fixtures/create-test-pdfs.js';
+import { PDFDocument, PDFName } from 'pdf-lib';
 
 describe('checkTables', () => {
   it('should pass when table has TH cells with Scope', async () => {
@@ -69,5 +71,75 @@ describe('checkTables', () => {
     const tableFinding = findings.find(f => f.id === 'table-headers');
     expect(tableFinding).toBeDefined();
     expect(tableFinding.status).toBe('not-applicable');
+  });
+
+  it('should fail when TH cells have invalid Scope value', async () => {
+    const bytes = await createPdfWithTableInvalidScope('Invalid');
+    const ctx = await buildTestContext(bytes);
+    const findings = checkTables(ctx.pdfDoc, ctx);
+
+    const tableFinding = findings.find(f => f.id === 'table-headers');
+    expect(tableFinding).toBeDefined();
+    expect(tableFinding.status).toBe('fail');
+    expect(tableFinding.summary).toContain('header issues');
+  });
+
+  it('should detect custom table type via RoleMap (e.g., "DataTable" → "Table")', async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage();
+
+    const markInfo = doc.context.obj({ Marked: true });
+    doc.catalog.set(PDFName.of('MarkInfo'), markInfo);
+
+    const structTreeRoot = doc.context.obj({ Type: 'StructTreeRoot' });
+    const strRef = doc.context.register(structTreeRoot);
+    doc.catalog.set(PDFName.of('StructTreeRoot'), strRef);
+
+    const roleMap = doc.context.obj({ DataTable: PDFName.of('Table') });
+    structTreeRoot.set(PDFName.of('RoleMap'), roleMap);
+
+    const docElem = doc.context.obj({
+      Type: 'StructElem',
+      S: PDFName.of('Document'),
+      P: strRef,
+    });
+    const docElemRef = doc.context.register(docElem);
+
+    // "DataTable" custom type → should be detected as Table via RoleMap
+    const tableElem = doc.context.obj({
+      Type: 'StructElem',
+      S: PDFName.of('DataTable'),
+      P: docElemRef,
+    });
+    const tableElemRef = doc.context.register(tableElem);
+
+    // Add TR > TD structure (no TH → should fail)
+    const trElem = doc.context.obj({
+      Type: 'StructElem',
+      S: PDFName.of('TR'),
+      P: tableElemRef,
+    });
+    const trElemRef = doc.context.register(trElem);
+
+    const tdElem = doc.context.obj({
+      Type: 'StructElem',
+      S: PDFName.of('TD'),
+      P: trElemRef,
+    });
+    const tdElemRef = doc.context.register(tdElem);
+
+    trElem.set(PDFName.of('K'), doc.context.obj([tdElemRef]));
+    tableElem.set(PDFName.of('K'), doc.context.obj([trElemRef]));
+    docElem.set(PDFName.of('K'), doc.context.obj([tableElemRef]));
+    structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+
+    const saved = await doc.save();
+    const ctx = await buildTestContext(saved);
+    const findings = checkTables(ctx.pdfDoc, ctx);
+
+    const tableFinding = findings.find(f => f.id === 'table-headers');
+    expect(tableFinding).toBeDefined();
+    expect(tableFinding.status).toBe('fail');
+    expect(tableFinding.summary).toContain('header issues');
   });
 });

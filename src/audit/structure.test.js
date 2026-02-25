@@ -15,6 +15,7 @@ import {
   createPdfWithHeadings,
   createPdfWithHeadingSkip,
   createPdfWithRoleMap,
+  createPdfWithSuspects,
 } from '../../test/fixtures/create-test-pdfs.js';
 
 describe('checkStructure', () => {
@@ -36,6 +37,18 @@ describe('checkStructure', () => {
     const taggedFinding = findings.find(f => f.id === 'tagged-pdf');
     expect(taggedFinding).toBeDefined();
     expect(taggedFinding.status).toBe('pass');
+  });
+
+  it('should fail when PDF is tagged but has Suspects flag', async () => {
+    const bytes = await createPdfWithSuspects();
+    const ctx = await buildTestContext(bytes);
+    const findings = checkStructure(ctx.pdfDoc, ctx);
+
+    const taggedFinding = findings.find(f => f.id === 'tagged-pdf');
+    expect(taggedFinding).toBeDefined();
+    expect(taggedFinding.status).toBe('fail');
+    expect(taggedFinding.summary).toContain('Suspects');
+    expect(taggedFinding.remediation).toBeTruthy();
   });
 
   it('should fail when structure tree is absent', async () => {
@@ -111,5 +124,73 @@ describe('checkStructure', () => {
     expect(summaryFinding).toBeDefined();
     expect(summaryFinding.status).toBe('pass');
     expect(summaryFinding.summary).toContain('elements');
+  });
+
+  // --- Heading edge cases ---
+
+  it('should fail when headings start at H2 (no H1)', async () => {
+    const bytes = await createPdfWithHeadings(['H2', 'H3']);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkStructure(ctx.pdfDoc, ctx);
+
+    const headingFinding = findings.find(f => f.id === 'heading-hierarchy');
+    expect(headingFinding).toBeDefined();
+    expect(headingFinding.status).toBe('fail');
+    expect(headingFinding.summary).toContain('H2');
+    expect(headingFinding.summary).toContain('instead of H1');
+  });
+
+  it('should pass with a single H1 only', async () => {
+    const bytes = await createPdfWithHeadings(['H1']);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkStructure(ctx.pdfDoc, ctx);
+
+    const headingFinding = findings.find(f => f.id === 'heading-hierarchy');
+    expect(headingFinding).toBeDefined();
+    expect(headingFinding.status).toBe('pass');
+    expect(headingFinding.summary).toContain('1 heading');
+  });
+
+  it('should pass with deep heading nesting H1 through H6', async () => {
+    const bytes = await createPdfWithHeadings(['H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkStructure(ctx.pdfDoc, ctx);
+
+    const headingFinding = findings.find(f => f.id === 'heading-hierarchy');
+    expect(headingFinding).toBeDefined();
+    expect(headingFinding.status).toBe('pass');
+    expect(headingFinding.summary).toContain('6 headings');
+  });
+
+  it('should pass with multiple headings of same level in sequence', async () => {
+    const bytes = await createPdfWithHeadings(['H1', 'H2', 'H2', 'H3']);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkStructure(ctx.pdfDoc, ctx);
+
+    const headingFinding = findings.find(f => f.id === 'heading-hierarchy');
+    expect(headingFinding).toBeDefined();
+    expect(headingFinding.status).toBe('pass');
+  });
+
+  it('should fail when heading skips after decrease (H1 → H2 → H1 → H3)', async () => {
+    const bytes = await createPdfWithHeadings(['H1', 'H2', 'H1', 'H3']);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkStructure(ctx.pdfDoc, ctx);
+
+    const headingFinding = findings.find(f => f.id === 'heading-hierarchy');
+    expect(headingFinding).toBeDefined();
+    expect(headingFinding.status).toBe('fail');
+    expect(headingFinding.summary).toContain('H2');
+  });
+
+  it('should resolve custom heading types via RoleMap', async () => {
+    const bytes = await createPdfWithRoleMap({ Heading1: 'H1', Heading2: 'H2' });
+    const ctx = await buildTestContext(bytes);
+    const findings = checkStructure(ctx.pdfDoc, ctx);
+
+    const headingFinding = findings.find(f => f.id === 'heading-hierarchy');
+    expect(headingFinding).toBeDefined();
+    expect(headingFinding.status).toBe('pass');
+    expect(headingFinding.summary).toContain('2 headings');
   });
 });

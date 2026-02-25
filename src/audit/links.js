@@ -20,8 +20,8 @@ const GENERIC_LINK_TEXT = [
   'more',
 ];
 
-/** Bare URL pattern. */
-const URL_PATTERN = /^https?:\/\//i;
+/** Bare URL pattern (http, https, ftp). */
+const URL_PATTERN = /^(?:https?|ftp):\/\//i;
 
 /**
  * @param {import('pdf-lib').PDFDocument} pdfDoc
@@ -37,7 +37,7 @@ export function checkLinks(pdfDoc, ctx) {
       category: 'links',
       title: 'Link Text Quality',
       status: 'not-applicable',
-      summary: 'No structure tree — link text cannot be checked.',
+      summary: 'No structure tree, so link text cannot be checked.',
       details: [],
       remediation: null,
       wcagRef: '2.4.4',
@@ -84,13 +84,15 @@ export function checkLinks(pdfDoc, ctx) {
   // Analyze link text quality
   const genericLinks = [];
   const urlLinks = [];
+  const missingTextLinks = [];
   const details = [];
 
   links.forEach((link, idx) => {
-    if (!link.text) {
+    if (!link.text || link.text.trim().length === 0) {
+      missingTextLinks.push(link);
       details.push({
         label: `Link ${idx + 1}`,
-        value: 'No ActualText or Alt text available for analysis',
+        value: 'No ActualText or Alt text. Link purpose unknown to assistive technology',
       });
       return;
     }
@@ -112,7 +114,7 @@ export function checkLinks(pdfDoc, ctx) {
     }
   });
 
-  const issueCount = genericLinks.length + urlLinks.length;
+  const issueCount = genericLinks.length + urlLinks.length + missingTextLinks.length;
 
   if (issueCount === 0) {
     return [{
@@ -120,7 +122,7 @@ export function checkLinks(pdfDoc, ctx) {
       category: 'links',
       title: 'Link Text Quality',
       status: 'pass',
-      summary: `${links.length} link(s) found — no generic or bare-URL text detected.`,
+      summary: `${links.length} link(s) checked, no generic or bare-URL text detected.`,
       details: [],
       remediation: null,
       wcagRef: '2.4.4',
@@ -128,14 +130,19 @@ export function checkLinks(pdfDoc, ctx) {
     }];
   }
 
+  const parts = [];
+  if (missingTextLinks.length > 0) parts.push(`${missingTextLinks.length} missing text`);
+  if (genericLinks.length > 0) parts.push(`${genericLinks.length} generic`);
+  if (urlLinks.length > 0) parts.push(`${urlLinks.length} bare URLs`);
+
   return [{
     id: 'link-text',
     category: 'links',
     title: 'Link Text Quality',
-    status: 'warning',
-    summary: `${issueCount} of ${links.length} link(s) have potentially unclear text (${genericLinks.length} generic, ${urlLinks.length} bare URLs).`,
+    status: missingTextLinks.length > 0 ? 'fail' : 'warning',
+    summary: `${issueCount} of ${links.length} link(s) have issues (${parts.join(', ')}).`,
     details,
-    remediation: 'Use descriptive link text that makes sense out of context. Replace "click here" with a description of the destination (e.g., "download the annual report"). Avoid using bare URLs as link text.',
+    remediation: 'Use descriptive link text that makes sense out of context. Replace "click here" with a description of the destination (e.g., "download the annual report"). Avoid using bare URLs as link text. Ensure every link has accessible text.',
     wcagRef: '2.4.4',
     pdfuaRef: null,
   }];

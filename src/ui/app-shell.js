@@ -508,18 +508,18 @@ export function initAppShell(container, worker) {
     content.className = 'dialog-content';
     content.innerHTML = `
       <h2>Bookmarks / Outlines</h2>
-      <p>No CORS-friendly test PDFs for bookmarks and outlines
-      have been identified in the public test corpus repositories yet.</p>
-      <p>The audit engine checks for <code>/Outlines</code> in the document catalog
-      and reports whether bookmarks are present. This is a simple metadata check
-      that doesn't require complex pass/fail test fixtures.</p>
-      <h3>Want to help?</h3>
+      <p>No CORS-friendly test PDFs for bookmarks have been found
+      in the public test corpus repositories yet.</p>
+      <p>The audit checks for <code>/Outlines</code> in the document catalog
+      and reports whether bookmarks exist. It's a simple metadata check,
+      so it doesn't need complex pass/fail test fixtures.</p>
+      <h3>Can you help?</h3>
       <p>If you know of a public, CORS-accessible PDF with bookmarks (or without),
-      please open an issue on GitHub. We'll add it to the test suite.</p>
+      open an issue on GitHub and we'll add it to the test suite.</p>
     `;
 
     new WinBox({
-      title: 'Test PDFs — Bookmarks',
+      title: 'Test PDFs: Bookmarks',
       mount: content,
       root,
       x: 'center',
@@ -681,15 +681,15 @@ export function initAppShell(container, worker) {
     content.innerHTML = `
       <h2>PDF-A-go-actionable</h2>
       <p style="color:var(--color-text);font-size:var(--font-size-base);">Version 1.0.0</p>
-      <p>Free, browser-based PDF accessibility checker. All processing runs
-      in your browser — no files are uploaded, no accounts required.</p>
-      <p>Covers the 13-point PDF accessibility checklist with 10 automated
+      <p>Free, browser-based PDF accessibility checker. Everything runs
+      in your browser. No files are uploaded, no accounts needed.</p>
+      <p>Covers the 13-point PDF accessibility checklist: 10 automated
       checks and 3 manual review items.</p>
       <h3>Built With</h3>
       <ul>
-        <li><strong>pdf-lib</strong> — low-level PDF object access</li>
-        <li><strong>fflate</strong> — stream decompression</li>
-        <li><strong>WinBox</strong> — window management</li>
+        <li><strong>pdf-lib</strong> -- PDF object access</li>
+        <li><strong>fflate</strong> -- stream decompression</li>
+        <li><strong>WinBox</strong> -- window management</li>
       </ul>
       <p>Licensed under MIT.</p>
     `;
@@ -717,7 +717,7 @@ export function initAppShell(container, worker) {
       <ol>
         <li>Click <strong>Open File(s)</strong> in the menu bar, or drag PDFs onto the welcome window</li>
         <li>Wait for each analysis to complete</li>
-        <li>Review findings in the results window — click any finding for details</li>
+        <li>Review findings in the results window. Click any finding for details</li>
         <li>Use the toolbar to open Structure Tree, Font, or Image panels</li>
         <li>Export results as JSON, CSV, or PDF</li>
       </ol>
@@ -730,9 +730,9 @@ export function initAppShell(container, worker) {
       </ul>
       <h3>Keyboard Shortcuts</h3>
       <ul>
-        <li><strong>Tab</strong> — navigate between controls</li>
-        <li><strong>Enter / Space</strong> — activate buttons</li>
-        <li><strong>Escape</strong> — close menus</li>
+        <li><strong>Tab</strong> -- navigate between controls</li>
+        <li><strong>Enter / Space</strong> -- activate buttons</li>
+        <li><strong>Escape</strong> -- close menus</li>
       </ul>
     `;
 
@@ -776,8 +776,8 @@ export function initAppShell(container, worker) {
       <h1 class="welcome__title">PDF-A-go-actionable</h1>
       <p class="welcome__tagline">Free, browser-based PDF accessibility checker</p>
       <ul class="welcome__features">
-        <li>Runs entirely in your browser — no file uploads</li>
-        <li>Actionable remediation guidance for every finding</li>
+        <li>Runs entirely in your browser, no file uploads</li>
+        <li>Fix-it guidance for every finding</li>
         <li>Covers the UNDRR 13-point accessibility checklist</li>
       </ul>
     `
@@ -1041,7 +1041,7 @@ export function initAppShell(container, worker) {
     const layout = getFloatingLayout(id, session.cascadeIndex);
 
     const win = new WinBox({
-      title: `${def.title} — ${session.fileName}`,
+      title: `${def.title}: ${session.fileName}`,
       mount: el,
       root,
       class: ['white'],

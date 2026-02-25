@@ -9,6 +9,22 @@ import { PDFName, PDFDict, PDFStream } from 'pdf-lib';
 import { resolve } from '../engine/utils/resolve.js';
 import { resolveRole } from '../engine/utils/role-map.js';
 
+/** Generic alt text patterns (case-insensitive match). */
+const GENERIC_ALT_TEXT = [
+  'image',
+  'photo',
+  'picture',
+  'graphic',
+  'figure',
+  'icon',
+  'logo',
+  'img',
+  'screenshot',
+  'illustration',
+  'diagram',
+  'chart',
+];
+
 /**
  * @param {import('pdf-lib').PDFDocument} pdfDoc
  * @param {object} ctx - Shared context from runner
@@ -69,16 +85,21 @@ export function checkImages(pdfDoc, ctx) {
     const altObj = obj.get(PDFName.of('Alt'));
     const alt = altObj ? altObj.decodeText() : null;
 
+    const trimmedAlt = alt ? alt.trim() : '';
+    const isGeneric = trimmedAlt.length > 0 && GENERIC_ALT_TEXT.includes(trimmedAlt.toLowerCase());
+
     figures.push({
       type: typeName,
       alt,
-      hasAlt: !!alt && alt.trim().length > 0,
+      hasAlt: !!alt && trimmedAlt.length > 0,
+      isGeneric,
     });
   });
 
   const imageCount = countImageXObjects(context);
-  const figuresWithAlt = figures.filter(f => f.hasAlt);
+  const figuresWithAlt = figures.filter(f => f.hasAlt && !f.isGeneric);
   const figuresWithoutAlt = figures.filter(f => !f.hasAlt);
+  const figuresWithGenericAlt = figures.filter(f => f.hasAlt && f.isGeneric);
 
   // #6 — Alt text coverage
   if (figures.length === 0 && imageCount === 0) {
@@ -93,7 +114,44 @@ export function checkImages(pdfDoc, ctx) {
       wcagRef: '1.1.1',
       pdfuaRef: '7.3',
     });
-  } else if (figuresWithoutAlt.length === 0 && figures.length > 0) {
+  } else if (figuresWithoutAlt.length > 0) {
+    const details = figuresWithoutAlt.map((f) => ({
+      label: 'Figure without alt',
+      value: f.type === 'Figure' ? 'No /Alt attribute' : `Custom type "${f.type}" (maps to Figure), no /Alt attribute`,
+    }));
+    if (figuresWithGenericAlt.length > 0) {
+      details.push(...figuresWithGenericAlt.map((f) => ({
+        label: 'Generic alt text',
+        value: `"${f.alt}" -- not descriptive`,
+      })));
+    }
+    findings.push({
+      id: 'image-alt-text',
+      category: 'images',
+      title: 'Image Alt Text',
+      status: 'fail',
+      summary: `${figuresWithoutAlt.length} of ${figures.length} Figure element(s) missing alt text.`,
+      details,
+      remediation: 'Add alt text to each meaningful image. In Word: right-click the image > Edit Alt Text. In Acrobat: Reading Order panel > right-click Figure > Edit Alternate Text.',
+      wcagRef: '1.1.1',
+      pdfuaRef: '7.3',
+    });
+  } else if (figuresWithGenericAlt.length > 0) {
+    findings.push({
+      id: 'image-alt-text',
+      category: 'images',
+      title: 'Image Alt Text',
+      status: 'warning',
+      summary: `${figuresWithGenericAlt.length} of ${figures.length} Figure element(s) have generic alt text that may not be descriptive.`,
+      details: figuresWithGenericAlt.map((f, i) => ({
+        label: `Figure with generic alt`,
+        value: `"${f.alt}" -- use descriptive text instead`,
+      })),
+      remediation: 'Replace generic alt text (e.g., "image", "photo") with a real description. Say what the image shows or what information it communicates.',
+      wcagRef: '1.1.1',
+      pdfuaRef: '7.3',
+    });
+  } else if (figures.length > 0) {
     findings.push({
       id: 'image-alt-text',
       category: 'images',
@@ -105,21 +163,6 @@ export function checkImages(pdfDoc, ctx) {
         value: f.alt,
       })),
       remediation: null,
-      wcagRef: '1.1.1',
-      pdfuaRef: '7.3',
-    });
-  } else {
-    findings.push({
-      id: 'image-alt-text',
-      category: 'images',
-      title: 'Image Alt Text',
-      status: 'fail',
-      summary: `${figuresWithoutAlt.length} of ${figures.length} Figure element(s) missing alt text.`,
-      details: figuresWithoutAlt.map((f, i) => ({
-        label: `Figure without alt`,
-        value: f.type === 'Figure' ? 'No /Alt attribute' : `Custom type "${f.type}" (maps to Figure) — no /Alt attribute`,
-      })),
-      remediation: 'Add alt text to each meaningful image. In Word: right-click the image > Edit Alt Text. In Acrobat: Reading Order panel > right-click Figure > Edit Alternate Text.',
       wcagRef: '1.1.1',
       pdfuaRef: '7.3',
     });
@@ -149,7 +192,7 @@ export function checkImages(pdfDoc, ctx) {
       category: 'images',
       title: 'Decorative Images',
       status: 'pass',
-      summary: 'All image XObjects are accounted for in the structure tree.',
+      summary: 'All image XObjects have matching entries in the structure tree.',
       details: [],
       remediation: null,
       wcagRef: '1.1.1',
