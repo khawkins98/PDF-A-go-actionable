@@ -17,6 +17,7 @@ import { checkFonts } from './fonts.js';
 import { checkForms } from './forms.js';
 import { checkLinks } from './links.js';
 import { checkReadingOrder } from './reading-order.js';
+import { buildSerializableTree } from '../engine/utils/serialize-tree.js';
 
 /**
  * Run the full accessibility audit on a PDF buffer.
@@ -132,10 +133,19 @@ export async function runAudit(buffer, options = {}) {
     }
   }
 
+  // Build serializable structure tree for interactive UI
+  let structureTree = null;
+  if (traits.hasStructTree) {
+    try {
+      structureTree = buildSerializableTree(pdfDoc, roleMap);
+    } catch { structureTree = null; }
+  }
+
   report('complete', 100);
 
   return {
     findings,
+    structureTree,
     meta: {
       fileName: fileName || traits.title || 'Unknown',
       fileSize: buffer.byteLength,

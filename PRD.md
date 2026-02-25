@@ -81,7 +81,7 @@ The audit produces a structured report with:
 
 1. **Summary score** --pass/fail/warning/manual/not-applicable counts with traffic-light status icons | Done
 2. **Per-check detail** --pass/fail/warning/manual-check status, explanation, remediation guidance | Done
-3. **Structure tree explorer** --summary view (element count, types, max depth, heading hierarchy); full interactive tree rendering is a placeholder | Partial
+3. **Structure tree explorer** --interactive ARIA tree view (expand/collapse, keyboard nav, search/filter, RoleMap annotations, alt/lang badges); falls back to findings-based summary for untagged PDFs | Done
 4. **Font inventory** --all fonts with ToUnicode and embedding status | Done
 5. **Image inventory** --all images with alt text status | Done
 6. **Export** --download results as JSON, CSV, or a PDF summary report (all three formats implemented) | Done
@@ -89,7 +89,7 @@ The audit produces a structured report with:
 ### Remaining V1.0 Work
 
 - **Per-element language check** --informational check for `/Lang` on individual StructElems (not yet implemented)
-- **Interactive structure tree** --full tree rendering with lazy expansion (currently shows summary data only)
+- ~~**Interactive structure tree** --full tree rendering with lazy expansion~~ --Done (ARIA tree view with expand/collapse, keyboard nav, search/filter, batch rendering)
 - **Layout persistence** --save/restore WinBox window positions in localStorage
 - **Sample PDFs** --bundled samples in `public/samples/` for "try it now"
 - ~~**In-app About/Credits panel**~~ --Done (About dialog in menu bar)
@@ -165,7 +165,7 @@ src/
     report.js           --summary score, metadata, status counts
     findings-list.js    --grouped/sorted finding cards
     details.js          --selected finding detail + remediation
-    tree-explorer.js    --structure tree summary view
+    tree-explorer.js    --interactive structure tree (ARIA tree view) with fallback summary
     font-table.js       --font inventory table
     image-table.js      --image inventory table
     guidance.js         --remediation text templates and external links
@@ -174,6 +174,7 @@ src/
     resolve.js          --PDFRef resolution helper (new)
     role-map.js         --RoleMap resolution for structure elements (new)
     struct-tree-walker.js --depth-first tree walk with safety caps (new)
+    serialize-tree.js   --serializable hierarchical tree for postMessage transfer (new)
     accessibility-detect.js --(from PDF-A-go-slim)
     content-stream-parser.js --(from PDF-A-go-slim)
     unicode-mapper.js   --(from PDF-A-go-slim)
@@ -215,7 +216,7 @@ Inbound:
 Outbound (all include `sessionId` for routing to the correct session):
 ```js
 { type: 'progress', sessionId, phase: 'structure', percent: 40 }
-{ type: 'result', sessionId, findings: Finding[], meta: { pageCount, fileSize, ... } }
+{ type: 'result', sessionId, findings: Finding[], meta: { pageCount, fileSize, ... }, structureTree: { root, totalCount, truncated } | null }
 { type: 'error', sessionId, message: string }
 ```
 
@@ -347,7 +348,7 @@ UI code must have test coverage. The WinBox panel creation, panel render functio
 | `src/ui/report.test.js` | `renderSummaryPanel` status counts, overall badge, metadata rendering, ARIA labels | 9 |
 | `src/ui/findings-list.test.js` | Category grouping, status-priority sorting, card rendering, scoped bus click dispatch, keyboard accessibility | 9 |
 | `src/ui/details.test.js` | Placeholder state, scoped bus finding rendering, late subscriber, content replacement, semantic sections, WCAG slug mapping | 11 |
-| `src/ui/tree-explorer.test.js` | Structure tree summary rendering, element counts, heading hierarchy, empty/missing tree states | 11 |
+| `src/ui/tree-explorer.test.js` | Interactive ARIA tree rendering, expand/collapse, keyboard nav, type badges, RoleMap annotation, alt/lang display, filter, truncation warning; fallback summary view | 30 |
 | `src/ui/font-table.test.js` | Font inventory table rendering, ToUnicode/embedding status, sorting, empty state | 14 |
 | `src/ui/image-table.test.js` | Image inventory table rendering, alt text status, sorting, empty state | 13 |
 | `src/ui/drop-zone.test.js` | Upload zone creation, drag-and-drop events, file filtering, multi-file handling | 13 |
@@ -398,5 +399,5 @@ Cherry-pick a small representative set covering the 10 automated checks. Store i
 8. **Dark mode:** Light only for V1.0. Theme CSS structured with CSS custom properties for easy dark mode addition later. Done.
 9. **Export:** V1.0 feature, not deferred. Export audit results as JSON, CSV, or a PDF summary report. Done.
 10. **Service worker:** Deferred. App works offline in practice (static assets, no server). Explicit service worker in V1.1.
-11. **Testing:** TDD with Vitest --291 tests across 27 test files covering audit checks, engine utilities (resolve, accessibility detection, struct-tree walker, stream decode, RoleMap), and UI integration (panel creation, render functions, scoped event buses, export helpers). Worker protocol tests pending. 21 pdf-lib fixture factories in `test/fixtures/`. Uses `happy-dom` for DOM-based UI tests. Sample PDFs for in-app "try it" feature pending.
+11. **Testing:** TDD with Vitest --437 tests across 33 test files covering audit checks, engine utilities (resolve, accessibility detection, struct-tree walker, serialize-tree, stream decode, RoleMap), UI integration (panel creation, render functions, interactive tree, scoped event buses, export helpers), and worker protocol. 21 pdf-lib fixture factories in `test/fixtures/`. Uses `happy-dom` for DOM-based UI tests. Sample PDFs for in-app "try it" feature pending.
 12. **Content stream robustness:** Architect the audit layer defensively --graceful fallbacks (warning findings, not crashes) if pdf-lib or stream parsing hits edge cases. Done --each audit module wraps in try/catch, runner catches per-module errors and returns warning findings.

@@ -116,6 +116,32 @@ The structure tree is rooted at `/StructTreeRoot` in the document catalog. Walki
 
 The `/S` key on each StructElem gives the structure type (`/P`, `/H1`, `/Figure`, `/Table`, `/L`, etc.). The `/K` key gives children. `/Alt` provides alternative text. `/Lang` provides per-element language.
 
+### Serializing the Structure Tree Across the Worker Boundary
+
+The audit runs in a Web Worker, which communicates via `postMessage`. pdf-lib objects (`PDFDict`, `PDFRef`, etc.) are not serializable -- they contain circular references and internal state. To render an interactive structure tree in the main thread UI, the tree must be serialized to plain JSON before crossing the worker boundary.
+
+`serialize-tree.js` adapts the `struct-tree-walker.js` DFS pattern to build a hierarchical `TreeNode` structure:
+
+```js
+TreeNode = {
+  id: number,           // sequential integer
+  type: string,         // original type ("Heading1", "Slide")
+  role: string,         // resolved via RoleMap ("H1", "Sect")
+  alt: string | null,
+  lang: string | null,
+  children: TreeNode[]
+}
+```
+
+Key differences from the flat walker:
+- **Hierarchical** -- builds `children[]` arrays via a recursive stack, not a flat array with depth numbers
+- **No PDFDict references** -- only JSON-safe primitives (strings, numbers, arrays, nulls)
+- **No depth field** -- depth is implicit from the tree hierarchy
+- Same safety caps (MAX_DEPTH=200, MAX_ELEMENTS=50,000) and cycle detection (visited set on PDFRef)
+- Returns `{ root: TreeNode | null, totalCount: number, truncated: boolean }`
+
+The runner adds `structureTree` to its return value alongside `findings` and `meta`. The UI's tree-explorer checks for `data.structureTree?.root` to decide between interactive tree mode and the fallback findings summary.
+
 ### ToUnicode CMap Coverage
 
 Fonts without `/ToUnicode` CMaps can't be reliably extracted to text by screen readers or search. How we audit this:

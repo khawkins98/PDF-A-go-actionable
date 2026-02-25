@@ -74,6 +74,19 @@ describe('Bundled sample PDF audit', () => {
       expect(f).toBeDefined();
       expect(['pass', 'not-applicable']).toContain(f.status);
     });
+
+    it('should include structureTree with valid shape', () => {
+      expect(result).toHaveProperty('structureTree');
+      expect(result.structureTree).not.toBeNull();
+      expect(result.structureTree.root).not.toBeNull();
+      expect(result.structureTree.root).toHaveProperty('id');
+      expect(result.structureTree.root).toHaveProperty('type');
+      expect(result.structureTree.root).toHaveProperty('role');
+      expect(result.structureTree.root).toHaveProperty('children');
+      expect(Array.isArray(result.structureTree.root.children)).toBe(true);
+      expect(result.structureTree.totalCount).toBeGreaterThan(0);
+      expect(typeof result.structureTree.truncated).toBe('boolean');
+    });
   });
 
   describe('sample-issues.pdf', () => {
@@ -112,6 +125,10 @@ describe('Bundled sample PDF audit', () => {
       const f = findFinding(result.findings, 'structure-tree');
       expect(f).toBeDefined();
       expect(f.status).toBe('fail');
+    });
+
+    it('should have null structureTree (untagged)', () => {
+      expect(result.structureTree).toBeNull();
     });
   });
 });

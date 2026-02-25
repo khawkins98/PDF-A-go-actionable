@@ -1,15 +1,22 @@
 /**
  * Structure tree explorer panel.
  *
- * Displays the document's structure tree information derived from the
- * audit findings. Since the UI panels receive audit result data (not the
- * raw pdfDoc), the actual tree is not available for interactive rendering.
- * Instead, this panel shows the structure-summary finding details and a
- * placeholder message for full tree exploration.
+ * Two modes:
+ * - Interactive ARIA tree when data.structureTree?.root exists
+ * - Fallback findings-based summary view otherwise
  *
- * Includes a search/filter input at the top for filtering displayed
- * structure information.
+ * Interactive tree implements WAI-ARIA TreeView pattern with:
+ * - role="tree" / role="treeitem" / role="group"
+ * - Lazy child rendering (expand/collapse)
+ * - Keyboard navigation (Arrow keys, Home, End, Enter, Space)
+ * - Search/filter with path expansion
+ * - Batch limit (200 children per expansion) with "Show more" button
  */
+
+const BATCH_SIZE = 200;
+
+/** Counter for generating unique IDs across multiple panel instances. */
+let treeFilterIdCounter = 0;
 
 /**
  * Render the structure tree explorer panel.
@@ -17,12 +24,11 @@
  * @param {HTMLElement} el - The container element to render into
  * @param {object} data - Audit result data
  * @param {object[]} data.findings - Array of Finding objects
+ * @param {object} [data.structureTree] - Serialized tree from buildSerializableTree
  */
-/** Counter for generating unique IDs across multiple panel instances. */
-let treeFilterIdCounter = 0;
-
 export function renderTreeExplorer(el, data) {
   const { findings } = data;
+  const structTree = data.structureTree;
 
   el.innerHTML = '';
 
@@ -63,15 +69,387 @@ export function renderTreeExplorer(el, data) {
   filterContainer.appendChild(filterInput);
   el.appendChild(filterContainer);
 
-  // Find the structure-summary finding
+  // Interactive tree mode
+  if (structTree && structTree.root) {
+    renderInteractiveTree(el, structTree, filterInput);
+    return;
+  }
+
+  // Fallback: findings-based summary
+  renderFallbackView(el, findings, filterInput);
+}
+
+// ---------------------------------------------------------------------------
+// Interactive tree rendering
+// ---------------------------------------------------------------------------
+
+function renderInteractiveTree(el, structTree, filterInput) {
+  const { root, totalCount, truncated } = structTree;
+
+  // Stats bar
+  const stats = document.createElement('div');
+  stats.className = 'tree-stats';
+
+  const typesSet = new Set();
+  countTypes(root, typesSet);
+
+  stats.textContent = `${totalCount} elements, ${typesSet.size} types`;
+  if (truncated) {
+    const warn = document.createElement('span');
+    warn.className = 'tree-truncated-warning';
+    warn.textContent = ' (tree truncated — document exceeds size limit)';
+    stats.appendChild(warn);
+  }
+  el.appendChild(stats);
+
+  // Tree container
+  const treeEl = document.createElement('ul');
+  treeEl.setAttribute('role', 'tree');
+  treeEl.setAttribute('aria-label', 'Document structure tree');
+  treeEl.className = 'tree-node';
+
+  // Render root expanded
+  const rootItem = createTreeItem(root, true);
+  treeEl.appendChild(rootItem);
+
+  el.appendChild(treeEl);
+
+  // Keyboard navigation
+  treeEl.addEventListener('keydown', (e) => handleTreeKeydown(e, treeEl));
+
+  // Filter
+  filterInput.addEventListener('input', () => {
+    const query = filterInput.value.trim().toLowerCase();
+    filterTree(treeEl, root, query);
+  });
+}
+
+function countTypes(node, typesSet) {
+  typesSet.add(node.role);
+  for (const child of node.children) {
+    countTypes(child, typesSet);
+  }
+}
+
+/**
+ * Create a treeitem element for a node.
+ * @param {object} node - TreeNode
+ * @param {boolean} expanded - Whether to render children immediately
+ * @returns {HTMLLIElement}
+ */
+function createTreeItem(node, expanded) {
+  const li = document.createElement('li');
+  li.setAttribute('role', 'treeitem');
+  li.setAttribute('data-node-id', String(node.id));
+  li.dataset.type = node.type.toLowerCase();
+  li.dataset.role = node.role.toLowerCase();
+  if (node.alt) li.dataset.alt = node.alt.toLowerCase();
+
+  const hasChildren = node.children.length > 0;
+  li.setAttribute('aria-expanded', hasChildren ? String(expanded) : undefined);
+  if (!hasChildren) li.removeAttribute('aria-expanded');
+
+  // Row content
+  const row = document.createElement('div');
+  row.className = 'tree-node__row';
+  row.tabIndex = -1;
+  row.setAttribute('data-node-id', String(node.id));
+
+  // Toggle icon
+  const toggle = document.createElement('span');
+  toggle.className = hasChildren ? 'tree-node__toggle' : 'tree-node__toggle tree-node__toggle--leaf';
+  toggle.textContent = hasChildren ? (expanded ? '\u25BC' : '\u25B6') : '';
+  toggle.setAttribute('aria-hidden', 'true');
+  row.appendChild(toggle);
+
+  // Type badge
+  const typeBadge = document.createElement('code');
+  typeBadge.className = 'tree-node__type';
+  typeBadge.textContent = node.role;
+  row.appendChild(typeBadge);
+
+  // RoleMap annotation (show original if different)
+  if (node.type !== node.role) {
+    const mapping = document.createElement('span');
+    mapping.className = 'tree-node__mapping';
+    mapping.textContent = `\u2190 ${node.type}`;
+    row.appendChild(mapping);
+  }
+
+  // Alt text badge
+  if (node.alt) {
+    const altBadge = document.createElement('span');
+    altBadge.className = 'tree-node__alt';
+    altBadge.textContent = `alt: "${node.alt}"`;
+    altBadge.title = node.alt;
+    row.appendChild(altBadge);
+  }
+
+  // Lang badge
+  if (node.lang) {
+    const langBadge = document.createElement('span');
+    langBadge.className = 'tree-node__lang';
+    langBadge.textContent = node.lang;
+    row.appendChild(langBadge);
+  }
+
+  // Child count
+  if (hasChildren) {
+    const count = document.createElement('span');
+    count.className = 'tree-node__count';
+    count.textContent = `(${node.children.length})`;
+    row.appendChild(count);
+  }
+
+  li.appendChild(row);
+
+  // Click to toggle
+  row.addEventListener('click', () => {
+    if (hasChildren) {
+      toggleNode(li, node);
+    }
+  });
+
+  // Render children if expanded
+  if (expanded && hasChildren) {
+    renderChildren(li, node, 0);
+  }
+
+  // Store node data reference
+  li._treeNode = node;
+
+  return li;
+}
+
+/**
+ * Render a batch of children into the group under li.
+ */
+function renderChildren(li, node, startIndex) {
+  let group = li.querySelector(':scope > [role="group"]');
+  if (!group) {
+    group = document.createElement('ul');
+    group.setAttribute('role', 'group');
+    group.className = 'tree-node';
+    li.appendChild(group);
+  }
+
+  // Remove existing "show more" button
+  const existingMore = group.querySelector(':scope > .tree-node__more');
+  if (existingMore) existingMore.remove();
+
+  const end = Math.min(startIndex + BATCH_SIZE, node.children.length);
+  for (let i = startIndex; i < end; i++) {
+    const childItem = createTreeItem(node.children[i], false);
+    group.appendChild(childItem);
+  }
+
+  // Add "Show more" button if needed
+  if (end < node.children.length) {
+    const remaining = node.children.length - end;
+    const moreBtn = document.createElement('button');
+    moreBtn.className = 'tree-node__more';
+    moreBtn.textContent = `Show ${Math.min(remaining, BATCH_SIZE)} more of ${remaining} remaining...`;
+    moreBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      renderChildren(li, node, end);
+    });
+    group.appendChild(moreBtn);
+  }
+}
+
+function toggleNode(li, node) {
+  const isExpanded = li.getAttribute('aria-expanded') === 'true';
+  const toggle = li.querySelector(':scope > .tree-node__row .tree-node__toggle');
+
+  if (isExpanded) {
+    // Collapse: remove children
+    const group = li.querySelector(':scope > [role="group"]');
+    if (group) group.remove();
+    li.setAttribute('aria-expanded', 'false');
+    if (toggle) toggle.textContent = '\u25B6';
+  } else {
+    // Expand: render children
+    li.setAttribute('aria-expanded', 'true');
+    if (toggle) toggle.textContent = '\u25BC';
+    renderChildren(li, node, 0);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Keyboard navigation (WAI-ARIA TreeView)
+// ---------------------------------------------------------------------------
+
+function handleTreeKeydown(e, treeEl) {
+  const rows = [...treeEl.querySelectorAll('.tree-node__row')];
+  const visibleRows = rows.filter(r => {
+    // Check if any ancestor li is collapsed
+    let parent = r.parentElement; // the li
+    let container = parent.parentElement; // the ul[role=group] or ul[role=tree]
+    while (container) {
+      if (container.getAttribute('role') === 'group') {
+        const parentLi = container.parentElement;
+        if (parentLi && parentLi.getAttribute('aria-expanded') === 'false') {
+          return false;
+        }
+      }
+      if (container.getAttribute('role') === 'tree') break;
+      container = container.parentElement;
+    }
+    return true;
+  });
+
+  const currentIndex = visibleRows.indexOf(document.activeElement);
+  if (currentIndex === -1 && !['Home', 'End'].includes(e.key)) return;
+
+  const currentRow = visibleRows[currentIndex];
+  const currentLi = currentRow?.parentElement;
+
+  switch (e.key) {
+    case 'ArrowDown': {
+      e.preventDefault();
+      if (currentIndex < visibleRows.length - 1) {
+        visibleRows[currentIndex + 1].focus();
+      }
+      break;
+    }
+    case 'ArrowUp': {
+      e.preventDefault();
+      if (currentIndex > 0) {
+        visibleRows[currentIndex - 1].focus();
+      }
+      break;
+    }
+    case 'ArrowRight': {
+      e.preventDefault();
+      if (currentLi && currentLi.hasAttribute('aria-expanded')) {
+        if (currentLi.getAttribute('aria-expanded') === 'false') {
+          toggleNode(currentLi, currentLi._treeNode);
+        } else {
+          // Move to first child
+          const group = currentLi.querySelector(':scope > [role="group"]');
+          const firstChild = group?.querySelector(':scope > [role="treeitem"] > .tree-node__row');
+          if (firstChild) firstChild.focus();
+        }
+      }
+      break;
+    }
+    case 'ArrowLeft': {
+      e.preventDefault();
+      if (currentLi && currentLi.getAttribute('aria-expanded') === 'true') {
+        toggleNode(currentLi, currentLi._treeNode);
+      } else if (currentLi) {
+        // Move to parent
+        const parentGroup = currentLi.parentElement;
+        if (parentGroup && parentGroup.getAttribute('role') === 'group') {
+          const parentLi = parentGroup.parentElement;
+          const parentRow = parentLi?.querySelector(':scope > .tree-node__row');
+          if (parentRow) parentRow.focus();
+        }
+      }
+      break;
+    }
+    case 'Home': {
+      e.preventDefault();
+      if (visibleRows.length > 0) visibleRows[0].focus();
+      break;
+    }
+    case 'End': {
+      e.preventDefault();
+      if (visibleRows.length > 0) visibleRows[visibleRows.length - 1].focus();
+      break;
+    }
+    case 'Enter':
+    case ' ': {
+      e.preventDefault();
+      if (currentLi && currentLi.hasAttribute('aria-expanded')) {
+        toggleNode(currentLi, currentLi._treeNode);
+      }
+      break;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Filter / search
+// ---------------------------------------------------------------------------
+
+/**
+ * Find matching node IDs in the serialized tree data.
+ * Returns a Set of node IDs that match and all their ancestor IDs.
+ */
+function findMatchingPaths(node, query, ancestors = []) {
+  const matchIds = new Set();
+
+  const matches = node.type.toLowerCase().includes(query) ||
+    node.role.toLowerCase().includes(query) ||
+    (node.alt && node.alt.toLowerCase().includes(query)) ||
+    (node.lang && node.lang.toLowerCase().includes(query));
+
+  if (matches) {
+    matchIds.add(node.id);
+    for (const a of ancestors) matchIds.add(a);
+  }
+
+  for (const child of node.children) {
+    const childMatches = findMatchingPaths(child, query, [...ancestors, node.id]);
+    for (const id of childMatches) matchIds.add(id);
+  }
+
+  return matchIds;
+}
+
+function filterTree(treeEl, root, query) {
+  if (!query) {
+    // Clear filter — re-render with root expanded
+    treeEl.innerHTML = '';
+    treeEl.appendChild(createTreeItem(root, true));
+    return;
+  }
+
+  const matchIds = findMatchingPaths(root, query);
+
+  // Re-render tree with matching paths expanded
+  treeEl.innerHTML = '';
+  const rootItem = createFilteredTreeItem(root, matchIds);
+  if (rootItem) treeEl.appendChild(rootItem);
+}
+
+function createFilteredTreeItem(node, matchIds) {
+  if (!matchIds.has(node.id)) return null;
+
+  const li = createTreeItem(node, false);
+
+  // Check if any children match
+  const matchingChildren = node.children.filter(c => matchIds.has(c.id));
+  if (matchingChildren.length > 0) {
+    li.setAttribute('aria-expanded', 'true');
+    const toggle = li.querySelector(':scope > .tree-node__row .tree-node__toggle');
+    if (toggle) toggle.textContent = '\u25BC';
+
+    const group = document.createElement('ul');
+    group.setAttribute('role', 'group');
+    group.className = 'tree-node';
+
+    for (const child of matchingChildren) {
+      const childItem = createFilteredTreeItem(child, matchIds);
+      if (childItem) group.appendChild(childItem);
+    }
+    li.appendChild(group);
+  }
+
+  return li;
+}
+
+// ---------------------------------------------------------------------------
+// Fallback: findings-based summary view
+// ---------------------------------------------------------------------------
+
+function renderFallbackView(el, findings, filterInput) {
   const structureSummary = findings.find(f => f.id === 'structure-summary');
-  // Find the heading-hierarchy finding for heading details
   const headingHierarchy = findings.find(f => f.id === 'heading-hierarchy');
-  // Find tagged-pdf and structure-tree findings
   const taggedPdf = findings.find(f => f.id === 'tagged-pdf');
   const structureTree = findings.find(f => f.id === 'structure-tree');
 
-  // Container for the tree content (used for filtering)
   const contentContainer = document.createElement('div');
   contentContainer.setAttribute('role', 'region');
   contentContainer.setAttribute('aria-label', 'Structure tree information');
@@ -88,12 +466,10 @@ export function renderTreeExplorer(el, data) {
     statusSection.appendChild(statusHeading);
 
     if (taggedPdf) {
-      const item = createStatusItem(taggedPdf.title, taggedPdf.status, taggedPdf.summary);
-      statusSection.appendChild(item);
+      statusSection.appendChild(createStatusItem(taggedPdf.title, taggedPdf.status, taggedPdf.summary));
     }
     if (structureTree) {
-      const item = createStatusItem(structureTree.title, structureTree.status, structureTree.summary);
-      statusSection.appendChild(item);
+      statusSection.appendChild(createStatusItem(structureTree.title, structureTree.status, structureTree.summary));
     }
 
     contentContainer.appendChild(statusSection);
@@ -115,7 +491,6 @@ export function renderTreeExplorer(el, data) {
     summaryText.style.cssText = 'color: var(--color-text-secondary); margin-bottom: var(--space-sm);';
     summarySection.appendChild(summaryText);
 
-    // Show element types as a nested details/summary tree
     const typesDetail = structureSummary.details.find(d => d.label === 'Element types');
     if (typesDetail) {
       const typesSection = document.createElement('details');
@@ -155,7 +530,6 @@ export function renderTreeExplorer(el, data) {
       summarySection.appendChild(typesSection);
     }
 
-    // Show other details
     const otherDetails = structureSummary.details.filter(d => d.label !== 'Element types');
     if (otherDetails.length > 0) {
       const dl = document.createElement('dl');
@@ -230,7 +604,7 @@ export function renderTreeExplorer(el, data) {
     contentContainer.appendChild(headingSection);
   }
 
-  // Placeholder for full interactive tree
+  // Placeholder
   const placeholderSection = document.createElement('section');
   placeholderSection.style.cssText = [
     'margin-top: var(--space-lg)',
@@ -262,14 +636,6 @@ export function renderTreeExplorer(el, data) {
   });
 }
 
-/**
- * Create a status item display element.
- *
- * @param {string} title
- * @param {string} status
- * @param {string} summary
- * @returns {HTMLElement}
- */
 function createStatusItem(title, status, summary) {
   const item = document.createElement('div');
   item.style.cssText = 'display: flex; align-items: flex-start; gap: var(--space-sm); margin-bottom: var(--space-sm);';
@@ -288,15 +654,7 @@ function createStatusItem(title, status, summary) {
   return item;
 }
 
-/**
- * Filter visible content based on a search query.
- * Hides list items and detail rows that do not match.
- *
- * @param {HTMLElement} container
- * @param {string} query - Lowercase search term
- */
 function filterContent(container, query) {
-  // Filter type tags in the element types list
   const typeItems = container.querySelectorAll('li[data-type]');
   for (const item of typeItems) {
     if (!query) {
@@ -308,7 +666,6 @@ function filterContent(container, query) {
     }
   }
 
-  // Filter details list items (heading hierarchy, etc.)
   const detailItems = container.querySelectorAll('ol li');
   for (const item of detailItems) {
     if (!query) {

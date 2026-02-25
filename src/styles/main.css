@@ -823,6 +823,127 @@ body {
   box-shadow: none;
 }
 
+/* === Structure Tree === */
+.tree-stats {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-alt);
+  box-shadow: var(--bevel-sunken);
+}
+
+.tree-truncated-warning {
+  color: var(--color-warning);
+  font-weight: 600;
+}
+
+.tree-node {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tree-node__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 2px var(--space-xs);
+  cursor: default;
+  min-height: 24px;
+  white-space: nowrap;
+}
+
+.tree-node__row:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.tree-node__row:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
+.tree-node__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  user-select: none;
+}
+
+.tree-node__toggle--leaf {
+  visibility: hidden;
+}
+
+.tree-node__type {
+  display: inline-block;
+  padding: 0 var(--space-xs);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--bevel-raised);
+  line-height: 1.4;
+}
+
+.tree-node__mapping {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.tree-node__alt {
+  font-size: var(--font-size-sm);
+  color: var(--color-pass);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-node__lang {
+  font-size: var(--font-size-sm);
+  padding: 0 3px;
+  background: var(--color-manual-bg);
+  color: var(--color-manual);
+  border: 1px solid var(--color-border-light);
+}
+
+.tree-node__count {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.tree-node__more {
+  padding: 2px var(--space-sm);
+  margin: 2px 0 2px 20px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+  color: var(--color-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  box-shadow: var(--bevel-raised);
+}
+
+.tree-node__more:hover {
+  background: var(--color-surface);
+}
+
+.tree-node__more:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+[role="group"] {
+  padding-left: 16px;
+}
+
 /* === Utility === */
 .visually-hidden {
   position: absolute;

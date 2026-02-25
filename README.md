@@ -31,7 +31,7 @@ The tool covers the practical validation workflow used by accessibility professi
 - Tab order configuration
 
 **Flagged for manual review:**
-- Reading order (with structure tree visualization to help)
+- Reading order (with interactive structure tree explorer to help)
 - Screen reader testing (with tool recommendations)
 
 ## Related Projects
