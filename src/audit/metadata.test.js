@@ -8,7 +8,7 @@
  * - Bookmarks present / absent
  */
 import { describe, it, expect } from 'vitest';
-import { PDFDocument, PDFName, PDFString } from 'pdf-lib';
+import { PDFDocument, PDFName, PDFString, PDFRawStream } from 'pdf-lib';
 import { checkMetadata } from './metadata.js';
 import { buildTestContext } from '../../test/helpers/context.js';
 import { detectAccessibilityTraits } from '../engine/utils/accessibility-detect.js';
@@ -21,16 +21,66 @@ import {
   createPdfWithBookmarks,
 } from '../../test/fixtures/create-test-pdfs.js';
 
+/**
+ * Helper: create a PDF with XMP metadata containing dc:title.
+ * This sets the title in XMP (the PDF/UA-required location).
+ */
+async function createPdfWithXmpTitle(title = 'XMP Title Test') {
+  const doc = await PDFDocument.create();
+  doc.addPage();
+
+  const xmpXml = `<?xpacket begin="\uFEFF" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    <rdf:Description rdf:about=""
+      xmlns:dc="http://purl.org/dc/elements/1.1/">
+      <dc:title>
+        <rdf:Alt>
+          <rdf:li xml:lang="x-default">${title}</rdf:li>
+        </rdf:Alt>
+      </dc:title>
+    </rdf:Description>
+  </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>`;
+  const xmpBytes = new TextEncoder().encode(xmpXml);
+  const xmpStream = PDFRawStream.of(
+    doc.context.obj({
+      Type: 'Metadata',
+      Subtype: PDFName.of('XML'),
+      Length: xmpBytes.length,
+    }),
+    xmpBytes,
+  );
+  const xmpRef = doc.context.register(xmpStream);
+  doc.catalog.set(PDFName.of('Metadata'), xmpRef);
+
+  return doc.save();
+}
+
 describe('checkMetadata', () => {
-  it('should pass when title is set', async () => {
-    const bytes = await createPdfWithTitle('My Accessible Report');
+  it('should pass when title is in XMP metadata', async () => {
+    const bytes = await createPdfWithXmpTitle('My XMP Report');
     const ctx = await buildTestContext(bytes);
     const findings = checkMetadata(ctx.pdfDoc, ctx);
 
     const titleFinding = findings.find(f => f.id === 'document-title');
     expect(titleFinding).toBeDefined();
     expect(titleFinding.status).toBe('pass');
+    expect(titleFinding.summary).toContain('My XMP Report');
+  });
+
+  it('should warn when title is only in Info dict (not XMP)', async () => {
+    const bytes = await createPdfWithTitle('My Accessible Report');
+    const ctx = await buildTestContext(bytes);
+    const findings = checkMetadata(ctx.pdfDoc, ctx);
+
+    const titleFinding = findings.find(f => f.id === 'document-title');
+    expect(titleFinding).toBeDefined();
+    expect(titleFinding.status).toBe('warning');
     expect(titleFinding.summary).toContain('My Accessible Report');
+    expect(titleFinding.summary).toContain('Info dictionary');
+    expect(titleFinding.remediation).toContain('XMP');
   });
 
   it('should fail when title is missing', async () => {

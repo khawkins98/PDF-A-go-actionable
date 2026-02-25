@@ -14,21 +14,12 @@ import { resolve } from '../engine/utils/resolve.js';
  */
 export function checkFonts(pdfDoc, ctx) {
   const coverage = auditToUnicodeCoverage(pdfDoc);
-  const fontDetails = coverage.fonts.map(f => ({
-    label: f.name,
-    value: f.hasToUnicode ? 'Has ToUnicode' : 'Missing ToUnicode',
-  }));
-
-  // Also check embedding status
   const embeddingInfo = checkFontEmbedding(pdfDoc);
+  const findings = [];
 
-  const allDetails = [
-    ...fontDetails,
-    ...embeddingInfo.details,
-  ];
-
+  // Finding 1: ToUnicode CMap coverage
   if (coverage.total === 0) {
-    return [{
+    findings.push({
       id: 'font-tounicode',
       category: 'fonts',
       title: 'Font Unicode Mapping',
@@ -38,26 +29,63 @@ export function checkFonts(pdfDoc, ctx) {
       remediation: null,
       wcagRef: null,
       pdfuaRef: '7.21.3',
-    }];
+    });
+  } else {
+    const missingCount = coverage.total - coverage.withToUnicode;
+    const toUnicodeDetails = coverage.fonts.map(f => ({
+      label: f.name,
+      value: f.hasToUnicode ? 'Has ToUnicode' : 'Missing ToUnicode',
+    }));
+
+    findings.push({
+      id: 'font-tounicode',
+      category: 'fonts',
+      title: 'Font Unicode Mapping',
+      status: missingCount === 0 ? 'pass' : 'warning',
+      summary: missingCount === 0
+        ? `All ${coverage.total} font(s) have ToUnicode CMaps for text extraction.`
+        : `${missingCount} of ${coverage.total} font(s) missing ToUnicode CMap. Text extraction and search may not work correctly.`,
+      details: toUnicodeDetails,
+      remediation: missingCount === 0
+        ? null
+        : 'Fonts without ToUnicode CMaps may prevent text copy/paste and search. Re-export the PDF with "embed fonts" enabled, or use fonts with built-in Unicode mapping.',
+      wcagRef: null,
+      pdfuaRef: '7.21.3',
+    });
   }
 
-  const missingCount = coverage.total - coverage.withToUnicode;
+  // Finding 2: Font embedding status
+  if (embeddingInfo.totalChecked === 0) {
+    findings.push({
+      id: 'font-embedding',
+      category: 'fonts',
+      title: 'Font Embedding',
+      status: 'not-applicable',
+      summary: 'No fonts with font descriptors to check for embedding.',
+      details: [],
+      remediation: null,
+      wcagRef: null,
+      pdfuaRef: '7.21.4',
+    });
+  } else {
+    findings.push({
+      id: 'font-embedding',
+      category: 'fonts',
+      title: 'Font Embedding',
+      status: embeddingInfo.notEmbedded === 0 ? 'pass' : 'warning',
+      summary: embeddingInfo.notEmbedded === 0
+        ? `All ${embeddingInfo.totalChecked} font(s) with descriptors are embedded.`
+        : `${embeddingInfo.notEmbedded} of ${embeddingInfo.totalChecked} font(s) not embedded. Text may not render correctly on systems without the font installed.`,
+      details: embeddingInfo.details,
+      remediation: embeddingInfo.notEmbedded === 0
+        ? null
+        : 'Embed all fonts in the PDF. In Word: save as PDF with "embed fonts" option. In InDesign: export with "subset fonts below 100%". In Acrobat: Preflight > Embed missing fonts.',
+      wcagRef: null,
+      pdfuaRef: '7.21.4',
+    });
+  }
 
-  return [{
-    id: 'font-tounicode',
-    category: 'fonts',
-    title: 'Font Unicode Mapping',
-    status: missingCount === 0 ? 'pass' : 'warning',
-    summary: missingCount === 0
-      ? `All ${coverage.total} font(s) have ToUnicode CMaps for text extraction.`
-      : `${missingCount} of ${coverage.total} font(s) missing ToUnicode CMap. Text extraction and search may not work correctly.`,
-    details: allDetails,
-    remediation: missingCount === 0
-      ? null
-      : 'Fonts without ToUnicode CMaps may prevent text copy/paste and search. Re-export the PDF with "embed fonts" enabled, or use fonts with built-in Unicode mapping.',
-    wcagRef: null,
-    pdfuaRef: '7.21.3',
-  }];
+  return findings;
 }
 
 /**
@@ -106,5 +134,5 @@ function checkFontEmbedding(pdfDoc) {
     });
   }
 
-  return { details };
+  return { details, totalChecked: embedded + notEmbedded, embedded, notEmbedded };
 }

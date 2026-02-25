@@ -25,18 +25,29 @@ export function checkMetadata(pdfDoc, ctx) {
   const findings = [];
 
   // #1 — Document title
+  // Three-level check: pass (XMP dc:title), warning (Info dict only), fail (none)
+  let titleStatus, titleSummary, titleRemediation;
+  if (traits.titleSource === 'xmp') {
+    titleStatus = 'pass';
+    titleSummary = `Document title is set: "${traits.title}"`;
+    titleRemediation = null;
+  } else if (traits.titleSource === 'info') {
+    titleStatus = 'warning';
+    titleSummary = `Document title is set in the Info dictionary: "${traits.title}". For full PDF/UA compliance, the title should also be in XMP metadata (dc:title).`;
+    titleRemediation = 'The document title is in the legacy Info dictionary but not in XMP metadata. PDF/UA requires dc:title in XMP. Re-export the PDF with your authoring tool, or use Acrobat\'s File > Properties to set the title (which updates both sources).';
+  } else {
+    titleStatus = 'fail';
+    titleSummary = 'No document title set. The title bar will show the filename instead.';
+    titleRemediation = 'Set the document title in your authoring tool (File > Properties in Word/InDesign, or Document Properties in Acrobat). Use something descriptive, not the filename.';
+  }
   findings.push({
     id: 'document-title',
     category: 'metadata',
     title: 'Document Title',
-    status: traits.title ? 'pass' : 'fail',
-    summary: traits.title
-      ? `Document title is set: "${traits.title}"`
-      : 'No document title set. The title bar will show the filename instead.',
+    status: titleStatus,
+    summary: titleSummary,
     details: traits.title ? [{ label: 'Title', value: traits.title }] : [],
-    remediation: traits.title
-      ? null
-      : 'Set the document title in your authoring tool (File > Properties in Word/InDesign, or Document Properties in Acrobat). Use something descriptive, not the filename.',
+    remediation: titleRemediation,
     wcagRef: '2.4.2',
     pdfuaRef: '7.1',
   });

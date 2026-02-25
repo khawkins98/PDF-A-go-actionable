@@ -9,6 +9,7 @@
  * - Status badge display
  * - Font detail parsing (ToUnicode and embedding)
  * - Remediation section
+ * - Two-finding merge (font-tounicode + font-embedding)
  */
 import { describe, it, expect } from 'vitest';
 import { renderFontTable } from './font-table.js';
@@ -17,7 +18,7 @@ function makeData(findings) {
   return { findings };
 }
 
-function makeFontFinding(overrides) {
+function makeToUnicodeFinding(overrides) {
   return {
     id: 'font-tounicode',
     category: 'fonts',
@@ -28,6 +29,19 @@ function makeFontFinding(overrides) {
       { label: 'Arial', value: 'Has ToUnicode' },
       { label: 'TimesNewRoman', value: 'Has ToUnicode' },
     ],
+    remediation: null,
+    ...overrides,
+  };
+}
+
+function makeEmbeddingFinding(overrides) {
+  return {
+    id: 'font-embedding',
+    category: 'fonts',
+    title: 'Font Embedding',
+    status: 'pass',
+    summary: 'All 2 font(s) with descriptors are embedded.',
+    details: [],
     remediation: null,
     ...overrides,
   };
@@ -50,25 +64,29 @@ describe('renderFontTable', () => {
     expect(el.textContent).toContain('No font audit data available');
   });
 
-  it('should render overall status badge', () => {
+  it('should render status badges for both findings', () => {
     const el = document.createElement('div');
-    renderFontTable(el, makeData([makeFontFinding()]));
+    renderFontTable(el, makeData([makeToUnicodeFinding(), makeEmbeddingFinding()]));
 
-    const badge = el.querySelector('.status-badge--pass');
-    expect(badge).toBeDefined();
-    expect(badge.textContent).toBe('Pass');
+    const badges = el.querySelectorAll('.status-badge--pass');
+    // Both findings have pass status
+    expect(badges.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('should render summary text', () => {
+  it('should render summary text for both findings', () => {
     const el = document.createElement('div');
-    renderFontTable(el, makeData([makeFontFinding({ summary: 'All fonts look good.' })]));
+    renderFontTable(el, makeData([
+      makeToUnicodeFinding({ summary: 'All fonts have ToUnicode.' }),
+      makeEmbeddingFinding({ summary: 'All fonts embedded.' }),
+    ]));
 
-    expect(el.textContent).toContain('All fonts look good.');
+    expect(el.textContent).toContain('All fonts have ToUnicode.');
+    expect(el.textContent).toContain('All fonts embedded.');
   });
 
   it('should render a table with correct headers', () => {
     const el = document.createElement('div');
-    renderFontTable(el, makeData([makeFontFinding()]));
+    renderFontTable(el, makeData([makeToUnicodeFinding(), makeEmbeddingFinding()]));
 
     const ths = el.querySelectorAll('th');
     const headers = [...ths].map(th => th.textContent);
@@ -79,7 +97,7 @@ describe('renderFontTable', () => {
 
   it('should render font rows from details', () => {
     const el = document.createElement('div');
-    renderFontTable(el, makeData([makeFontFinding()]));
+    renderFontTable(el, makeData([makeToUnicodeFinding(), makeEmbeddingFinding()]));
 
     const rows = el.querySelectorAll('tbody tr');
     expect(rows.length).toBe(2);
@@ -93,12 +111,15 @@ describe('renderFontTable', () => {
 
   it('should show warning badge for fonts missing ToUnicode', () => {
     const el = document.createElement('div');
-    renderFontTable(el, makeData([makeFontFinding({
-      status: 'warning',
-      details: [
-        { label: 'BrokenFont', value: 'Missing ToUnicode' },
-      ],
-    })]));
+    renderFontTable(el, makeData([
+      makeToUnicodeFinding({
+        status: 'warning',
+        details: [
+          { label: 'BrokenFont', value: 'Missing ToUnicode' },
+        ],
+      }),
+      makeEmbeddingFinding(),
+    ]));
 
     const rows = el.querySelectorAll('tbody tr');
     expect(rows.length).toBe(1);
@@ -110,12 +131,19 @@ describe('renderFontTable', () => {
 
   it('should show warning badge for not-embedded fonts', () => {
     const el = document.createElement('div');
-    renderFontTable(el, makeData([makeFontFinding({
-      details: [
-        { label: 'Arial', value: 'Has ToUnicode' },
-        { label: 'Arial', value: 'Not embedded' },
-      ],
-    })]));
+    renderFontTable(el, makeData([
+      makeToUnicodeFinding({
+        details: [
+          { label: 'Arial', value: 'Has ToUnicode' },
+        ],
+      }),
+      makeEmbeddingFinding({
+        status: 'warning',
+        details: [
+          { label: 'Arial', value: 'Not embedded' },
+        ],
+      }),
+    ]));
 
     const rows = el.querySelectorAll('tbody tr');
     expect(rows.length).toBe(1);
@@ -127,39 +155,65 @@ describe('renderFontTable', () => {
 
   it('should skip "Embedding summary" detail entries', () => {
     const el = document.createElement('div');
-    renderFontTable(el, makeData([makeFontFinding({
-      details: [
-        { label: 'Embedding summary', value: '1 embedded, 1 not embedded' },
-        { label: 'Arial', value: 'Has ToUnicode' },
-      ],
-    })]));
+    renderFontTable(el, makeData([
+      makeToUnicodeFinding({
+        details: [
+          { label: 'Arial', value: 'Has ToUnicode' },
+        ],
+      }),
+      makeEmbeddingFinding({
+        details: [
+          { label: 'Embedding summary', value: '1 embedded, 1 not embedded' },
+        ],
+      }),
+    ]));
 
     const rows = el.querySelectorAll('tbody tr');
     expect(rows.length).toBe(1);
     expect(rows[0].querySelector('td').textContent).toBe('Arial');
   });
 
-  it('should render remediation section when present', () => {
+  it('should render remediation section when present on toUnicode finding', () => {
     const el = document.createElement('div');
-    renderFontTable(el, makeData([makeFontFinding({
-      status: 'warning',
-      remediation: 'Re-export with embedded fonts.',
-    })]));
+    renderFontTable(el, makeData([
+      makeToUnicodeFinding({
+        status: 'warning',
+        remediation: 'Re-export with embedded fonts.',
+      }),
+      makeEmbeddingFinding(),
+    ]));
 
     expect(el.textContent).toContain('Remediation');
     expect(el.textContent).toContain('Re-export with embedded fonts.');
   });
 
-  it('should not render remediation when null', () => {
+  it('should render remediation section when present on embedding finding', () => {
     const el = document.createElement('div');
-    renderFontTable(el, makeData([makeFontFinding({ remediation: null })]));
+    renderFontTable(el, makeData([
+      makeToUnicodeFinding(),
+      makeEmbeddingFinding({
+        status: 'warning',
+        remediation: 'Embed all fonts in the PDF.',
+      }),
+    ]));
+
+    expect(el.textContent).toContain('Remediation');
+    expect(el.textContent).toContain('Embed all fonts in the PDF.');
+  });
+
+  it('should not render remediation when both findings have null remediation', () => {
+    const el = document.createElement('div');
+    renderFontTable(el, makeData([
+      makeToUnicodeFinding({ remediation: null }),
+      makeEmbeddingFinding({ remediation: null }),
+    ]));
 
     expect(el.textContent).not.toContain('Remediation');
   });
 
   it('should have accessible table with caption and scope attributes', () => {
     const el = document.createElement('div');
-    renderFontTable(el, makeData([makeFontFinding()]));
+    renderFontTable(el, makeData([makeToUnicodeFinding(), makeEmbeddingFinding()]));
 
     const caption = el.querySelector('caption');
     expect(caption).toBeDefined();
@@ -171,19 +225,49 @@ describe('renderFontTable', () => {
     }
   });
 
-  it('should show message when finding has empty details', () => {
+  it('should show message when both findings have empty details', () => {
     const el = document.createElement('div');
-    renderFontTable(el, makeData([makeFontFinding({ details: [] })]));
+    renderFontTable(el, makeData([
+      makeToUnicodeFinding({ details: [] }),
+      makeEmbeddingFinding({ details: [] }),
+    ]));
 
     expect(el.textContent).toContain('No font details available');
   });
 
-  it('should render warning status badge for not-applicable', () => {
+  it('should render N/A status badge for not-applicable', () => {
     const el = document.createElement('div');
-    renderFontTable(el, makeData([makeFontFinding({ status: 'not-applicable' })]));
+    renderFontTable(el, makeData([
+      makeToUnicodeFinding({ status: 'not-applicable' }),
+      makeEmbeddingFinding({ status: 'not-applicable' }),
+    ]));
 
-    const badge = el.querySelector('.status-badge--not-applicable');
-    expect(badge).toBeDefined();
-    expect(badge.textContent).toBe('N/A');
+    const badges = el.querySelectorAll('.status-badge--not-applicable');
+    expect(badges.length).toBe(2);
+    expect(badges[0].textContent).toBe('N/A');
+  });
+
+  it('should work with only font-tounicode finding present', () => {
+    const el = document.createElement('div');
+    renderFontTable(el, makeData([makeToUnicodeFinding()]));
+
+    // Should not crash, should render table
+    const rows = el.querySelectorAll('tbody tr');
+    expect(rows.length).toBe(2);
+  });
+
+  it('should work with only font-embedding finding present', () => {
+    const el = document.createElement('div');
+    renderFontTable(el, makeData([
+      makeEmbeddingFinding({
+        details: [
+          { label: 'Arial', value: 'Not embedded' },
+        ],
+      }),
+    ]));
+
+    // Should not crash, should render table
+    const rows = el.querySelectorAll('tbody tr');
+    expect(rows.length).toBe(1);
   });
 });

@@ -1,8 +1,9 @@
 /**
  * Font inventory panel — tabular view of all fonts in the document.
  *
- * Pulls data from the 'font-tounicode' finding in the audit results
- * and renders it as an accessible HTML table with color-coded rows.
+ * Pulls data from the 'font-tounicode' and 'font-embedding' findings
+ * in the audit results and renders it as an accessible HTML table
+ * with color-coded rows.
  */
 
 /**
@@ -23,10 +24,11 @@ export function renderFontTable(el, data) {
   heading.style.cssText = 'margin-bottom: var(--space-md); font-size: var(--font-size-xl);';
   el.appendChild(heading);
 
-  // Find the font-tounicode finding
-  const fontFinding = findings.find(f => f.id === 'font-tounicode');
+  // Find both font findings
+  const toUnicodeFinding = findings.find(f => f.id === 'font-tounicode');
+  const embeddingFinding = findings.find(f => f.id === 'font-embedding');
 
-  if (!fontFinding) {
+  if (!toUnicodeFinding && !embeddingFinding) {
     const empty = document.createElement('p');
     empty.textContent = 'No font audit data available.';
     empty.style.cssText = 'color: var(--color-text-muted);';
@@ -34,23 +36,32 @@ export function renderFontTable(el, data) {
     return;
   }
 
-  // Status badge for the overall finding
-  const overallStatus = document.createElement('div');
-  overallStatus.style.cssText = 'margin-bottom: var(--space-md);';
+  // Show status badges for both findings
+  for (const finding of [toUnicodeFinding, embeddingFinding]) {
+    if (!finding) continue;
+    const statusDiv = document.createElement('div');
+    statusDiv.style.cssText = 'margin-bottom: var(--space-sm);';
 
-  const badge = document.createElement('span');
-  badge.className = `status-badge status-badge--${fontFinding.status}`;
-  badge.textContent = formatStatus(fontFinding.status);
-  overallStatus.appendChild(badge);
+    const badge = document.createElement('span');
+    badge.className = `status-badge status-badge--${finding.status}`;
+    badge.textContent = formatStatus(finding.status);
+    statusDiv.appendChild(badge);
 
-  const summaryText = document.createElement('p');
-  summaryText.textContent = fontFinding.summary;
-  summaryText.style.cssText = 'color: var(--color-text-secondary); margin-top: var(--space-xs);';
-  overallStatus.appendChild(summaryText);
+    const label = document.createElement('span');
+    label.textContent = ` ${finding.title}: ${finding.summary}`;
+    label.style.cssText = 'color: var(--color-text-secondary); font-size: var(--font-size-sm);';
+    statusDiv.appendChild(label);
 
-  el.appendChild(overallStatus);
+    el.appendChild(statusDiv);
+  }
 
-  if (!fontFinding.details || fontFinding.details.length === 0) {
+  // Merge details from both findings into per-font rows
+  const allDetails = [
+    ...(toUnicodeFinding?.details || []),
+    ...(embeddingFinding?.details || []),
+  ];
+
+  if (allDetails.length === 0) {
     const noData = document.createElement('p');
     noData.textContent = 'No font details available.';
     noData.style.cssText = 'color: var(--color-text-muted);';
@@ -59,7 +70,7 @@ export function renderFontTable(el, data) {
   }
 
   // Parse font details into structured rows
-  const fontRows = parseFontDetails(fontFinding.details);
+  const fontRows = parseFontDetails(allDetails);
 
   if (fontRows.length === 0) {
     const noFonts = document.createElement('p');
@@ -154,8 +165,9 @@ export function renderFontTable(el, data) {
   tableWrapper.appendChild(table);
   el.appendChild(tableWrapper);
 
-  // Remediation if applicable
-  if (fontFinding.remediation) {
+  // Remediation if applicable (show from either finding)
+  for (const finding of [toUnicodeFinding, embeddingFinding]) {
+    if (!finding || !finding.remediation) continue;
     const remediation = document.createElement('div');
     remediation.style.cssText = [
       'margin-top: var(--space-md)',
@@ -166,11 +178,11 @@ export function renderFontTable(el, data) {
     ].join('; ');
 
     const remediationHeading = document.createElement('h3');
-    remediationHeading.textContent = 'Remediation';
+    remediationHeading.textContent = `Remediation: ${finding.title}`;
     remediationHeading.style.cssText = 'font-size: var(--font-size-base); font-weight: 600; margin-bottom: var(--space-xs);';
 
     const remediationText = document.createElement('p');
-    remediationText.textContent = fontFinding.remediation;
+    remediationText.textContent = finding.remediation;
     remediationText.style.cssText = 'font-size: var(--font-size-sm); line-height: 1.5;';
 
     remediation.appendChild(remediationHeading);

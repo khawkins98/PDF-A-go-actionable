@@ -151,19 +151,23 @@ describe.skipIf(SKIP)('Real-world PDF audit (integration)', () => {
 
   /* ---- Fonts: font-tounicode ---- */
 
-  it('Fonts embedded (pass) — font-tounicode finding exists with valid status', async () => {
-    // NOTE: The veraPDF font embedding test (7.21.4.1-t01-pass-a) validates
-    // that font programs are embedded. Our engine's font check combines
-    // embedding status with ToUnicode CMap coverage into a single finding.
-    // A PDF with all fonts embedded may still lack ToUnicode CMaps, causing
-    // a 'warning' status. This is a known design choice — our check is
-    // broader than just embedding.
+  it('Fonts embedded (pass) — font-embedding finding exists with valid status', async () => {
+    // The veraPDF font embedding test (7.21.4.1-t01-pass-a) validates
+    // that font programs are embedded. Our engine now splits font checks
+    // into separate font-tounicode and font-embedding findings.
     const { findings } = await auditTestPdf('Fonts embedded (pass)');
 
     expect(Array.isArray(findings)).toBe(true);
-    const f = findFinding(findings, 'font-tounicode');
-    expect(f).toBeDefined();
-    expect(['pass', 'warning', 'not-applicable']).toContain(f.status);
+
+    // Check font-embedding finding specifically
+    const embedding = findFinding(findings, 'font-embedding');
+    expect(embedding).toBeDefined();
+    expect(['pass', 'warning', 'not-applicable']).toContain(embedding.status);
+
+    // font-tounicode should also exist
+    const tounicode = findFinding(findings, 'font-tounicode');
+    expect(tounicode).toBeDefined();
+    expect(['pass', 'warning', 'not-applicable']).toContain(tounicode.status);
   }, 15_000);
 
   it('ToUnicode CMap missing (fail) — font-tounicode should not be pass', async () => {

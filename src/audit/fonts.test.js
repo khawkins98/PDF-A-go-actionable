@@ -5,6 +5,7 @@
  * - Not-applicable when no fonts in document
  * - Pass/warning based on ToUnicode coverage
  * - Finding structure validation
+ * - Font embedding as a separate finding
  */
 import { describe, it, expect } from 'vitest';
 import { checkFonts } from './fonts.js';
@@ -13,30 +14,49 @@ import { PDFDocument, PDFName, PDFDict, PDFRef } from 'pdf-lib';
 import { createUntaggedPdf, createTaggedPdf } from '../../test/fixtures/create-test-pdfs.js';
 
 describe('checkFonts', () => {
-  it('should return not-applicable when no fonts in document', async () => {
+  it('should return two findings (both not-applicable) when no fonts in document', async () => {
     // An untagged PDF with no drawn text has zero font objects
     const bytes = await createUntaggedPdf();
     const ctx = await buildTestContext(bytes);
     const findings = checkFonts(ctx.pdfDoc, ctx);
 
-    expect(findings).toHaveLength(1);
-    const f = findings[0];
-    expect(f.id).toBe('font-tounicode');
-    expect(f.status).toBe('not-applicable');
-    expect(f.category).toBe('fonts');
-    expect(f.summary).toContain('No fonts');
+    expect(findings).toHaveLength(2);
+
+    const tounicode = findings.find(f => f.id === 'font-tounicode');
+    expect(tounicode).toBeDefined();
+    expect(tounicode.status).toBe('not-applicable');
+    expect(tounicode.category).toBe('fonts');
+    expect(tounicode.summary).toContain('No fonts');
+
+    const embedding = findings.find(f => f.id === 'font-embedding');
+    expect(embedding).toBeDefined();
+    expect(embedding.status).toBe('not-applicable');
+    expect(embedding.category).toBe('fonts');
   });
 
-  it('should return finding with correct structure', async () => {
+  it('should return font-tounicode finding with correct structure', async () => {
     const bytes = await createUntaggedPdf();
     const ctx = await buildTestContext(bytes);
     const findings = checkFonts(ctx.pdfDoc, ctx);
 
-    const f = findings[0];
+    const f = findings.find(f => f.id === 'font-tounicode');
     expect(f.id).toBe('font-tounicode');
     expect(f.category).toBe('fonts');
     expect(f.title).toBe('Font Unicode Mapping');
     expect(f.pdfuaRef).toBe('7.21.3');
+    expect(Array.isArray(f.details)).toBe(true);
+  });
+
+  it('should return font-embedding finding with correct structure', async () => {
+    const bytes = await createUntaggedPdf();
+    const ctx = await buildTestContext(bytes);
+    const findings = checkFonts(ctx.pdfDoc, ctx);
+
+    const f = findings.find(f => f.id === 'font-embedding');
+    expect(f.id).toBe('font-embedding');
+    expect(f.category).toBe('fonts');
+    expect(f.title).toBe('Font Embedding');
+    expect(f.pdfuaRef).toBe('7.21.4');
     expect(Array.isArray(f.details)).toBe(true);
   });
 
@@ -48,18 +68,22 @@ describe('checkFonts', () => {
     const ctx = await buildTestContext(bytes);
     const findings = checkFonts(ctx.pdfDoc, ctx);
 
-    expect(findings).toHaveLength(1);
-    const f = findings[0];
+    expect(findings).toHaveLength(2);
+    const tounicode = findings.find(f => f.id === 'font-tounicode');
     // Should be not-applicable (no actual text drawn) or pass/warning
-    expect(['pass', 'warning', 'not-applicable']).toContain(f.status);
+    expect(['pass', 'warning', 'not-applicable']).toContain(tounicode.status);
   });
 
-  it('should include pdfuaRef on the finding', async () => {
+  it('should include correct pdfuaRef on both findings', async () => {
     const bytes = await createUntaggedPdf();
     const ctx = await buildTestContext(bytes);
     const findings = checkFonts(ctx.pdfDoc, ctx);
 
-    expect(findings[0].pdfuaRef).toBe('7.21.3');
+    const tounicode = findings.find(f => f.id === 'font-tounicode');
+    expect(tounicode.pdfuaRef).toBe('7.21.3');
+
+    const embedding = findings.find(f => f.id === 'font-embedding');
+    expect(embedding.pdfuaRef).toBe('7.21.4');
   });
 
   it('should handle font without /BaseFont gracefully', async () => {
@@ -77,10 +101,12 @@ describe('checkFonts', () => {
     const ctx = await buildTestContext(saved);
     const findings = checkFonts(ctx.pdfDoc, ctx);
 
-    // Should not throw, and should report the font as 'Unknown'
-    expect(findings).toHaveLength(1);
-    expect(findings[0].status).not.toBe('not-applicable'); // has at least one font
-    expect(findings[0].details.some(d => d.label === 'Unknown')).toBe(true);
+    expect(findings).toHaveLength(2);
+
+    // font-tounicode: should not throw, and should report the font as 'Unknown'
+    const tounicode = findings.find(f => f.id === 'font-tounicode');
+    expect(tounicode.status).not.toBe('not-applicable'); // has at least one font
+    expect(tounicode.details.some(d => d.label === 'Unknown')).toBe(true);
   });
 
   it('should warn when some fonts lack ToUnicode', async () => {
@@ -99,9 +125,10 @@ describe('checkFonts', () => {
     const ctx = await buildTestContext(saved);
     const findings = checkFonts(ctx.pdfDoc, ctx);
 
-    expect(findings).toHaveLength(1);
-    expect(findings[0].status).toBe('warning');
-    expect(findings[0].summary).toContain('missing ToUnicode');
+    expect(findings).toHaveLength(2);
+    const tounicode = findings.find(f => f.id === 'font-tounicode');
+    expect(tounicode.status).toBe('warning');
+    expect(tounicode.summary).toContain('missing ToUnicode');
   });
 
   // --- Font embedding detection tests ---
@@ -135,10 +162,12 @@ describe('checkFonts', () => {
     const ctx = await buildTestContext(saved);
     const findings = checkFonts(ctx.pdfDoc, ctx);
 
-    expect(findings).toHaveLength(1);
+    expect(findings).toHaveLength(2);
     // Font is embedded, so no "Not embedded" detail for this font
-    const notEmbeddedDetails = findings[0].details.filter(d => d.value === 'Not embedded');
+    const embedding = findings.find(f => f.id === 'font-embedding');
+    const notEmbeddedDetails = embedding.details.filter(d => d.value === 'Not embedded');
     expect(notEmbeddedDetails).toHaveLength(0);
+    expect(embedding.status).toBe('pass');
   });
 
   it('should show embedded for font with FontDescriptor + FontFile2 (TrueType)', async () => {
@@ -167,9 +196,11 @@ describe('checkFonts', () => {
     const ctx = await buildTestContext(saved);
     const findings = checkFonts(ctx.pdfDoc, ctx);
 
-    expect(findings).toHaveLength(1);
-    const notEmbeddedDetails = findings[0].details.filter(d => d.value === 'Not embedded');
+    expect(findings).toHaveLength(2);
+    const embedding = findings.find(f => f.id === 'font-embedding');
+    const notEmbeddedDetails = embedding.details.filter(d => d.value === 'Not embedded');
     expect(notEmbeddedDetails).toHaveLength(0);
+    expect(embedding.status).toBe('pass');
   });
 
   it('should show embedded for font with FontDescriptor + FontFile3 (CFF/OpenType)', async () => {
@@ -198,9 +229,11 @@ describe('checkFonts', () => {
     const ctx = await buildTestContext(saved);
     const findings = checkFonts(ctx.pdfDoc, ctx);
 
-    expect(findings).toHaveLength(1);
-    const notEmbeddedDetails = findings[0].details.filter(d => d.value === 'Not embedded');
+    expect(findings).toHaveLength(2);
+    const embedding = findings.find(f => f.id === 'font-embedding');
+    const notEmbeddedDetails = embedding.details.filter(d => d.value === 'Not embedded');
     expect(notEmbeddedDetails).toHaveLength(0);
+    expect(embedding.status).toBe('pass');
   });
 
   it('should show "Not embedded" for font with FontDescriptor but no FontFile/FontFile2/FontFile3', async () => {
@@ -226,8 +259,10 @@ describe('checkFonts', () => {
     const ctx = await buildTestContext(saved);
     const findings = checkFonts(ctx.pdfDoc, ctx);
 
-    expect(findings).toHaveLength(1);
-    const notEmbeddedDetails = findings[0].details.filter(d => d.value === 'Not embedded');
+    expect(findings).toHaveLength(2);
+    const embedding = findings.find(f => f.id === 'font-embedding');
+    expect(embedding.status).toBe('warning');
+    const notEmbeddedDetails = embedding.details.filter(d => d.value === 'Not embedded');
     expect(notEmbeddedDetails).toHaveLength(1);
     expect(notEmbeddedDetails[0].label).toBe('TestNotEmbedded-Regular');
   });
@@ -270,12 +305,15 @@ describe('checkFonts', () => {
     const ctx = await buildTestContext(saved);
     const findings = checkFonts(ctx.pdfDoc, ctx);
 
-    expect(findings).toHaveLength(1);
+    expect(findings).toHaveLength(2);
     // CIDFont subtypes are skipped entirely — should not appear as not-embedded
-    const notEmbeddedDetails = findings[0].details.filter(d => d.value === 'Not embedded');
+    const embedding = findings.find(f => f.id === 'font-embedding');
+    const notEmbeddedDetails = embedding.details.filter(d => d.value === 'Not embedded');
     expect(notEmbeddedDetails).toHaveLength(0);
+
     // They should also not appear in the ToUnicode details
-    const cidDetails = findings[0].details.filter(d =>
+    const tounicode = findings.find(f => f.id === 'font-tounicode');
+    const cidDetails = tounicode.details.filter(d =>
       d.label && (d.label.includes('CIDFont0') || d.label.includes('CIDFont2'))
     );
     expect(cidDetails).toHaveLength(0);
@@ -304,12 +342,15 @@ describe('checkFonts', () => {
     const ctx = await buildTestContext(saved);
     const findings = checkFonts(ctx.pdfDoc, ctx);
 
-    expect(findings).toHaveLength(1);
+    expect(findings).toHaveLength(2);
     // Type3 is skipped — should not appear as not-embedded
-    const notEmbeddedDetails = findings[0].details.filter(d => d.value === 'Not embedded');
+    const embedding = findings.find(f => f.id === 'font-embedding');
+    const notEmbeddedDetails = embedding.details.filter(d => d.value === 'Not embedded');
     expect(notEmbeddedDetails).toHaveLength(0);
+
     // Should not appear in ToUnicode details either
-    const type3Details = findings[0].details.filter(d =>
+    const tounicode = findings.find(f => f.id === 'font-tounicode');
+    const type3Details = tounicode.details.filter(d =>
       d.label && d.label.includes('Type3Font')
     );
     expect(type3Details).toHaveLength(0);
@@ -331,14 +372,19 @@ describe('checkFonts', () => {
     const ctx = await buildTestContext(saved);
     const findings = checkFonts(ctx.pdfDoc, ctx);
 
-    // Should not throw, and the font should be counted
-    expect(findings).toHaveLength(1);
-    expect(findings[0].status).not.toBe('not-applicable');
+    expect(findings).toHaveLength(2);
+
+    // font-tounicode: should not throw, and the font should be counted
+    const tounicode = findings.find(f => f.id === 'font-tounicode');
+    expect(tounicode.status).not.toBe('not-applicable');
     // Helvetica should appear in ToUnicode details
-    const helveticaDetail = findings[0].details.find(d => d.label === 'Helvetica');
+    const helveticaDetail = tounicode.details.find(d => d.label === 'Helvetica');
     expect(helveticaDetail).toBeDefined();
-    // No "Not embedded" for it since there's no FontDescriptor to check
-    const notEmbeddedDetails = findings[0].details.filter(d =>
+
+    // font-embedding: No FontDescriptor, so nothing to check for embedding
+    // Helvetica should NOT appear as "Not embedded" since there's no FontDescriptor
+    const embedding = findings.find(f => f.id === 'font-embedding');
+    const notEmbeddedDetails = embedding.details.filter(d =>
       d.value === 'Not embedded' && d.label === 'Helvetica'
     );
     expect(notEmbeddedDetails).toHaveLength(0);
@@ -405,16 +451,22 @@ describe('checkFonts', () => {
     const ctx = await buildTestContext(saved);
     const findings = checkFonts(ctx.pdfDoc, ctx);
 
-    expect(findings).toHaveLength(1);
+    expect(findings).toHaveLength(2);
+
+    const embedding = findings.find(f => f.id === 'font-embedding');
+    expect(embedding.status).toBe('warning');
 
     // Should have exactly 1 "Not embedded" detail for the not-embedded font
-    const notEmbeddedDetails = findings[0].details.filter(d => d.value === 'Not embedded');
+    const notEmbeddedDetails = embedding.details.filter(d => d.value === 'Not embedded');
     expect(notEmbeddedDetails).toHaveLength(1);
     expect(notEmbeddedDetails[0].label).toBe('NotEmbeddedFont-Regular');
 
     // Should have an embedding summary since notEmbedded > 0
-    const summaryDetail = findings[0].details.find(d => d.label === 'Embedding summary');
+    const summaryDetail = embedding.details.find(d => d.label === 'Embedding summary');
     expect(summaryDetail).toBeDefined();
     expect(summaryDetail.value).toBe('2 embedded, 1 not embedded');
+
+    // Summary text should mention the count
+    expect(embedding.summary).toContain('1 of 3');
   });
 });

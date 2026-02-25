@@ -38,7 +38,7 @@ All 10 automated checks are implemented with tests (`src/audit/`). Each resolves
 
 | # | Check | Detection Method | Status |
 |---|---|---|---|
-| 1 | Document title is set (not filename) | XMP `dc:title` + Info dict `/Title` | Done |
+| 1 | Document title is set (not filename) | XMP `dc:title` (pass) or Info dict `/Title` (warning); PDF/UA requires XMP | Done |
 | 2 | Document language is specified | Catalog `/Lang` | Done |
 | 3 | Security permits accessibility | Encryption dict `/P` permissions bit 5 + bit 10 | Done |
 | 4 | PDF is tagged | `/MarkInfo << /Marked true >>` | Done |
@@ -94,8 +94,12 @@ The audit produces a structured report with:
 - **Sample PDFs** --bundled samples in `public/samples/` for "try it now"
 - ~~**In-app About/Credits panel**~~ --Done (About dialog in menu bar)
 - **Reading order comparison** --automated structure-tree-order vs. page-position-order analysis (currently guidance-only)
-- **Worker protocol tests** --test coverage for worker message handling
-- **Real-world PDF testing** --test with PDFs from Word, InDesign, PptxGenJS, etc.
+- ~~**Worker protocol tests** --test coverage for worker message handling~~ --Done (6 tests)
+- ~~**Real-world PDF testing** --test with PDFs from Word, InDesign, PptxGenJS, etc.~~ --Done (12 integration tests against veraPDF corpus)
+- ~~**Title check: XMP vs Info dict**~~ --Done. Three-level check: pass (XMP dc:title), warning (Info dict only), fail (none).
+- ~~**Split font finding into two**~~ --Done. `font-tounicode` (7.21.3) for CMap coverage, `font-embedding` (7.21.4) for embedding status.
+- **Tagging check granularity** --our `tagged-pdf` check looks at `MarkInfo/Marked` broadly. veraPDF tests more granular clauses (e.g., StructTreeRoot presence, role mapping completeness). Consider splitting into sub-checks.
+- **Corruption tolerance** --pdf-lib loads mildly corrupted PDFs (e.g., 1 byte missing) without error. Consider adding a post-load integrity check or noting when the trailer/xref is damaged.
 
 ### V1.1 --Extended Capabilities (future)
 

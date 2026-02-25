@@ -141,7 +141,9 @@ export function detectAccessibilityTraits(pdfDoc) {
   }
 
   // Document title — prefer XMP dc:title, fall back to Info dict
-  const title = xmpTitle || pdfDoc.getTitle() || null;
+  const infoTitle = pdfDoc.getTitle() || null;
+  const title = xmpTitle || infoTitle;
+  const titleSource = xmpTitle ? 'xmp' : (infoTitle ? 'info' : null);
 
   // ViewerPreferences → DisplayDocTitle
   let displayDocTitle = null;
@@ -156,7 +158,7 @@ export function detectAccessibilityTraits(pdfDoc) {
     }
   }
 
-  return { isTagged, isPdfA, pdfALevel, isPdfUA, hasStructTree, lang, title, displayDocTitle, markedStatus, hasSuspects };
+  return { isTagged, isPdfA, pdfALevel, isPdfUA, hasStructTree, lang, title, titleSource, displayDocTitle, markedStatus, hasSuspects };
 }
 
 /**

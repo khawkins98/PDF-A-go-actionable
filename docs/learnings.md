@@ -185,11 +185,23 @@ Observations from testing across the pdf.js corpus and real-world documents:
 - Image XObject count and Figure StructElem count are independent metrics.
 - The `/Type` key on StructElem dicts is optional per the PDF spec.
 
+### Integration Testing Against veraPDF Corpus
+
+Running our audit engine against the veraPDF PDF/UA-1 test corpus and PDF Association technique files revealed four discrepancies between our checks and strict PDF/UA validation:
+
+1. **Title: XMP vs Info dict fallback.** PDF/UA section 7.1 requires the title in XMP `dc:title`. Our engine falls back to the legacy `/Info` dictionary title, so a PDF with a title only in `/Info` reports pass. Strict PDF/UA validators like veraPDF would fail this. The fix: warn when title is only in `/Info` and not in XMP, since screen readers and modern viewers prefer XMP.
+
+2. **Font check conflation.** Our `font-tounicode` finding bundles two independent concerns: ToUnicode CMap coverage and font embedding status. A PDF designed to test font embedding (all fonts embedded) can still trigger a warning because some fonts lack ToUnicode. These should be separate findings (`font-tounicode` and `font-embedding`) since they have different remediation paths.
+
+3. **Tagging check granularity.** Our `tagged-pdf` check tests `MarkInfo/Marked` broadly. The veraPDF corpus tests more granular clauses within PDF/UA 7.1 (StructTreeRoot presence, role mapping completeness, etc.). Some veraPDF "fail" test PDFs still have `Marked=true` and pass our check.
+
+4. **Corruption tolerance.** pdf-lib loads mildly corrupted PDFs (e.g., Cabinet of Horrors "1 byte missing") without error by tolerating truncated cross-reference tables. This means our `load-failure` finding doesn't trigger for borderline files.
+
 ### Checks Inspired by PDFcheck
 
 [PDFcheck](https://github.com/jsnmrs/pdfcheck) by Jason Morris performs lightweight accessibility checks using regex on raw PDF text. Useful techniques adapted for pdf-lib's typed object model:
 
-- **Document Title** --WCAG 2.x SC 2.4.2 requires a meaningful title. Check XMP `dc:title` first, fall back to Info dict `/Title`.
+- **Document Title** --WCAG 2.x SC 2.4.2 requires a meaningful title. Check XMP `dc:title` first, fall back to Info dict `/Title`. Per PDF/UA, XMP `dc:title` is the authoritative source; an `/Info` dict-only title should produce a warning.
 - **DisplayDocTitle** --PDF/UA requires `/ViewerPreferences << /DisplayDocTitle true >>`. Report true/false/null (not configured).
 - **Marked status nuance** --distinguish "Marked explicitly false" from "no MarkInfo at all": `markedStatus: 'true' | 'false' | 'missing'`.
 
