@@ -297,6 +297,17 @@ For browser-based tools that need to `fetch()` test PDFs at runtime, CORS header
 
 `Number(val.toString())` works reliably across all PDFNumber creation methods. The `.numberValue()` / `.value()` accessors are inconsistent.
 
+### MarkInfo vs StructTreeRoot — Two Separate Things
+
+Setting `MarkInfo/Marked = true` tells viewers "this PDF claims to be tagged" but does **not** create an actual structure tree. A PDF can pass the `tagged-pdf` check (MarkInfo) and still fail the `structure-tree` check (no StructTreeRoot). When building test fixtures or sample PDFs, you must explicitly create:
+
+1. `MarkInfo << /Marked true >>` on the catalog (the "tagged" flag)
+2. A `StructTreeRoot` dict registered on the catalog
+3. At least one `StructElem` (e.g., `Document > P`) with `/S` and `/P` keys
+4. The root's `/K` array pointing to the top-level element(s)
+
+Forgetting step 2-4 produces a PDF that looks tagged to the `tagged-pdf` check but has no structure for heading, image, table, or list checks to work with.
+
 ### pdf-lib Lazy Object Creation
 
 pdf-lib creates font dict objects lazily --after `embedFont()` + `drawText()`, the actual PDF objects don't exist in `context` until `save()` is called. Tests that examine font objects require a save/reload cycle.
