@@ -43,6 +43,11 @@ vi.mock('./export.js', () => ({
     exportPDF: vi.fn(),
   })),
 }));
+vi.mock('./dev-test-pdfs.js', () => ({
+  getTestPdfsByCategory: vi.fn(() => new Map()),
+  fetchTestPdf: vi.fn(),
+  testPdfs: [],
+}));
 
 import { createPanelElement } from './app-shell.js';
 

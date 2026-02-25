@@ -44,10 +44,23 @@ PDF-A-go-actionable is part of a family of client-side PDF tools:
 
 In short: **PDF-A-go-go** renders PDFs, **PDF-A-go-slim** optimizes them, and **PDF-A-go-actionable** validates their accessibility.
 
-## Development Conventions
+## Development
+
+### Conventions
 
 - **TDD** — tests are written before implementation (see PRD.md for details)
 - **[Conventional Commits](https://www.conventionalcommits.org/)** — all commit messages use prefixes like `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`
+
+### Advanced Menu — Test PDFs
+
+The **Advanced** menu in the menu bar provides one-click loading of curated test PDFs covering known pass/fail scenarios for each audit category (metadata, structure, headings, images, tables, lists, fonts, security, edge cases). Useful for verifying audit behavior against known-good and known-bad documents.
+
+Test PDFs are sourced from:
+- **[veraPDF PDF/UA-1 test corpus](https://github.com/veraPDF/veraPDF-corpus)** — atomic pass/fail files for specific PDF/UA clauses
+- **[PDF Association "Techniques for Accessible PDF"](https://github.com/pdf-association/techniques-for-accessible-pdf)** — real-world scenario files
+- **[OpenPreserve "Cabinet of Horrors"](https://github.com/openpreserve/format-corpus)** — edge cases (encryption, corruption, missing fonts)
+
+All files are fetched via `cdn.jsdelivr.net` at runtime (CORS-friendly, no local fixtures needed).
 
 ## Status
 
@@ -63,7 +76,9 @@ This project builds on the work of many others:
 - **[PDF-A-go-slim](https://github.com/khawkins98/PDF-A-go-slim)** — sibling project whose utility modules (stream decoding, content stream parsing, structure tree traversal, accessibility detection) provide the foundation for this tool's PDF engine
 - **[PDF-A-go-go](https://github.com/khawkins98/PDF-A-go-go)** — the original project in this family, whose development surfaced the PDF accessibility challenges this tool addresses
 - **[PAC (PDF Accessibility Checker)](https://pac.pdf-accessibility.org/)** by the PDF/UA Foundation — the gold standard for PDF accessibility validation, and the primary inspiration for this tool's check coverage
-- **[veraPDF](https://verapdf.org/)** — open-source PDF/A and PDF/UA validator whose test corpus and rule definitions inform our check logic
+- **[veraPDF](https://verapdf.org/)** — open-source PDF/A and PDF/UA validator whose test corpus and rule definitions inform our check logic. The [veraPDF PDF/UA-1 test corpus](https://github.com/veraPDF/veraPDF-corpus) (CC BY 4.0 / GPLv3+) provides atomic pass/fail test files used in the Advanced menu.
+- **[PDF Association](https://pdfa.org/)** — the ["Techniques for Accessible PDF"](https://github.com/pdf-association/techniques-for-accessible-pdf) repository (CC BY 4.0) provides real-world accessible/inaccessible PDF examples used in the Advanced menu
+- **[Open Preservation Foundation](https://openpreservation.org/)** — the ["Cabinet of Horrors" format corpus](https://github.com/openpreserve/format-corpus) (CC0 1.0) provides edge-case test PDFs (encryption, corruption, font embedding) used in the Advanced menu
 - **WCAG**, **PDF/UA (ISO 14289)**, and the **Matterhorn Protocol** — the standards that define what accessible PDFs look like
 
 ## License
