@@ -82,7 +82,7 @@ function generateSessionId() {
 export function initAppShell(container, worker) {
   const root = document.createElement('div');
   root.className = 'app-root';
-  root.style.cssText = 'flex:1;position:relative;overflow:hidden;';
+  root.style.cssText = 'flex:1;position:relative;';
 
   /** @type {Map<string, object>} Active sessions by sessionId */
   const sessions = new Map();
