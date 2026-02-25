@@ -528,7 +528,7 @@ export function initAppShell(container, worker) {
       height: 340,
       top: MENUBAR_HEIGHT,
       overflow: true,
-      class: ['wb-theme-white', 'no-full', 'no-max', 'no-min'],
+      class: ['white', 'no-full', 'no-max', 'no-min'],
       border: 1,
     });
   }
@@ -704,7 +704,7 @@ export function initAppShell(container, worker) {
       height: 380,
       top: MENUBAR_HEIGHT,
       overflow: true,
-      class: ['wb-theme-white', 'no-full', 'no-max', 'no-min', 'no-resize'],
+      class: ['white', 'no-full', 'no-max', 'no-min', 'no-resize'],
       border: 1,
     });
   }
@@ -746,7 +746,7 @@ export function initAppShell(container, worker) {
       height: 440,
       top: MENUBAR_HEIGHT,
       overflow: true,
-      class: ['wb-theme-white', 'no-full', 'no-max', 'no-min'],
+      class: ['white', 'no-full', 'no-max', 'no-min'],
       border: 1,
     });
   }
@@ -793,7 +793,7 @@ export function initAppShell(container, worker) {
     version.textContent = 'v1.0.0';
     content.appendChild(version);
 
-    const classes = ['wb-theme-white', 'no-full', 'no-max', 'no-min', 'no-resize'];
+    const classes = ['white', 'no-full', 'no-max', 'no-min', 'no-resize'];
     if (!closable) classes.push('no-close');
 
     welcomeWin = new WinBox({
@@ -884,7 +884,7 @@ export function initAppShell(container, worker) {
       height: 180,
       top: MENUBAR_HEIGHT,
       class: [
-        'wb-theme-white',
+        'white',
         'no-full',
         'no-max',
         'no-min',
@@ -1013,7 +1013,7 @@ export function initAppShell(container, worker) {
         height: h,
         top: MENUBAR_HEIGHT,
         overflow: true,
-        class: ['wb-theme-white'],
+        class: ['white'],
         border: 1,
         onclose: function () {
           cleanupSession(session);
@@ -1044,7 +1044,7 @@ export function initAppShell(container, worker) {
       title: `${def.title} — ${session.fileName}`,
       mount: el,
       root,
-      class: ['wb-theme-white'],
+      class: ['white'],
       border: 1,
       top: MENUBAR_HEIGHT,
       overflow: true,
