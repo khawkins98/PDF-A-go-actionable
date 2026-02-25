@@ -156,4 +156,82 @@ describe('renderFindingsPanel', () => {
     expect(card.getAttribute('aria-label')).toContain('Doc Title');
     expect(card.getAttribute('aria-label')).toContain('pass');
   });
+
+  it('should filter findings when filterStatus event is emitted', () => {
+    const el = document.createElement('div');
+    const data = {
+      findings: [
+        makeFinding({ id: 'a', status: 'pass', title: 'Pass Item' }),
+        makeFinding({ id: 'b', status: 'fail', title: 'Fail Item' }),
+        makeFinding({ id: 'c', status: 'warning', title: 'Warn Item' }),
+      ],
+    };
+
+    renderFindingsPanel(el, data, bus);
+
+    // All three visible initially
+    expect(el.querySelectorAll('.finding-card').length).toBe(3);
+
+    // Filter to only fail
+    bus.emit('filterStatus', { active: new Set(['fail']) });
+
+    const cards = el.querySelectorAll('.finding-card');
+    expect(cards.length).toBe(1);
+    expect(cards[0].textContent).toContain('Fail Item');
+  });
+
+  it('should show empty message when all statuses are filtered out', () => {
+    const el = document.createElement('div');
+    const data = {
+      findings: [makeFinding({ id: 'a', status: 'pass' })],
+    };
+
+    renderFindingsPanel(el, data, bus);
+    bus.emit('filterStatus', { active: new Set() });
+
+    expect(el.textContent).toContain('No findings match');
+    expect(el.querySelectorAll('.finding-card').length).toBe(0);
+  });
+
+  it('should restore selection after filter re-render', () => {
+    const el = document.createElement('div');
+    const data = {
+      findings: [
+        makeFinding({ id: 'a', status: 'fail', title: 'Fail Item' }),
+        makeFinding({ id: 'b', status: 'pass', title: 'Pass Item' }),
+      ],
+    };
+
+    renderFindingsPanel(el, data, bus);
+
+    // Select the fail item
+    el.querySelector('.finding-card').click();
+
+    // Re-render with filter that includes the selected item
+    bus.emit('filterStatus', { active: new Set(['fail', 'pass']) });
+
+    const selected = el.querySelector('.finding-card--selected');
+    expect(selected).not.toBeNull();
+    expect(selected.textContent).toContain('Fail Item');
+  });
+
+  it('should show all findings again when filter includes all statuses', () => {
+    const el = document.createElement('div');
+    const data = {
+      findings: [
+        makeFinding({ id: 'a', status: 'pass', title: 'Pass Item' }),
+        makeFinding({ id: 'b', status: 'fail', title: 'Fail Item' }),
+      ],
+    };
+
+    renderFindingsPanel(el, data, bus);
+
+    // Filter to only pass
+    bus.emit('filterStatus', { active: new Set(['pass']) });
+    expect(el.querySelectorAll('.finding-card').length).toBe(1);
+
+    // Re-enable all
+    bus.emit('filterStatus', { active: new Set(['pass', 'fail', 'warning', 'manual', 'not-applicable']) });
+    expect(el.querySelectorAll('.finding-card').length).toBe(2);
+  });
 });

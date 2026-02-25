@@ -56,107 +56,146 @@ export function renderFindingsPanel(el, data, bus) {
     return;
   }
 
-  // Group findings by category
-  const groups = new Map();
-  for (const finding of findings) {
-    const cat = finding.category || 'other';
-    if (!groups.has(cat)) {
-      groups.set(cat, []);
+  // Container for the grouped cards (rebuilt on filter change)
+  const listContainer = document.createElement('div');
+  el.appendChild(listContainer);
+
+  // Track selected finding ID to restore selection after re-render
+  let selectedFindingId = null;
+
+  /** Build and render the grouped findings list, optionally filtered. */
+  function renderList(activeStatuses) {
+    listContainer.innerHTML = '';
+
+    const filtered = activeStatuses
+      ? findings.filter((f) => activeStatuses.has(f.status))
+      : findings;
+
+    if (filtered.length === 0) {
+      const empty = document.createElement('p');
+      empty.textContent = 'No findings match the selected filters.';
+      empty.style.cssText = 'color: var(--color-text-muted); padding: var(--space-md) 0;';
+      listContainer.appendChild(empty);
+      return;
     }
-    groups.get(cat).push(finding);
-  }
 
-  // Sort within each group by status priority
-  for (const [, group] of groups) {
-    group.sort((a, b) => {
-      const orderA = STATUS_ORDER[a.status] ?? 5;
-      const orderB = STATUS_ORDER[b.status] ?? 5;
-      return orderA - orderB;
-    });
-  }
+    // Group findings by category
+    const groups = new Map();
+    for (const finding of filtered) {
+      const cat = finding.category || 'other';
+      if (!groups.has(cat)) {
+        groups.set(cat, []);
+      }
+      groups.get(cat).push(finding);
+    }
 
-  // Preserve a meaningful category order
-  const categoryOrder = [
-    'document', 'metadata', 'structure', 'images', 'tables',
-    'lists', 'fonts', 'forms', 'links', 'reading-order',
-  ];
-  const sortedCategories = [...groups.keys()].sort((a, b) => {
-    const idxA = categoryOrder.indexOf(a);
-    const idxB = categoryOrder.indexOf(b);
-    return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
-  });
-
-  // Track selected finding for visual highlight
-  let selectedCard = null;
-
-  for (const category of sortedCategories) {
-    const group = groups.get(category);
-    const groupEl = document.createElement('section');
-    groupEl.setAttribute('aria-label', `${CATEGORY_LABELS[category] || category} findings`);
-    groupEl.style.cssText = 'margin-bottom: var(--space-lg);';
-
-    const groupHeading = document.createElement('h3');
-    groupHeading.textContent = CATEGORY_LABELS[category] || category;
-    groupHeading.style.cssText = 'margin-bottom: var(--space-sm); font-size: var(--font-size-lg); color: var(--color-text-secondary); text-transform: capitalize;';
-    groupEl.appendChild(groupHeading);
-
-    const list = document.createElement('ul');
-    list.style.cssText = 'list-style: none; display: flex; flex-direction: column; gap: var(--space-xs);';
-    list.setAttribute('role', 'list');
-
-    for (const finding of group) {
-      const li = document.createElement('li');
-
-      const card = document.createElement('button');
-      card.type = 'button';
-      card.className = 'finding-card';
-      card.setAttribute('aria-label', `${finding.title}: ${finding.status}`);
-      card.style.cssText = [
-        'display: flex',
-        'align-items: flex-start',
-        'gap: var(--space-sm)',
-        'width: 100%',
-        'text-align: left',
-        'font: inherit',
-      ].join('; ');
-
-      card.addEventListener('click', () => {
-        if (selectedCard) selectedCard.classList.remove('finding-card--selected');
-        card.classList.add('finding-card--selected');
-        selectedCard = card;
-        bus.emit('selectFinding', { findingId: finding.id });
+    // Sort within each group by status priority
+    for (const [, group] of groups) {
+      group.sort((a, b) => {
+        const orderA = STATUS_ORDER[a.status] ?? 5;
+        const orderB = STATUS_ORDER[b.status] ?? 5;
+        return orderA - orderB;
       });
-
-      // Status badge
-      const badge = document.createElement('span');
-      badge.className = `status-badge status-badge--${finding.status}`;
-      badge.textContent = formatStatus(finding.status);
-      badge.style.cssText = 'flex-shrink: 0; margin-top: 2px;';
-
-      // Content area
-      const content = document.createElement('div');
-      content.style.cssText = 'min-width: 0;';
-
-      const title = document.createElement('strong');
-      title.textContent = finding.title;
-      title.style.cssText = 'display: block; font-size: var(--font-size-base); line-height: 1.3;';
-
-      const summary = document.createElement('span');
-      summary.textContent = finding.summary;
-      summary.className = 'finding-card__summary';
-      summary.style.cssText = 'display: block; font-size: var(--font-size-sm); line-height: 1.4; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;';
-
-      content.appendChild(title);
-      content.appendChild(summary);
-      card.appendChild(badge);
-      card.appendChild(content);
-      li.appendChild(card);
-      list.appendChild(li);
     }
 
-    groupEl.appendChild(list);
-    el.appendChild(groupEl);
+    // Preserve a meaningful category order
+    const categoryOrder = [
+      'document', 'metadata', 'structure', 'images', 'tables',
+      'lists', 'fonts', 'forms', 'links', 'reading-order',
+    ];
+    const sortedCategories = [...groups.keys()].sort((a, b) => {
+      const idxA = categoryOrder.indexOf(a);
+      const idxB = categoryOrder.indexOf(b);
+      return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
+    });
+
+    // Track selected card element for visual highlight
+    let selectedCard = null;
+
+    for (const category of sortedCategories) {
+      const group = groups.get(category);
+      const groupEl = document.createElement('section');
+      groupEl.setAttribute('aria-label', `${CATEGORY_LABELS[category] || category} findings`);
+      groupEl.style.cssText = 'margin-bottom: var(--space-lg);';
+
+      const groupHeading = document.createElement('h3');
+      groupHeading.textContent = CATEGORY_LABELS[category] || category;
+      groupHeading.style.cssText = 'margin-bottom: var(--space-sm); font-size: var(--font-size-lg); color: var(--color-text-secondary); text-transform: capitalize;';
+      groupEl.appendChild(groupHeading);
+
+      const list = document.createElement('ul');
+      list.style.cssText = 'list-style: none; display: flex; flex-direction: column; gap: var(--space-xs);';
+      list.setAttribute('role', 'list');
+
+      for (const finding of group) {
+        const li = document.createElement('li');
+
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'finding-card';
+        card.setAttribute('aria-label', `${finding.title}: ${finding.status}`);
+        card.style.cssText = [
+          'display: flex',
+          'align-items: flex-start',
+          'gap: var(--space-sm)',
+          'width: 100%',
+          'text-align: left',
+          'font: inherit',
+        ].join('; ');
+
+        // Restore selection if this finding was previously selected
+        if (finding.id === selectedFindingId) {
+          card.classList.add('finding-card--selected');
+          selectedCard = card;
+        }
+
+        card.addEventListener('click', () => {
+          if (selectedCard) selectedCard.classList.remove('finding-card--selected');
+          card.classList.add('finding-card--selected');
+          selectedCard = card;
+          selectedFindingId = finding.id;
+          bus.emit('selectFinding', { findingId: finding.id });
+        });
+
+        // Status badge
+        const badge = document.createElement('span');
+        badge.className = `status-badge status-badge--${finding.status}`;
+        badge.textContent = formatStatus(finding.status);
+        badge.style.cssText = 'flex-shrink: 0; margin-top: 2px;';
+
+        // Content area
+        const content = document.createElement('div');
+        content.style.cssText = 'min-width: 0;';
+
+        const title = document.createElement('strong');
+        title.textContent = finding.title;
+        title.style.cssText = 'display: block; font-size: var(--font-size-base); line-height: 1.3;';
+
+        const summary = document.createElement('span');
+        summary.textContent = finding.summary;
+        summary.className = 'finding-card__summary';
+        summary.style.cssText = 'display: block; font-size: var(--font-size-sm); line-height: 1.4; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;';
+
+        content.appendChild(title);
+        content.appendChild(summary);
+        card.appendChild(badge);
+        card.appendChild(content);
+        li.appendChild(card);
+        list.appendChild(li);
+      }
+
+      groupEl.appendChild(list);
+      listContainer.appendChild(groupEl);
+    }
   }
+
+  // Initial render — show all findings
+  renderList(null);
+
+  // Listen for filter changes from the summary badges
+  bus.on('filterStatus', ({ active }) => {
+    renderList(active);
+  });
 }
 
 /**

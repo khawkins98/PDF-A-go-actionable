@@ -1,0 +1,16 @@
+{
+  "name": "PDF-A-go — Free PDF Accessibility Checker",
+  "short_name": "PDF-A-go",
+  "description": "Free, browser-based PDF accessibility checker. No uploads, no accounts.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#c8c8c8",
+  "theme_color": "#333333",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

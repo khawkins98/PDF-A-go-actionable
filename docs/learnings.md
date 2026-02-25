@@ -116,6 +116,32 @@ The structure tree is rooted at `/StructTreeRoot` in the document catalog. Walki
 
 The `/S` key on each StructElem gives the structure type (`/P`, `/H1`, `/Figure`, `/Table`, `/L`, etc.). The `/K` key gives children. `/Alt` provides alternative text. `/Lang` provides per-element language.
 
+### Serializing the Structure Tree Across the Worker Boundary
+
+The audit runs in a Web Worker, which communicates via `postMessage`. pdf-lib objects (`PDFDict`, `PDFRef`, etc.) are not serializable -- they contain circular references and internal state. To render an interactive structure tree in the main thread UI, the tree must be serialized to plain JSON before crossing the worker boundary.
+
+`serialize-tree.js` adapts the `struct-tree-walker.js` DFS pattern to build a hierarchical `TreeNode` structure:
+
+```js
+TreeNode = {
+  id: number,           // sequential integer
+  type: string,         // original type ("Heading1", "Slide")
+  role: string,         // resolved via RoleMap ("H1", "Sect")
+  alt: string | null,
+  lang: string | null,
+  children: TreeNode[]
+}
+```
+
+Key differences from the flat walker:
+- **Hierarchical** -- builds `children[]` arrays via a recursive stack, not a flat array with depth numbers
+- **No PDFDict references** -- only JSON-safe primitives (strings, numbers, arrays, nulls)
+- **No depth field** -- depth is implicit from the tree hierarchy
+- Same safety caps (MAX_DEPTH=200, MAX_ELEMENTS=50,000) and cycle detection (visited set on PDFRef)
+- Returns `{ root: TreeNode | null, totalCount: number, truncated: boolean }`
+
+The runner adds `structureTree` to its return value alongside `findings` and `meta`. The UI's tree-explorer checks for `data.structureTree?.root` to decide between interactive tree mode and the fallback findings summary.
+
 ### ToUnicode CMap Coverage
 
 Fonts without `/ToUnicode` CMaps can't be reliably extracted to text by screen readers or search. How we audit this:
@@ -205,6 +231,22 @@ Running our audit engine against the veraPDF PDF/UA-1 test corpus and PDF Associ
 - **DisplayDocTitle** --PDF/UA requires `/ViewerPreferences << /DisplayDocTitle true >>`. Report true/false/null (not configured).
 - **Marked status nuance** --distinguish "Marked explicitly false" from "no MarkInfo at all": `markedStatus: 'true' | 'false' | 'missing'`.
 
+### WCAG 2.1 AA Self-Audit (The Tool Must Be Accessible)
+
+An accessibility checker that isn't itself accessible is a credibility problem. Key findings from auditing our own UI:
+
+**Color contrast failures on the NeXTSTEP theme.** The slate gray palette makes contrast tricky. Specific values that failed 4.5:1 minimum:
+- `--color-text-muted: #666` on `--color-surface: #c8c8c8` --3.39:1. Fixed to `#505050` (4.73:1).
+- `--color-not-applicable: #6b6b6b` on `--color-surface-alt: #b4b4b4` --2.65:1. Fixed to `#444` (4.69:1).
+- `--color-warning: #b45309` on `--color-warning-bg: #fff3cd` --4.53:1 (borderline). Darkened to `#a24d09` (5.26:1) for safety margin.
+- Unfocused WinBox title text at `rgba(255,255,255,0.6)` on `#666` --3.24:1. Bumped to `0.85` opacity (4.70:1).
+
+**ARIA menubar requires arrow-key navigation.** Using `role="menubar"` and `role="menuitem"` without implementing the [ARIA menubar keyboard pattern](https://www.w3.org/WAI/ARIA/apg/patterns/menubar/) is misleading to screen reader users. The pattern requires: roving tabindex (only one item in tab order), Left/Right to move between items, Up/Down within submenus, Escape to close, Home/End for first/last.
+
+**Focus management on dialogs.** When a dialog opens, focus must move into it. When it closes, focus must return to the triggering element. Without this, keyboard users lose their place. Implementation: save `document.activeElement` before opening, set `tabindex="-1"` on content div, `.focus()` on open, restore on `onclose`.
+
+**Live regions for state transitions.** When the progress dialog closes and an error appears on the welcome screen, screen readers don't announce this. A persistent `aria-live="assertive"` region that receives error text fixes this.
+
 ---
 
 ## Tooling & Libraries
@@ -280,6 +322,17 @@ For browser-based tools that need to `fetch()` test PDFs at runtime, CORS header
 ### PDF Number Value Extraction
 
 `Number(val.toString())` works reliably across all PDFNumber creation methods. The `.numberValue()` / `.value()` accessors are inconsistent.
+
+### MarkInfo vs StructTreeRoot — Two Separate Things
+
+Setting `MarkInfo/Marked = true` tells viewers "this PDF claims to be tagged" but does **not** create an actual structure tree. A PDF can pass the `tagged-pdf` check (MarkInfo) and still fail the `structure-tree` check (no StructTreeRoot). When building test fixtures or sample PDFs, you must explicitly create:
+
+1. `MarkInfo << /Marked true >>` on the catalog (the "tagged" flag)
+2. A `StructTreeRoot` dict registered on the catalog
+3. At least one `StructElem` (e.g., `Document > P`) with `/S` and `/P` keys
+4. The root's `/K` array pointing to the top-level element(s)
+
+Forgetting step 2-4 produces a PDF that looks tagged to the `tagged-pdf` check but has no structure for heading, image, table, or list checks to work with.
 
 ### pdf-lib Lazy Object Creation
 

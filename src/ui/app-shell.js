@@ -110,6 +110,16 @@ export function initAppShell(container, worker) {
   container.appendChild(menuBar);
   container.appendChild(root);
 
+  // Persistent live region for announcing errors to screen readers
+  const liveRegion = document.createElement('div');
+  liveRegion.setAttribute('role', 'status');
+  liveRegion.setAttribute('aria-live', 'assertive');
+  liveRegion.className = 'visually-hidden';
+  container.appendChild(liveRegion);
+
+  // Set up arrow-key navigation for the menu bar (ARIA menubar pattern)
+  setupMenuBarKeyNav(menuBar);
+
   // Show welcome on init
   showWelcome();
 
@@ -233,6 +243,72 @@ export function initAppShell(container, worker) {
     return sep;
   }
 
+  // === Menu bar keyboard navigation (ARIA menubar pattern) ===
+
+  /** Move roving tabindex to `index` and focus that item. */
+  function setRovingFocus(items, index) {
+    for (const item of items) item.setAttribute('tabindex', '-1');
+    items[index].setAttribute('tabindex', '0');
+    items[index].focus();
+  }
+
+  /** Set up arrow-key navigation on the menu bar. */
+  function setupMenuBarKeyNav(nav) {
+    const getItems = () => [...nav.querySelectorAll('.app-menubar__btn')];
+
+    // Roving tabindex: first item tabbable, rest removed from tab order
+    const items = getItems();
+    items.forEach((item, i) => {
+      item.setAttribute('tabindex', i === 0 ? '0' : '-1');
+    });
+
+    nav.addEventListener('keydown', (e) => {
+      const items = getItems();
+      const idx = items.indexOf(document.activeElement);
+      if (idx === -1) return;
+
+      let nextIdx;
+      switch (e.key) {
+        case 'ArrowRight':
+          e.preventDefault();
+          nextIdx = (idx + 1) % items.length;
+          setRovingFocus(items, nextIdx);
+          if (activeSubmenu) {
+            closeSubmenu();
+            if (items[nextIdx].getAttribute('aria-haspopup') === 'true') {
+              items[nextIdx].click();
+            }
+          }
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          nextIdx = (idx - 1 + items.length) % items.length;
+          setRovingFocus(items, nextIdx);
+          if (activeSubmenu) {
+            closeSubmenu();
+            if (items[nextIdx].getAttribute('aria-haspopup') === 'true') {
+              items[nextIdx].click();
+            }
+          }
+          break;
+        case 'ArrowDown':
+          if (items[idx].getAttribute('aria-haspopup') === 'true') {
+            e.preventDefault();
+            if (!activeSubmenu) items[idx].click();
+          }
+          break;
+        case 'Home':
+          e.preventDefault();
+          setRovingFocus(items, 0);
+          break;
+        case 'End':
+          e.preventDefault();
+          setRovingFocus(items, items.length - 1);
+          break;
+      }
+    });
+  }
+
   // === Submenus ===
 
   let activeSubmenu = null;
@@ -256,25 +332,78 @@ export function initAppShell(container, worker) {
     activeSubmenuBtn = btn;
     btn.setAttribute('aria-expanded', 'true');
 
-    // Close on outside click (next tick to avoid immediate close)
+    // Keyboard navigation within the submenu (Up/Down/Home/End/Escape/Left/Right)
+    const getSubmenuItems = () =>
+      [...submenuEl.querySelectorAll('.app-menubar__submenu-item:not([disabled])')];
+
+    submenuEl.addEventListener('keydown', (e) => {
+      const items = getSubmenuItems();
+      const idx = items.indexOf(document.activeElement);
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          if (items.length) items[idx < items.length - 1 ? idx + 1 : 0].focus();
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          if (items.length) items[idx > 0 ? idx - 1 : items.length - 1].focus();
+          break;
+        case 'Home':
+          e.preventDefault();
+          if (items.length) items[0].focus();
+          break;
+        case 'End':
+          e.preventDefault();
+          if (items.length) items[items.length - 1].focus();
+          break;
+        case 'Escape':
+          e.preventDefault();
+          closeSubmenu();
+          btn.focus();
+          break;
+        case 'ArrowLeft':
+        case 'ArrowRight': {
+          // Move to adjacent menu bar item (and open its submenu if it has one)
+          e.preventDefault();
+          const menuBtns = [...menuBar.querySelectorAll('.app-menubar__btn')];
+          const btnIdx = menuBtns.indexOf(btn);
+          const delta = e.key === 'ArrowRight' ? 1 : -1;
+          const nextIdx = (btnIdx + delta + menuBtns.length) % menuBtns.length;
+          closeSubmenu();
+          setRovingFocus(menuBtns, nextIdx);
+          if (menuBtns[nextIdx].getAttribute('aria-haspopup') === 'true') {
+            menuBtns[nextIdx].click();
+          }
+          break;
+        }
+      }
+    });
+
+    // Close on outside click and Escape (next tick to avoid immediate close)
     requestAnimationFrame(() => {
       document.addEventListener('click', onSubmenuOutsideClick);
-      document.addEventListener('keydown', onSubmenuEscape);
+      document.addEventListener('keydown', onSubmenuEscapeGlobal);
+      // Focus the first submenu item
+      const items = getSubmenuItems();
+      if (items.length) items[0].focus();
     });
   }
 
   function closeSubmenu() {
     closeNestedSubmenu();
+    const triggerBtn = activeSubmenuBtn;
     if (activeSubmenu) {
       activeSubmenu.remove();
       activeSubmenu = null;
     }
-    if (activeSubmenuBtn) {
-      activeSubmenuBtn.setAttribute('aria-expanded', 'false');
+    if (triggerBtn) {
+      triggerBtn.setAttribute('aria-expanded', 'false');
       activeSubmenuBtn = null;
     }
     document.removeEventListener('click', onSubmenuOutsideClick);
-    document.removeEventListener('keydown', onSubmenuEscape);
+    document.removeEventListener('keydown', onSubmenuEscapeGlobal);
+    return triggerBtn;
   }
 
   function onSubmenuOutsideClick(e) {
@@ -283,9 +412,11 @@ export function initAppShell(container, worker) {
     }
   }
 
-  function onSubmenuEscape(e) {
+  /** Global Escape handler — catches Escape even if focus has left the submenu. */
+  function onSubmenuEscapeGlobal(e) {
     if (e.key === 'Escape') {
-      closeSubmenu();
+      const triggerBtn = closeSubmenu();
+      if (triggerBtn) triggerBtn.focus();
     }
   }
 
@@ -676,13 +807,16 @@ export function initAppShell(container, worker) {
   // === About / Help Dialogs ===
 
   let aboutWin = null;
+  let aboutTrigger = null;
   function showAbout() {
     if (aboutWin) {
       aboutWin.focus();
       return;
     }
+    aboutTrigger = document.activeElement;
     const content = document.createElement('div');
     content.className = 'dialog-content';
+    content.setAttribute('tabindex', '-1');
     content.innerHTML = `
       <h2>PDF-A-go-actionable</h2>
       <p style="color:var(--color-text);font-size:var(--font-size-base);">Version 1.0.0</p>
@@ -692,11 +826,11 @@ export function initAppShell(container, worker) {
       checks and 3 manual review items.</p>
       <h3>Built With</h3>
       <ul>
-        <li><strong>pdf-lib</strong> -- PDF object access</li>
-        <li><strong>fflate</strong> -- stream decompression</li>
-        <li><strong>WinBox</strong> -- window management</li>
+        <li><a href="https://github.com/Hopding/pdf-lib" target="_blank" rel="noopener noreferrer"><strong>pdf-lib</strong></a> -- PDF object access (MIT)</li>
+        <li><a href="https://github.com/101arrowz/fflate" target="_blank" rel="noopener noreferrer"><strong>fflate</strong></a> -- stream decompression (MIT)</li>
+        <li><a href="https://github.com/nicholasdnelson/winbox" target="_blank" rel="noopener noreferrer"><strong>WinBox</strong></a> -- window management (MIT)</li>
       </ul>
-      <p>Licensed under MIT.</p>
+      <p>Source: <a href="https://github.com/khawkins98/PDF-A-go-actionable" target="_blank" rel="noopener noreferrer">github.com/khawkins98/PDF-A-go-actionable</a> (MIT)</p>
     `;
 
     aboutWin = new WinBox({
@@ -713,18 +847,25 @@ export function initAppShell(container, worker) {
       border: 1,
       onclose: function () {
         aboutWin = null;
+        if (aboutTrigger) { aboutTrigger.focus(); aboutTrigger = null; }
       },
     });
+
+    // Move focus into the dialog content
+    requestAnimationFrame(() => content.focus());
   }
 
   let helpWin = null;
+  let helpTrigger = null;
   function showHelp() {
     if (helpWin) {
       helpWin.focus();
       return;
     }
+    helpTrigger = document.activeElement;
     const content = document.createElement('div');
     content.className = 'dialog-content';
+    content.setAttribute('tabindex', '-1');
     content.innerHTML = `
       <h2>How to Use</h2>
       <ol>
@@ -743,9 +884,12 @@ export function initAppShell(container, worker) {
       </ul>
       <h3>Keyboard Shortcuts</h3>
       <ul>
-        <li><strong>Tab</strong> -- navigate between controls</li>
+        <li><strong>Arrow Left / Right</strong> -- navigate menu bar items</li>
+        <li><strong>Arrow Down</strong> -- open submenu</li>
+        <li><strong>Arrow Up / Down</strong> -- navigate within submenus</li>
         <li><strong>Enter / Space</strong> -- activate buttons</li>
-        <li><strong>Escape</strong> -- close menus</li>
+        <li><strong>Escape</strong> -- close menus and dialogs</li>
+        <li><strong>Home / End</strong> -- jump to first or last menu item</li>
       </ul>
     `;
 
@@ -763,8 +907,12 @@ export function initAppShell(container, worker) {
       border: 1,
       onclose: function () {
         helpWin = null;
+        if (helpTrigger) { helpTrigger.focus(); helpTrigger = null; }
       },
     });
+
+    // Move focus into the dialog content
+    requestAnimationFrame(() => content.focus());
   }
 
   // === Welcome ===
@@ -804,9 +952,32 @@ export function initAppShell(container, worker) {
     uploadWrapper.appendChild(createUploadZone(handleFiles));
     content.appendChild(uploadWrapper);
 
+    // Try a sample section
+    const sampleSection = document.createElement('div');
+    sampleSection.className = 'welcome__samples';
+    sampleSection.innerHTML = '<p>Or try a sample:</p>';
+
+    const sampleBtns = document.createElement('div');
+    sampleBtns.className = 'welcome__sample-btns';
+
+    for (const [file, label] of [
+      ['sample-accessible.pdf', 'Accessible PDF'],
+      ['sample-issues.pdf', 'PDF with issues'],
+    ]) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'welcome__sample-btn';
+      btn.textContent = label;
+      btn.addEventListener('click', () => loadSample(file));
+      sampleBtns.appendChild(btn);
+    }
+
+    sampleSection.appendChild(sampleBtns);
+    content.appendChild(sampleSection);
+
     const version = document.createElement('p');
     version.className = 'welcome__version';
-    version.textContent = 'v1.0.0';
+    version.textContent = `v1.0.0 \u00B7 ${typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : 'dev'}`;
     content.appendChild(version);
 
     const classes = ['white', 'no-full', 'no-max', 'no-min', 'no-resize'];
@@ -869,6 +1040,21 @@ export function initAppShell(container, worker) {
         { type: 'audit', buffer, fileName: file.name, sessionId },
         [buffer]
       );
+    }
+  }
+
+  // === Sample loading ===
+
+  async function loadSample(fileName) {
+    try {
+      const base = import.meta.env?.BASE_URL || '/';
+      const resp = await fetch(`${base}samples/${fileName}`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      const file = new File([blob], fileName, { type: 'application/pdf' });
+      handleFiles([file]);
+    } catch (err) {
+      showWelcome(`Failed to load sample: ${err.message}`);
     }
   }
 
@@ -935,7 +1121,7 @@ export function initAppShell(container, worker) {
     // Summary section
     const summaryEl = document.createElement('div');
     summaryEl.className = 'results-summary';
-    renderSummaryPanel(summaryEl, data);
+    renderSummaryPanel(summaryEl, data, session.bus);
     content.appendChild(summaryEl);
 
     // Toolbar (session-scoped actions only)
@@ -1128,7 +1314,9 @@ export function initAppShell(container, worker) {
   function onError(session, { message }) {
     closeProgressDialog(session);
     sessions.delete(session.id);
-    showWelcome(`Error analyzing ${session.fileName}: ${message}`);
+    const errorMsg = `Error analyzing ${session.fileName}: ${message}`;
+    liveRegion.textContent = errorMsg;
+    showWelcome(errorMsg);
   }
 
   // === Cleanup ===

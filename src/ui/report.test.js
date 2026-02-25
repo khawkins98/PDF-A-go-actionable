@@ -10,6 +10,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { renderSummaryPanel } from './report.js';
+import { createSessionBus } from './state.js';
 
 function createData(findings, meta = {}) {
   return {
@@ -153,6 +154,78 @@ describe('renderSummaryPanel', () => {
     const badges = el.querySelectorAll('[aria-label]');
     expect(badges.length).toBeGreaterThan(0);
     const ariaLabels = [...badges].map((b) => b.getAttribute('aria-label'));
-    expect(ariaLabels.some((l) => l.includes('checks with status'))).toBe(true);
+    expect(ariaLabels.some((l) => l.includes('Filter'))).toBe(true);
+  });
+
+  it('should render status badges as toggle buttons', () => {
+    const el = document.createElement('div');
+    const data = createData([
+      { id: 'a', status: 'pass', title: 'A', summary: 'OK' },
+    ]);
+
+    renderSummaryPanel(el, data);
+
+    const filterBtns = el.querySelectorAll('.status-filter');
+    expect(filterBtns.length).toBe(5);
+    for (const btn of filterBtns) {
+      expect(btn.tagName).toBe('BUTTON');
+      expect(btn.getAttribute('aria-pressed')).toBe('true');
+    }
+  });
+
+  it('should toggle aria-pressed and inactive class on click', () => {
+    const el = document.createElement('div');
+    const data = createData([
+      { id: 'a', status: 'pass', title: 'A', summary: 'OK' },
+      { id: 'b', status: 'fail', title: 'B', summary: 'Bad' },
+    ]);
+
+    renderSummaryPanel(el, data);
+
+    const passBtn = el.querySelector('[data-status="pass"]');
+    passBtn.click();
+
+    expect(passBtn.getAttribute('aria-pressed')).toBe('false');
+    expect(passBtn.classList.contains('status-filter--inactive')).toBe(true);
+
+    // Click again to re-enable
+    passBtn.click();
+    expect(passBtn.getAttribute('aria-pressed')).toBe('true');
+    expect(passBtn.classList.contains('status-filter--inactive')).toBe(false);
+  });
+
+  it('should emit filterStatus event on bus when badge clicked', () => {
+    const el = document.createElement('div');
+    const bus = createSessionBus();
+    const data = createData([
+      { id: 'a', status: 'pass', title: 'A', summary: 'OK' },
+      { id: 'b', status: 'fail', title: 'B', summary: 'Bad' },
+    ]);
+
+    renderSummaryPanel(el, data, bus);
+
+    const received = [];
+    bus.on('filterStatus', (d) => received.push(d));
+
+    const failBtn = el.querySelector('[data-status="fail"]');
+    failBtn.click();
+
+    expect(received).toHaveLength(1);
+    expect(received[0].active.has('pass')).toBe(true);
+    expect(received[0].active.has('fail')).toBe(false);
+  });
+
+  it('should work without a bus (backwards compatibility)', () => {
+    const el = document.createElement('div');
+    const data = createData([
+      { id: 'a', status: 'pass', title: 'A', summary: 'OK' },
+    ]);
+
+    // Should not throw
+    renderSummaryPanel(el, data);
+
+    const passBtn = el.querySelector('[data-status="pass"]');
+    passBtn.click(); // Should not throw without bus
+    expect(passBtn.getAttribute('aria-pressed')).toBe('false');
   });
 });

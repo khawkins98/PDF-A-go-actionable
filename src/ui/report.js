@@ -12,8 +12,9 @@
  * @param {object} data - Audit result data
  * @param {object[]} data.findings - Array of Finding objects
  * @param {object} data.meta - Document metadata
+ * @param {import('./state.js').EventBus} [bus] - Optional scoped event bus for filter events
  */
-export function renderSummaryPanel(el, data) {
+export function renderSummaryPanel(el, data, bus) {
   const { findings, meta } = data;
 
   // Count statuses
@@ -69,12 +70,34 @@ export function renderSummaryPanel(el, data) {
     { key: 'not-applicable', label: 'N/A' },
   ];
 
+  /** Active filter set — all statuses start active. */
+  const activeFilters = new Set(statusLabels.map((s) => s.key));
+
   for (const { key, label } of statusLabels) {
     const li = document.createElement('li');
-    const badge = document.createElement('span');
-    badge.className = `status-badge status-badge--${key}`;
+    const badge = document.createElement('button');
+    badge.type = 'button';
+    badge.className = `status-badge status-badge--${key} status-filter`;
     badge.textContent = `${counts[key]} ${label}`;
-    badge.setAttribute('aria-label', `${counts[key]} checks with status: ${label}`);
+    badge.dataset.status = key;
+    badge.setAttribute('aria-label', `Filter ${label}: ${counts[key]} checks`);
+    badge.setAttribute('aria-pressed', 'true');
+
+    badge.addEventListener('click', () => {
+      if (activeFilters.has(key)) {
+        activeFilters.delete(key);
+        badge.classList.add('status-filter--inactive');
+        badge.setAttribute('aria-pressed', 'false');
+      } else {
+        activeFilters.add(key);
+        badge.classList.remove('status-filter--inactive');
+        badge.setAttribute('aria-pressed', 'true');
+      }
+      if (bus) {
+        bus.emit('filterStatus', { active: new Set(activeFilters) });
+      }
+    });
+
     li.appendChild(badge);
     countsList.appendChild(li);
   }
