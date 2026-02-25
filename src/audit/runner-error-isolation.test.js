@@ -74,4 +74,71 @@ describe('runner error isolation', () => {
     expect(result.findings[0].status).toBe('fail');
     expect(result.meta.pageCount).toBe(0);
   });
+
+  it('should handle PDF with cycling structure tree gracefully', async () => {
+    // Build a PDF where a StructElem's /K points back to itself
+    const { PDFDocument, PDFName, PDFString } = await import('pdf-lib');
+    const doc = await PDFDocument.create();
+    doc.addPage();
+    doc.catalog.set(PDFName.of('Lang'), PDFString.of('en-US'));
+
+    // MarkInfo
+    const markInfo = doc.context.obj({ Marked: true });
+    doc.catalog.set(PDFName.of('MarkInfo'), markInfo);
+
+    // StructTreeRoot
+    const str = doc.context.obj({ Type: 'StructTreeRoot' });
+    const strRef = doc.context.register(str);
+    doc.catalog.set(PDFName.of('StructTreeRoot'), strRef);
+
+    // StructElem that references itself via /K
+    const elem = doc.context.obj({
+      Type: 'StructElem',
+      S: PDFName.of('Document'),
+      P: strRef,
+    });
+    const elemRef = doc.context.register(elem);
+    // Cycle: elem's /K points back to itself
+    elem.set(PDFName.of('K'), doc.context.obj([elemRef]));
+    str.set(PDFName.of('K'), doc.context.obj([elemRef]));
+
+    const saved = await doc.save();
+    const result = await runAudit(saved.buffer, { fileName: 'cyclic.pdf' });
+
+    // Should NOT crash, should have findings from all modules
+    expect(result.findings.length).toBeGreaterThan(0);
+    expect(result.meta).toBeDefined();
+    expect(result.meta.fileName).toBe('cyclic.pdf');
+    // structureTree may be truncated or null, but should not throw
+    // (the serialize-tree.js visited set prevents infinite loops)
+  });
+
+  it('should handle PDF with malformed XMP metadata without crashing', async () => {
+    const { PDFDocument, PDFName, PDFRawStream } = await import('pdf-lib');
+    const doc = await PDFDocument.create();
+    doc.addPage();
+
+    // Create a malformed metadata stream (not valid XML)
+    const malformedXmp = new TextEncoder().encode('<<<NOT VALID XMP>>>');
+    const metaStream = PDFRawStream.of(
+      doc.context.obj({
+        Type: 'Metadata',
+        Subtype: PDFName.of('XML'),
+        Length: malformedXmp.length,
+      }),
+      malformedXmp,
+    );
+    const metaRef = doc.context.register(metaStream);
+    doc.catalog.set(PDFName.of('Metadata'), metaRef);
+
+    const saved = await doc.save();
+    const result = await runAudit(saved.buffer, { fileName: 'malformed-xmp.pdf' });
+
+    expect(result.findings.length).toBeGreaterThan(0);
+    expect(result.meta).toBeDefined();
+    expect(result.meta.fileName).toBe('malformed-xmp.pdf');
+    // Should not detect PDF/A or PDF/UA from malformed metadata
+    expect(result.meta.isPdfA).toBe(false);
+    expect(result.meta.isPdfUA).toBe(false);
+  });
 });

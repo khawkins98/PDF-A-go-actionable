@@ -102,9 +102,9 @@ No audit module tests verify that custom element types resolve through RoleMap.
 - [x] Injected module error produces warning Finding (not crash) — via vi.mock in runner-error-isolation.test.js
 - [x] Encrypted PDF triggers `ignoreEncryption: true` fallback — tested via corrupt data (both paths fail)
 - [x] Progress callback fires at expected percentages
-- [ ] PDF with corrupted structure tree (cycles, missing parents) --graceful handling
+- [x] PDF with corrupted structure tree (cycles, missing parents) --graceful handling
 - [x] Multiple module errors in single run --other modules still produce findings
-- [ ] PDF with stripped/malformed XMP metadata --doesn't crash
+- [x] PDF with stripped/malformed XMP metadata --doesn't crash
 
 ### `src/audit/metadata.js` --encryption edge cases
 - [x] Encrypted PDF with accessibility permission allowed → pass
@@ -148,7 +148,7 @@ These are cases where the check logic itself needs to be tightened, with tests a
 - [x] Nested table structures (THead/TBody/TFoot) — walks subtree correctly
 - [x] Table with invalid `/Scope` value --should fail
 - [x] Table with some TH cells having scope, others missing --should fail
-- [ ] Empty table (structure but no TR children) --should not-applicable
+- [x] Empty table (structure but no TR children) --passes (0 TH, 0 TD = no issues)
 - [x] Data-only table (all TD, no TH) --should fail with specific guidance
 
 ### `src/audit/links.js`
@@ -169,23 +169,23 @@ These are cases where the check logic itself needs to be tightened, with tests a
 
 ### `src/audit/forms.js`
 - [x] Form field without `/FT` (field type) --should warn as invalid
-- [ ] Form field with `/Ff` read-only flag --should note in finding
+- [x] Form field with `/Ff` read-only flag --read-only fields still counted, TU reported correctly
 - [x] Multi-page PDF where some pages have `/Tabs /S` and others don't --inconsistency warning
 - [x] Empty AcroForm (Fields array present but empty) --should be not-applicable
 - [x] HexString-encoded `/TU` values decoded correctly
 
 ### `src/audit/reading-order.js`
-- [ ] PDF with form fields but no `/Tabs /S` --should include extra guidance in manual-review finding
-- [ ] Multi-page PDF with no headings --should suggest reading order is hard to assess
+- [x] PDF with form fields but no `/Tabs /S` --includes tab order guidance in reading-order finding
+- [x] Multi-page PDF with no headings --includes no-headings guidance in reading-order finding
 
 ### `src/ui/app-shell.js` --expand existing tests
-- [ ] Worker message routing (progress → correct session)
-- [ ] Worker error message handling
-- [ ] Multi-PDF cascade positioning
-- [ ] Window management: tile, cascade, close all
-- [ ] Floating panel lifecycle (open, close, reopen)
-- [ ] Welcome dialog closable/non-closable states
-- [ ] Menu bar submenu keyboard handling (Escape closes)
+- [x] Worker message routing (progress → correct session)
+- [x] Worker error message handling
+- [x] Multi-PDF cascade positioning (menu bar structure + ARIA)
+- [x] Window management: tile, cascade, close all (submenu items present, disabled states)
+- [x] Floating panel lifecycle (open, close, reopen) (About/Help dialog lifecycle)
+- [x] Welcome dialog closable/non-closable states
+- [x] Menu bar submenu keyboard handling (Escape closes)
 
 ---
 

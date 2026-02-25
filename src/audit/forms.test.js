@@ -119,6 +119,43 @@ describe('checkForms', () => {
     expect(f.details.some(d => d.value && d.value.includes('Enter your full name'))).toBe(true);
   });
 
+  it('should handle form field with /Ff read-only flag gracefully', async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage();
+    // Field 1: read-only (Ff bit 1 = 1), with TU
+    const field1 = doc.context.obj({
+      Type: 'Annot',
+      Subtype: PDFName.of('Widget'),
+      FT: PDFName.of('Tx'),
+      T: PDFString.of('readonly_field'),
+      TU: PDFString.of('This field is read-only'),
+      Ff: 1, // ReadOnly flag
+      Rect: doc.context.obj([0, 0, 100, 20]),
+    });
+    const field1Ref = doc.context.register(field1);
+    // Field 2: not read-only, no TU
+    const field2 = doc.context.obj({
+      Type: 'Annot',
+      Subtype: PDFName.of('Widget'),
+      FT: PDFName.of('Tx'),
+      T: PDFString.of('editable_field'),
+      Rect: doc.context.obj([0, 0, 100, 20]),
+    });
+    const field2Ref = doc.context.register(field2);
+    const acroForm = doc.context.obj({ Fields: doc.context.obj([field1Ref, field2Ref]) });
+    doc.catalog.set(PDFName.of('AcroForm'), doc.context.register(acroForm));
+    const saved = await doc.save();
+    const ctx = await buildTestContext(saved);
+    const findings = checkForms(ctx.pdfDoc, ctx);
+    const f = findings.find(f => f.id === 'form-labels');
+    expect(f).toBeDefined();
+    // Both fields should be counted (read-only doesn't skip the field)
+    expect(f.status).toBe('warning'); // field2 missing TU
+    expect(f.summary).toContain('1 of 2');
+    // Field 1 should show its tooltip text
+    expect(f.details.some(d => d.value && d.value.includes('This field is read-only'))).toBe(true);
+  });
+
   it('should warn when multi-page PDF has inconsistent tab order', async () => {
     const doc = await PDFDocument.create();
     const page1 = doc.addPage();
