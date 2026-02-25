@@ -129,7 +129,9 @@ TreeNode = {
   role: string,         // resolved via RoleMap ("H1", "Sect")
   alt: string | null,
   lang: string | null,
-  children: TreeNode[]
+  children: TreeNode[],
+  mcids: Array<{ mcid: number, pageIndex: number }>,  // marked content IDs with page refs
+  pageIndex: number | null  // page index from /Pg (inherited or direct)
 }
 ```
 
