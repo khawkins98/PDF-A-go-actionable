@@ -178,4 +178,23 @@ describe('runAudit', () => {
     expect(categories.has('images')).toBe(true);
     expect(categories.has('fonts')).toBe(true);
   });
+
+  it('should include structureTree for tagged PDFs', async () => {
+    const bytes = await createTaggedPdf();
+    const result = await runAudit(bytes.buffer);
+
+    expect(result).toHaveProperty('structureTree');
+    expect(result.structureTree).not.toBeNull();
+    expect(result.structureTree.root).not.toBeNull();
+    expect(result.structureTree.root.role).toBe('Document');
+    expect(result.structureTree.totalCount).toBeGreaterThan(0);
+    expect(result.structureTree.truncated).toBe(false);
+  });
+
+  it('should return null structureTree for untagged PDFs', async () => {
+    const bytes = await createUntaggedPdf();
+    const result = await runAudit(bytes.buffer);
+
+    expect(result.structureTree).toBeNull();
+  });
 });
