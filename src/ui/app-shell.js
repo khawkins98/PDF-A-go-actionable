@@ -1127,6 +1127,34 @@ export function initAppShell(container, worker) {
     closeProgressDialog(session);
     session.data = data;
     showResults(session, data);
+
+    // When a preview alt-text label is clicked, open image inventory and scroll to match
+    session.bus.on('focusImageEntry', (payload) => {
+      // Ensure image inventory panel is open
+      toggleFloatingPanel(session, 'images');
+      const win = session.floatingPanels.get('images');
+      if (!win) return;
+
+      // Find matching row by alt text
+      const rows = win.body.querySelectorAll('tr[data-alt]');
+      let target = null;
+      for (const row of rows) {
+        if (row.dataset.alt === payload.alt) {
+          target = row;
+          break;
+        }
+      }
+      if (!target) return;
+
+      // Highlight and scroll to the row
+      // Clear any previous highlights first
+      for (const row of rows) row.classList.remove('image-row--focused');
+      target.classList.add('image-row--focused');
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      // Focus the window
+      win.focus();
+    });
   }
 
   function showResults(session, data) {

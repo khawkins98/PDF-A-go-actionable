@@ -1129,6 +1129,23 @@ body {
   font-size: var(--font-size-sm);
 }
 
+/* Clickable alt text labels in preview */
+.pdf-preview__alt-label:hover .pdf-preview__alt-label-bg {
+  fill: rgba(34, 197, 94, 0.95);
+}
+
+.pdf-preview__alt-label:focus {
+  outline: 2px solid rgba(34, 197, 94, 0.9);
+  outline-offset: 2px;
+}
+
+/* Image inventory focused row (from alt text label click) */
+.image-row--focused {
+  outline: 2px solid var(--color-primary, #1556a0);
+  outline-offset: -2px;
+  background: rgba(21, 86, 160, 0.1) !important;
+}
+
 /* Active toggle button (e.g. Reading Order on) */
 .toolbar-btn--active {
   background: var(--color-titlebar);

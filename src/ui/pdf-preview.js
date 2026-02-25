@@ -769,7 +769,6 @@ export function renderPreviewPanel(el, data, session) {
         }
         const targetSet = new Set(pageMcids);
         boxes = imageBboxes.filter((b) => targetSet.has(b.mcid));
-        console.warn('[alt-text] Image boxes for mcids', pageMcids, ':', boxes.length);
       }
 
       if (boxes.length === 0) continue;
@@ -796,9 +795,23 @@ export function renderPreviewPanel(el, data, session) {
       rect.setAttribute('class', 'pdf-preview__alt-highlight');
       svg.appendChild(rect);
 
-      // Draw label below the element
+      // Draw label below the element — clickable to open image inventory
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       g.setAttribute('class', 'pdf-preview__alt-label');
+      g.style.pointerEvents = 'auto';
+      g.style.cursor = 'pointer';
+      g.setAttribute('role', 'button');
+      g.setAttribute('tabindex', '0');
+      g.setAttribute('aria-label', `View details: ${node.alt}`);
+
+      // Click / Enter opens image inventory and scrolls to this entry
+      const emitFocus = () => {
+        if (bus) bus.emit('focusImageEntry', { alt: node.alt, nodeId: node.id });
+      };
+      g.addEventListener('click', emitFocus);
+      g.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); emitFocus(); }
+      });
 
       const labelY = maxY + 2;
       const labelWidth = Math.max(maxX - minX, 80);
@@ -819,8 +832,10 @@ export function renderPreviewPanel(el, data, session) {
       roleText.textContent = node.role || node.type;
       g.appendChild(roleText);
 
-      // Alt text (truncated)
-      const altStr = node.alt.length > 80 ? node.alt.slice(0, 77) + '\u2026' : node.alt;
+      // Alt text (truncated) + hint
+      const altStr = node.alt.length > 60
+        ? node.alt.slice(0, 57) + '\u2026 \u25B6'
+        : node.alt + ' \u25B6';
       const altText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       altText.setAttribute('x', String(minX + 4));
       altText.setAttribute('class', 'pdf-preview__alt-label-text');
