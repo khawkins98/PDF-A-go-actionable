@@ -2,9 +2,9 @@
  * Export functionality — JSON, CSV, and PDF report generation.
  *
  * Returns an object with three export methods that trigger file downloads.
- * Uses pdf-lib for PDF report generation.
+ * pdf-lib is lazy-loaded only when PDF export is triggered, keeping it
+ * out of the critical path for initial page load.
  */
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
 /**
  * Initialize export functionality for the given audit data.
@@ -86,6 +86,7 @@ function downloadCSV(data) {
  * @param {object} data
  */
 async function downloadPDF(data) {
+  const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
