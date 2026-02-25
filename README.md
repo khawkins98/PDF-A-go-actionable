@@ -90,7 +90,7 @@ This project builds on the work of many others:
 - **[WinBox](https://github.com/nextapps-de/winbox)** by Nextapps GmbH (Apache-2.0) -- lightweight window manager for the floating panel system
 
 **Sibling projects:**
-- **[PDF-A-go-slim](https://github.com/khawkins98/PDF-A-go-slim)** (MIT) -- sibling project whose utility modules (stream decoding, content stream parsing, structure tree traversal, accessibility detection) are reused by this tool's PDF engine
+- **[PDF-A-go-slim](https://github.com/khawkins98/PDF-A-go-slim)** (MIT) -- sibling project whose utility modules (stream decoding, content stream parsing, unicode mapping, accessibility detection) are reused by this tool's PDF engine
 - **[PDF-A-go-go](https://github.com/khawkins98/PDF-A-go-go)** (MIT) -- the first project in this family; building it revealed the PDF accessibility problems this tool checks for
 
 **Reference tools and standards:**

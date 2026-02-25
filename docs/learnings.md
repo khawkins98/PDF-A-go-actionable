@@ -149,6 +149,10 @@ Key differences from the flat walker:
 
 The runner adds `structureTree` to its return value alongside `findings` and `meta`. The UI's tree-explorer checks for `data.structureTree?.root` to decide between interactive tree mode and the fallback findings summary.
 
+### ToUnicode CMap Parsing Bug: Anchor bfrange Regex
+
+When parsing `beginbfrange` sections in CMap text, the regex that matches the simple range form (`<start> <end> <dstStart>`) must be anchored with `^`. Without anchoring, array-form bfranges like `<0001> <0003> [<0041> <0042> <0043>]` can be incorrectly matched by the simple range regex -- it finds `<0041> <0042> <0043>` inside the brackets as three hex groups, consumes the line via `continue`, and the array-form regex never runs. The fix: `line.trim().match(/^<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>/)`.
+
 ### ToUnicode CMap Coverage
 
 Fonts without `/ToUnicode` CMaps can't be reliably extracted to text by screen readers or search. How we audit this:
@@ -385,6 +389,17 @@ The font must be wired into the page's `Resources/Font` dict for `Tf` to resolve
 ### Circular References Don't Survive Save/Reload
 
 pdf-lib flattens circular structure references during serialization. If you create a cycle (StructElem A → StructElem B → StructElem A) and save/reload, the cycle won't be present in the reloaded document. Tests for cycle detection must work on the document directly (before save) or use indirect structures that preserve the cycle through serialization.
+
+### Modularizing Large UI Files
+
+When splitting a monolithic UI file (e.g., `app-shell.js` at 1,416 lines) into focused modules, use callback/parameter injection to keep modules decoupled:
+
+- **Menu bar** takes an `onAction(actionName, buttonElement)` callback rather than importing app state directly.
+- **Submenu builders** take explicit data parameters (e.g., `buildExportAllSubmenu(hasResults, onExport)`) rather than accessing closure state.
+- **Dialog functions** take the WinBox constructor and an `onClose` callback, returning the instance for singleton management by the caller.
+- **Window manager** exports pure functions that take `sessions` and `root` parameters, not singletons.
+
+This pattern allows each module to be independently tested with mocks, without requiring the full app context.
 
 ### Node.js fetch() Detection
 

@@ -290,7 +290,7 @@ export function parseCMapText(text) {
     const lines = match[1].trim().split('\n');
     for (const line of lines) {
       // Range: <start> <end> <dstStart>
-      const rangeParts = line.trim().match(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>/);
+      const rangeParts = line.trim().match(/^<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>/);
       if (rangeParts) {
         const start = parseInt(rangeParts[1], 16);
         const end = parseInt(rangeParts[2], 16);

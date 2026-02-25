@@ -127,7 +127,7 @@ See `FUTURE-IDEAS.md` for the full deferred feature list. Key items:
 
 ### Shared Code from PDF-A-go-slim
 
-All 7 modules copied to `src/engine/utils/` with provenance comments. Done.
+5 modules copied to `src/engine/utils/` with provenance comments. Done. (`pdf-traversal.js` and `hash.js` were originally copied but removed as unused dead code.)
 
 | Module | Purpose | Status |
 |---|---|---|
@@ -136,8 +136,6 @@ All 7 modules copied to `src/engine/utils/` with provenance comments. Done.
 | `unicode-mapper.js` | Map char codes to Unicode codepoints | Done |
 | `glyph-list.js` | Adobe Glyph List + encoding tables | Done |
 | `stream-decode.js` | Decoders: Flate, LZW, ASCII85, ASCIIHex, RunLength | Done |
-| `pdf-traversal.js` | BFS graph walker from PDF trailer | Done |
-| `hash.js` | djb2 hash utility | Done |
 
 ### New Code
 
@@ -159,8 +157,11 @@ src/
     links.js            --link text quality analysis
     reading-order.js    --manual review guidance (PAC, NVDA, reading order)
   ui/
-    app-shell.js        --WinBox multi-session lifecycle: menu bar + welcome → progress → per-PDF results + floating panels
-    state.js            --EventBus class, global singleton, createSessionBus() for per-session isolation
+    app-shell.js        --high-level orchestration: session lifecycle, file handling, worker routing, welcome/progress/results dialogs, floating panel toggle
+    menu-bar.js         --menu bar DOM creation, SubmenuController class, keyboard navigation (ARIA menubar), submenu builders. Exports MENUBAR_HEIGHT
+    window-manager.js   --tileWindows(), cascadeWindows(), closeAllWindows(), focusWindow(), getFloatingLayout(). Exports CASCADE_OFFSET
+    dialogs.js          --showAboutDialog(), showHelpDialog(), showBookmarkPlaceholder()
+    state.js            --EventBus class, createSessionBus() for per-session isolation
     drop-zone.js        --reusable multi-file upload component (drag-and-drop + browse)
     report.js           --summary score, metadata, status counts
     findings-list.js    --grouped/sorted finding cards
@@ -181,8 +182,6 @@ src/
     unicode-mapper.js   --(from PDF-A-go-slim)
     glyph-list.js       --(from PDF-A-go-slim)
     stream-decode.js    --(from PDF-A-go-slim)
-    pdf-traversal.js    --(from PDF-A-go-slim)
-    hash.js             --(from PDF-A-go-slim)
 ```
 
 ### Data Model
@@ -298,7 +297,7 @@ All steps implemented. Done.
 
 When this project draws on code, patterns, or ideas from other projects, we cite the source clearly. This applies to:
 
-- **Direct code reuse** -- the 7 utility modules copied from PDF-A-go-slim credit that project and note upstream dependencies (pdf-lib, fflate, PDF spec).
+- **Direct code reuse** -- the 5 utility modules copied from PDF-A-go-slim credit that project and note upstream dependencies (pdf-lib, fflate, PDF spec).
 - **Design inspiration** -- UI patterns and check logic informed by existing tools (PAC, axesCheck, veraPDF, etc.) are noted.
 - **Dependencies** -- runtime dependencies (pdf-lib, fflate, WinBox, etc.) are acknowledged with their licenses.
 - **Standards** -- WCAG, PDF/UA, Matterhorn Protocol, and other specs that inform the audit checks.
@@ -345,6 +344,9 @@ UI code must have test coverage. The WinBox panel creation, panel render functio
 | Test File | What It Covers | Tests |
 |---|---|---|
 | `src/ui/app-shell.test.js` | `createPanelElement` returns HTMLElement for 3 floating panel types; element properties; correct render function dispatch | 9 |
+| `src/ui/menu-bar.test.js` | Menu bar creation, ARIA attributes, keyboard nav, submenu builders, SubmenuController open/close/toggle | 50 |
+| `src/ui/window-manager.test.js` | Tile, cascade, close, focus, getFloatingLayout, CASCADE_OFFSET | 16 |
+| `src/ui/dialogs.test.js` | About, Help, Bookmark placeholder dialog creation and callbacks | 9 |
 | `src/ui/state.test.js` | EventBus on/off/emit, state storage, late subscriber access, reset, unsubscribe; EventBus class export; createSessionBus isolation; destroy method | 16 |
 | `src/ui/export.test.js` | `escapeCsvField` quoting/escaping, `buildFilename` generation, `initExport` API shape | 14 |
 | `src/ui/report.test.js` | `renderSummaryPanel` status counts, overall badge, metadata rendering, ARIA labels | 9 |
@@ -392,7 +394,7 @@ Cherry-pick a small representative set covering the 10 automated checks. Store i
 ## Resolved Questions
 
 1. **Window manager:** Using **WinBox** (0.2.x). Provides floating, movable, resizable windows with minimize/maximize. White theme via built-in theme CSS.
-2. **Shared code strategy:** Copy 7 modules from PDF-A-go-slim's `src/engine/utils/` into `src/engine/utils/`. They're self-contained (only depend on pdf-lib + fflate, both already in our stack). Expect divergence --the optimization project and validation project serve different goals. Done --all 7 copied with provenance comments.
+2. **Shared code strategy:** Copy modules from PDF-A-go-slim's `src/engine/utils/` into `src/engine/utils/`. They're self-contained (only depend on pdf-lib + fflate, both already in our stack). Expect divergence --the optimization project and validation project serve different goals. Done --5 modules copied with provenance comments (originally 7; `pdf-traversal.js` and `hash.js` removed as unused dead code).
 3. **PDF.js / visual preview:** Implemented as the PDF Preview floating panel using pdfjs-dist (lazy-loaded). Built directly on PDF.js rather than wrapping PDF-A-go-go, as predicted --the deep integration (MCID region highlighting, structure tree node selection, reading order overlay) requires direct access to PDF.js text content and marked content APIs. The `serialize-tree.js` TreeNodes now carry `mcids: [{mcid, pageIndex}]` and `pageIndex` for mapping structure elements to visual regions. Clicking a tree node emits `selectTreeNode` on the session bus, and the preview navigates to the correct page and highlights the MCID regions.
 4. **Branding:** Keep "actionable" --it differentiates from "check" (passive) and signals the remediation guidance angle.
 5. **Decorative image detection:** V1.0 uses a heuristic (image count vs. figure count). Flag unmatched images as "please verify --may need alt text or artifact marking" (`warning` status). Per-image MCID correlation deferred to V1.1. Done.
@@ -401,5 +403,5 @@ Cherry-pick a small representative set covering the 10 automated checks. Store i
 8. **Dark mode:** Light only for V1.0. Theme CSS structured with CSS custom properties for easy dark mode addition later. Done.
 9. **Export:** V1.0 feature, not deferred. Export audit results as JSON, CSV, or a PDF summary report. Done.
 10. **Service worker:** Deferred. App works offline in practice (static assets, no server). Explicit service worker in V1.1.
-11. **Testing:** TDD with Vitest --437 tests across 33 test files covering audit checks, engine utilities (resolve, accessibility detection, struct-tree walker, serialize-tree, stream decode, content-stream-parser, RoleMap), UI integration (panel creation, render functions, interactive tree, scoped event buses, export helpers), and worker protocol. 22 pdf-lib fixture factories in `test/fixtures/`. Uses `happy-dom` for DOM-based UI tests. Two sample PDFs bundled in `public/samples/`.
+11. **Testing:** TDD with Vitest --607 tests across 39 test files covering audit checks, engine utilities (resolve, accessibility detection, struct-tree walker, serialize-tree, stream decode, content-stream-parser, unicode-mapper, RoleMap), UI integration (panel creation, menu bar, window manager, dialogs, render functions, interactive tree, scoped event buses, export helpers), and worker protocol. 22 pdf-lib fixture factories in `test/fixtures/`. Uses `happy-dom` for DOM-based UI tests. Two sample PDFs bundled in `public/samples/`.
 12. **Content stream robustness:** Architect the audit layer defensively --graceful fallbacks (warning findings, not crashes) if pdf-lib or stream parsing hits edge cases. Done --each audit module wraps in try/catch, runner catches per-module errors and returns warning findings.
