@@ -143,7 +143,8 @@ export function renderFindingsPanel(el, data, bus) {
 
       const summary = document.createElement('span');
       summary.textContent = finding.summary;
-      summary.style.cssText = 'display: block; font-size: var(--font-size-sm); color: var(--color-text-secondary); line-height: 1.4; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;';
+      summary.className = 'finding-card__summary';
+      summary.style.cssText = 'display: block; font-size: var(--font-size-sm); line-height: 1.4; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;';
 
       content.appendChild(title);
       content.appendChild(summary);

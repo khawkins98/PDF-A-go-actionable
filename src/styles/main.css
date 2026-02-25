@@ -762,6 +762,13 @@ body.wb-lock .winbox {
   border-color: var(--color-border-dark) var(--color-border-light) var(--color-border-light) var(--color-border-dark);
 }
 
+.finding-card__summary {
+  color: var(--color-text-secondary);
+}
+.finding-card--selected .finding-card__summary,
+.finding-card--selected strong {
+  color: var(--color-text-inverse);
+}
 .finding-card--selected .status-badge {
   box-shadow: none;
 }
