@@ -77,6 +77,7 @@ export function renderPreviewPanel(el, data, session) {
   let activeMcids = null;
   let readingOrderOn = false;
   let zoomMode = ZOOM_FIT; // ZOOM_FIT or a numeric scale multiplier
+  let lastFitScale = 1; // cached fit-to-width scale from last render
 
   // --- DOM ---
   const toolbar = document.createElement('div');
@@ -312,11 +313,9 @@ export function renderPreviewPanel(el, data, session) {
     renderPage();
   }
 
-  /** Compute the fit-to-width scale for the current page. */
+  /** Return the last computed fit-to-width scale. */
   function computeFitScale() {
-    if (!pdfjsDoc) return null;
-    // We need the page to compute, but this is sync — use cached info
-    return null; // Computed during renderPage
+    return lastFitScale;
   }
 
   function goToPage(num) {
@@ -343,6 +342,7 @@ export function renderPreviewPanel(el, data, session) {
       const containerWidth = viewportEl.clientWidth - 16 || 400; // minus padding
       const unscaled = page.getViewport({ scale: 1 });
       const fitScale = containerWidth / unscaled.width;
+      lastFitScale = fitScale; // cache for stepZoom transitions
 
       const scale = zoomMode === ZOOM_FIT ? fitScale : zoomMode;
       updateZoomLabel(scale);
