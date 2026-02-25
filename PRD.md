@@ -92,7 +92,7 @@ The audit produces a structured report with:
 - ~~**Interactive structure tree** --full tree rendering with lazy expansion~~ --Done (ARIA tree view with expand/collapse, keyboard nav, search/filter, batch rendering)
 - ~~**Sample PDFs** --bundled samples in `public/samples/` for "try it now"~~ --Done (2 samples: `sample-accessible.pdf` + `sample-issues.pdf`; loaded from Samples menu in-app)
 - ~~**In-app About/Credits panel**~~ --Done (About dialog in menu bar)
-- **Reading order comparison** --automated structure-tree-order vs. page-position-order analysis (currently guidance-only)
+- ~~**Reading order visualization** --visual overlay showing content stream reading order on rendered pages~~ --Done (PDF Preview panel with numbered circle badges and connecting dashed lines; toggle from session toolbar)
 - ~~**Worker protocol tests** --test coverage for worker message handling~~ --Done (6 tests)
 - ~~**Real-world PDF testing** --test with PDFs from Word, InDesign, PptxGenJS, etc.~~ --Done (12 integration tests against veraPDF corpus)
 - ~~**Title check: XMP vs Info dict**~~ --Done. Three-level check: pass (XMP dc:title), warning (Info dict only), fail (none).
@@ -121,6 +121,7 @@ See `FUTURE-IDEAS.md` for the full deferred feature list. Key items:
 - **pdf-lib** --low-level PDF object access (proven in PDF-A-go-slim) | Done
 - **fflate** --stream decompression for content stream parsing | Done
 - **WinBox** --floating window management (movable, resizable windows) | Done
+- **pdfjs-dist** --PDF page rendering for the PDF Preview panel (lazy-loaded) | Done
 - **Web Workers** --off-main-thread PDF parsing and auditing | Done
 - **Vanilla JS** --no framework | Done
 
@@ -168,6 +169,7 @@ src/
     font-table.js       --font inventory table
     image-table.js      --image inventory table
     guidance.js         --remediation text templates and external links
+    pdf-preview.js      --PDF page rendering with zoom, page nav, MCID highlighting, reading order overlay (lazy-loads pdfjs-dist)
     export.js           --JSON, CSV, and PDF report generation
   engine/utils/
     resolve.js          --PDFRef resolution helper (new)
@@ -231,7 +233,7 @@ Desktop-style layout using WinBox (floating, movable, resizable windows) with a 
 - **Welcome dialog** --centered window with app info, feature highlights, and multi-file upload zone; reopened by "Open File(s)" menu (with close button when results exist); reappears when all results windows are closed | Done
 - **Progress dialog** --per-session centered window with file name, progress bar, and phase info | Done
 - **Results windows** --one per analyzed PDF, cascade-positioned (~85% of viewport); contains summary bar (top), session toolbar (floating panel toggles + per-file export), and split findings/details view; movable and resizable | Done
-- **Floating tool panels** --Structure Tree, Font Inventory, Image Inventory per session; opened from session toolbar buttons; movable, resizable, closeable | Done
+- **Floating tool panels** --Structure Tree, Font Inventory, Image Inventory, PDF Preview per session; opened from session toolbar buttons; movable, resizable, closeable | Done
 - **About dialog** --app info, version, technology credits | Done
 - **Help dialog** --usage steps, tips, keyboard shortcuts | Done
 
@@ -257,7 +259,8 @@ All steps implemented. Done.
 4. Per-file progress dialogs show analysis progress with phase info
 5. Each analyzed PDF spawns its own cascade-positioned results window
 6. User explores findings in any window; finding selection is scoped per session
-7. Opens floating panels (Structure Tree, Fonts, Images) per session from session toolbar
+7. Opens floating panels (Structure Tree, Fonts, Images, PDF Preview) per session from session toolbar
+7a. In PDF Preview: navigates pages, zooms (50%-300% + fit-to-width), toggles reading order visualization (numbered badges with connecting lines showing content stream order), and clicks structure tree nodes to highlight corresponding MCID regions on the rendered page
 8. Exports single-session results via session toolbar, or all results via menu bar "Export All"
 9. Uses Window menu to Tile, Cascade, or navigate between open results
 10. About and Help dialogs available from the menu bar at any time
@@ -390,7 +393,7 @@ Cherry-pick a small representative set covering the 10 automated checks. Store i
 
 1. **Window manager:** Using **WinBox** (0.2.x). Provides floating, movable, resizable windows with minimize/maximize. White theme via built-in theme CSS.
 2. **Shared code strategy:** Copy 7 modules from PDF-A-go-slim's `src/engine/utils/` into `src/engine/utils/`. They're self-contained (only depend on pdf-lib + fflate, both already in our stack). Expect divergence --the optimization project and validation project serve different goals. Done --all 7 copied with provenance comments.
-3. **PDF.js / visual preview:** Not needed for V1.0 --all checks are structural analysis via pdf-lib, and reading order is presented as a list comparison, not a visual overlay. PDF-A-go-slim embeds PDF-A-go-go (a PDF.js-based viewer) for before/after preview, but that viewer is designed for simple display, not deep integration with audit results. When visual preview is added (V1.1+), build directly on PDF.js rather than wrapping PDF-A-go-go --the level of integration needed (element highlighting, structure tree overlays, linking findings to page locations) would fight against PDF-A-go-go's abstraction layer.
+3. **PDF.js / visual preview:** Implemented as the PDF Preview floating panel using pdfjs-dist (lazy-loaded). Built directly on PDF.js rather than wrapping PDF-A-go-go, as predicted --the deep integration (MCID region highlighting, structure tree node selection, reading order overlay) requires direct access to PDF.js text content and marked content APIs. The `serialize-tree.js` TreeNodes now carry `mcids: [{mcid, pageIndex}]` and `pageIndex` for mapping structure elements to visual regions. Clicking a tree node emits `selectTreeNode` on the session bus, and the preview navigates to the correct page and highlights the MCID regions.
 4. **Branding:** Keep "actionable" --it differentiates from "check" (passive) and signals the remediation guidance angle.
 5. **Decorative image detection:** V1.0 uses a heuristic (image count vs. figure count). Flag unmatched images as "please verify --may need alt text or artifact marking" (`warning` status). Per-image MCID correlation deferred to V1.1. Done.
 6. **Link text quality:** Simple built-in word list: "click here", "here", "read more", "learn more", "link", "this link", "more info", "download", "more". Also flag bare URLs (http, https, ftp) and links with no accessible text. Done.
