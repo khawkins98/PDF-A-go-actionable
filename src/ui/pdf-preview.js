@@ -118,15 +118,20 @@ export function renderPreviewPanel(el, data, session) {
   const viewport = document.createElement('div');
   viewport.className = 'pdf-preview__viewport';
 
+  // Wrapper positions SVG overlay exactly over the canvas
+  const canvasWrap = document.createElement('div');
+  canvasWrap.className = 'pdf-preview__canvas-wrap';
+
   const canvas = document.createElement('canvas');
   canvas.className = 'pdf-preview__canvas';
-  viewport.appendChild(canvas);
+  canvasWrap.appendChild(canvas);
 
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.classList.add('pdf-preview__overlay');
   svg.setAttribute('aria-hidden', 'true');
-  viewport.appendChild(svg);
+  canvasWrap.appendChild(svg);
 
+  viewport.appendChild(canvasWrap);
   el.appendChild(viewport);
 
   // Status message (loading / errors / no tags)
@@ -392,14 +397,28 @@ export function renderPreviewPanel(el, data, session) {
   }
 
   function drawReadingOrder(textContent) {
-    if (!data.structureTree || !data.structureTree.root) return;
+    // Extract all distinct MCIDs from the text content in document order.
+    // This works regardless of whether the structure tree has MCID data,
+    // because PDF.js reports marked content regions directly from the page.
+    const mcidOrder = [];
+    const seenMcids = new Set();
+    const mcidStack = [];
 
-    const pageIndex = currentPage - 1;
-    const elements = [];
+    for (const item of textContent.items) {
+      if (item.type === 'beginMarkedContent' || item.type === 'beginMarkedContentProps') {
+        mcidStack.push(item.mcid != null ? item.mcid : null);
+      } else if (item.type === 'endMarkedContent') {
+        mcidStack.pop();
+      } else if (item.str != null) {
+        const currentMcid = mcidStack.length > 0 ? mcidStack[mcidStack.length - 1] : null;
+        if (currentMcid != null && !seenMcids.has(currentMcid)) {
+          seenMcids.add(currentMcid);
+          mcidOrder.push(currentMcid);
+        }
+      }
+    }
 
-    // Collect structure tree nodes that have MCIDs on this page
-    collectPageElements(data.structureTree.root, pageIndex, elements);
-    if (elements.length === 0) return;
+    if (mcidOrder.length === 0) return;
 
     const containerWidth = viewport.clientWidth || 400;
     const svgHeight = parseFloat(svg.getAttribute('height')) || 0;
@@ -410,23 +429,29 @@ export function renderPreviewPanel(el, data, session) {
       const unscaled = page.getViewport({ scale: 1 });
       const scale = containerWidth / unscaled.width;
 
-      let orderNum = 0;
-      for (const elem of elements) {
-        const mcids = elem.mcids
-          .filter((m) => m.pageIndex === pageIndex)
-          .map((m) => m.mcid);
-        if (mcids.length === 0) continue;
+      let prevX = null;
+      let prevY = null;
 
-        const boxes = getMcidBoundingBoxes(textContent, mcids);
+      for (let i = 0; i < mcidOrder.length; i++) {
+        const boxes = getMcidBoundingBoxes(textContent, [mcidOrder[i]]);
         if (boxes.length === 0) continue;
 
-        orderNum++;
-        // Use first box position for badge placement
         const first = boxes[0];
         const x = first.x * scale;
         const y = svgHeight - (first.y * scale) - (first.height * scale);
 
-        // Badge circle
+        // Connecting line from previous badge
+        if (prevX != null) {
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('x1', String(prevX));
+          line.setAttribute('y1', String(prevY));
+          line.setAttribute('x2', String(x));
+          line.setAttribute('y2', String(y));
+          line.setAttribute('class', 'pdf-preview__reading-order-line');
+          svg.appendChild(line);
+        }
+
+        // Badge circle + number
         const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         g.setAttribute('class', 'pdf-preview__reading-order-badge');
 
@@ -440,28 +465,12 @@ export function renderPreviewPanel(el, data, session) {
         text.setAttribute('x', String(x));
         text.setAttribute('y', String(y + 4));
         text.setAttribute('text-anchor', 'middle');
-        text.textContent = String(orderNum);
+        text.textContent = String(i + 1);
         g.appendChild(text);
 
-        // Line to next element (if there is one)
-        if (orderNum > 1) {
-          const prevG = svg.querySelector('.pdf-preview__reading-order-badge:last-of-type');
-          if (prevG) {
-            const prevCircle = prevG.querySelector('circle');
-            if (prevCircle) {
-              const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-              line.setAttribute('x1', prevCircle.getAttribute('cx'));
-              line.setAttribute('y1', prevCircle.getAttribute('cy'));
-              line.setAttribute('x2', String(x));
-              line.setAttribute('y2', String(y));
-              line.setAttribute('class', 'pdf-preview__reading-order-line');
-              // Insert line before badges so it renders behind
-              svg.insertBefore(line, svg.querySelector('.pdf-preview__reading-order-badge'));
-            }
-          }
-        }
-
         svg.appendChild(g);
+        prevX = x;
+        prevY = y;
       }
     });
   }

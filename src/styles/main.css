@@ -1022,11 +1022,17 @@ body {
 .pdf-preview__viewport {
   flex: 1;
   overflow: auto;
-  position: relative;
   background: var(--color-bg);
   display: flex;
   justify-content: center;
+  align-items: flex-start;
   padding: var(--space-sm);
+}
+
+.pdf-preview__canvas-wrap {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
 }
 
 .pdf-preview__canvas {
@@ -1039,15 +1045,6 @@ body {
   top: 0;
   left: 0;
   pointer-events: none;
-}
-
-/* Position SVG over the canvas via the viewport's padding + centering */
-.pdf-preview__viewport {
-  align-items: flex-start;
-}
-
-.pdf-preview__overlay {
-  /* Positioned via explicit width/height/viewBox set in JS */
 }
 
 .pdf-preview__status {
