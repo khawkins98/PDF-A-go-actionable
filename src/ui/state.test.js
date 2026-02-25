@@ -15,21 +15,21 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import { state, EventBus, createSessionBus } from './state.js';
+import { EventBus, createSessionBus } from './state.js';
 
-describe('EventBus (state)', () => {
+describe('EventBus', () => {
+  let bus;
+
   beforeEach(() => {
-    state.reset();
-    // Clear all listeners by reconstructing internal state
-    state._listeners = new Map();
+    bus = new EventBus();
   });
 
   describe('on / emit', () => {
     it('should deliver emitted events to listeners', () => {
       const received = [];
-      state.on('test-event', (data) => received.push(data));
+      bus.on('test-event', (data) => received.push(data));
 
-      state.emit('test-event', { value: 42 });
+      bus.emit('test-event', { value: 42 });
 
       expect(received).toHaveLength(1);
       expect(received[0]).toEqual({ value: 42 });
@@ -38,10 +38,10 @@ describe('EventBus (state)', () => {
     it('should deliver to multiple listeners on the same event', () => {
       const received1 = [];
       const received2 = [];
-      state.on('test-event', (data) => received1.push(data));
-      state.on('test-event', (data) => received2.push(data));
+      bus.on('test-event', (data) => received1.push(data));
+      bus.on('test-event', (data) => received2.push(data));
 
-      state.emit('test-event', { value: 'hello' });
+      bus.emit('test-event', { value: 'hello' });
 
       expect(received1).toHaveLength(1);
       expect(received2).toHaveLength(1);
@@ -49,9 +49,9 @@ describe('EventBus (state)', () => {
 
     it('should not deliver events to listeners on different events', () => {
       const received = [];
-      state.on('event-a', (data) => received.push(data));
+      bus.on('event-a', (data) => received.push(data));
 
-      state.emit('event-b', { value: 1 });
+      bus.emit('event-b', { value: 1 });
 
       expect(received).toHaveLength(0);
     });
@@ -61,33 +61,33 @@ describe('EventBus (state)', () => {
     it('should remove a listener', () => {
       const received = [];
       const fn = (data) => received.push(data);
-      state.on('test-event', fn);
+      bus.on('test-event', fn);
 
-      state.emit('test-event', { value: 1 });
+      bus.emit('test-event', { value: 1 });
       expect(received).toHaveLength(1);
 
-      state.off('test-event', fn);
-      state.emit('test-event', { value: 2 });
+      bus.off('test-event', fn);
+      bus.emit('test-event', { value: 2 });
       expect(received).toHaveLength(1); // no new delivery
     });
 
     it('should not error when removing a non-existent listener', () => {
-      expect(() => state.off('no-event', () => {})).not.toThrow();
+      expect(() => bus.off('no-event', () => {})).not.toThrow();
     });
   });
 
   describe('unsubscribe return value', () => {
     it('should return an unsubscribe function from on()', () => {
       const received = [];
-      const unsubscribe = state.on('test-event', (data) => received.push(data));
+      const unsubscribe = bus.on('test-event', (data) => received.push(data));
 
       expect(typeof unsubscribe).toBe('function');
 
-      state.emit('test-event', { value: 1 });
+      bus.emit('test-event', { value: 1 });
       expect(received).toHaveLength(1);
 
       unsubscribe();
-      state.emit('test-event', { value: 2 });
+      bus.emit('test-event', { value: 2 });
       expect(received).toHaveLength(1); // no new delivery
     });
   });
@@ -95,41 +95,41 @@ describe('EventBus (state)', () => {
   describe('state storage for result events', () => {
     it('should store result data on emit', () => {
       const resultData = { findings: [], meta: {} };
-      state.emit('result', resultData);
+      bus.emit('result', resultData);
 
-      expect(state.getResults()).toBe(resultData);
+      expect(bus.getResults()).toBe(resultData);
     });
 
     it('should store selectFinding data on emit', () => {
       const findingData = { findingId: 'test-finding' };
-      state.emit('selectFinding', findingData);
+      bus.emit('selectFinding', findingData);
 
-      expect(state.getSelectedFinding()).toBe(findingData);
+      expect(bus.getSelectedFinding()).toBe(findingData);
     });
 
     it('should not store data for other event types', () => {
-      state.emit('progress', { percent: 50 });
+      bus.emit('progress', { percent: 50 });
 
-      expect(state.getResults()).toBeNull();
-      expect(state.getSelectedFinding()).toBeNull();
+      expect(bus.getResults()).toBeNull();
+      expect(bus.getSelectedFinding()).toBeNull();
     });
   });
 
   describe('reset', () => {
     it('should clear stored results and selected finding', () => {
-      state.emit('result', { findings: [] });
-      state.emit('selectFinding', { findingId: 'test' });
+      bus.emit('result', { findings: [] });
+      bus.emit('selectFinding', { findingId: 'test' });
 
-      state.reset();
+      bus.reset();
 
-      expect(state.getResults()).toBeNull();
-      expect(state.getSelectedFinding()).toBeNull();
+      expect(bus.getResults()).toBeNull();
+      expect(bus.getSelectedFinding()).toBeNull();
     });
   });
 
   describe('emit with no listeners', () => {
     it('should not error when no listeners registered', () => {
-      expect(() => state.emit('unknown-event', { data: 1 })).not.toThrow();
+      expect(() => bus.emit('unknown-event', { data: 1 })).not.toThrow();
     });
   });
 });

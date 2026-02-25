@@ -1,7 +1,6 @@
 /**
  * Event bus for inter-panel communication.
  *
- * The global `state` singleton handles app-level events.
  * Use `createSessionBus()` to create scoped buses for per-analysis sessions
  * (isolates selectFinding events between multiple open results windows).
  *
@@ -67,9 +66,6 @@ export class EventBus {
     this._selectedFinding = null;
   }
 }
-
-/** App-level singleton bus. */
-export const state = new EventBus();
 
 /** Create a scoped event bus for an analysis session. */
 export function createSessionBus() {
