@@ -44,6 +44,12 @@ PDF-A-go-actionable is part of a family of client-side PDF tools:
 
 In short: **PDF-A-go-go** renders PDFs, **PDF-A-go-slim** optimizes them, and **PDF-A-go-actionable** validates their accessibility.
 
+## Visual Design
+
+The UI takes its cues from NeXTSTEP — dark charcoal title bars, a slate gray workspace, square corners, and 3D beveled edges throughout. Windows minimize to compact square tiles at the bottom of the screen. The dark menu bar, inverted hover states, and raised/sunken bevel effects give the tool a distinctive, workstation-grade feel that sets it apart from typical web apps.
+
+Built on [WinBox](https://github.com/nextapps-de/winbox) with extensive CSS overrides for the NeXTSTEP chrome. Multiple results windows can be opened, dragged, minimized, tiled, and cascaded.
+
 ## Development
 
 ### Conventions

@@ -692,6 +692,39 @@ body.wb-lock .winbox {
   opacity: 0.5;
 }
 
+/* Minimized windows — NeXTSTEP miniature style */
+.winbox.white.min {
+  max-width: 140px !important;
+  min-height: 48px !important;
+  height: 48px !important;
+  border: 2px solid;
+  border-color: var(--color-border-light) var(--color-border-dark) var(--color-border-dark) var(--color-border-light);
+  box-shadow: var(--shadow-md);
+}
+
+.winbox.white.min .wb-header {
+  height: 100% !important;
+  background: var(--color-titlebar);
+  box-shadow: var(--bevel-raised);
+}
+
+.winbox.white.min .wb-title {
+  font-size: 11px;
+  line-height: 48px;
+  padding: 0 4px 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.winbox.white.min .wb-control {
+  padding: 0 4px 0 0;
+}
+
+.winbox.white.min .wb-control * {
+  width: 14px;
+  height: 14px;
+}
+
 /* Resize handles */
 .winbox.white .wb-n,
 .winbox.white .wb-s,
