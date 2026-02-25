@@ -1,4 +1,4 @@
-# Test PDF Sources — Comprehensive Reference
+# Test PDF Sources --Comprehensive Reference
 
 Complete catalog of CORS-friendly test PDFs available for accessibility testing. This reference documents both the PDFs we use in the Advanced menu (`src/ui/dev-test-pdfs.js`) and the many additional PDFs available for future use.
 
@@ -24,7 +24,7 @@ All URLs use `cdn.jsdelivr.net` which serves with `Access-Control-Allow-Origin: 
 - **CDN base:** `https://cdn.jsdelivr.net/gh/veraPDF/veraPDF-corpus@staging/PDF_UA-1`
 - **Naming:** `{section}-t{test}-{pass|fail}-{variant}.pdf`
 
-### Section 5 — Version Identification (PDF/UA conformance marker)
+### Section 5 --Version Identification (PDF/UA conformance marker)
 
 Tests for the PDF/UA conformance declaration in XMP metadata.
 
@@ -43,7 +43,7 @@ Tests for the PDF/UA conformance declaration in XMP metadata.
 
 Path: `5%20Version%20identification/{file}`
 
-### Section 7.1 — General (Metadata, Tagging, Language, Title)
+### Section 7.1 --General (Metadata, Tagging, Language, Title)
 
 Core document-level requirements: tagged PDF, MarkInfo, language, title, DisplayDocTitle.
 
@@ -78,18 +78,18 @@ Core document-level requirements: tagged PDF, MarkInfo, language, title, Display
 
 Path: `7.1%20General/{file}`
 
-### Section 7.2 — Text (~110 PDFs)
+### Section 7.2 --Text (~110 PDFs)
 
 Extensive text handling tests: character encoding, Unicode mapping, ActualText, font usage. ~110 files across tests t02-t43 with multiple variants. Too many to list individually.
 
 Path: `7.2%20Text/{file}`
 
 **Highlights for future use:**
-- `7.2-t02` — Basic text string extraction
-- `7.2-t29` — ActualText attribute (10 pass + fail variants)
-- `7.2-t36-t43` — Composite fonts, ligatures, complex scripts
+- `7.2-t02` --Basic text string extraction
+- `7.2-t29` --ActualText attribute (10 pass + fail variants)
+- `7.2-t36-t43` --Composite fonts, ligatures, complex scripts
 
-### Section 7.3 — Graphics (Images/Alt Text)
+### Section 7.3 --Graphics (Images/Alt Text)
 
 | File | Status | Used? |
 |---|---|---|
@@ -101,7 +101,7 @@ Path: `7.2%20Text/{file}`
 
 Path: `7.3%20Graphics/{file}`
 
-### Section 7.4 — Headings
+### Section 7.4 --Headings
 
 #### 7.4.2 Numbered Headings (H1-H6)
 
@@ -125,7 +125,7 @@ Path: `7.4%20Headings/7.4.2%20Numbered%20headings/{file}`
 
 Path: `7.4%20Headings/7.4.4%20Unnumbered%20headings/{file}`
 
-### Section 7.5 — Tables
+### Section 7.5 --Tables
 
 | File | Status | Used? |
 |---|---|---|
@@ -137,7 +137,7 @@ Path: `7.4%20Headings/7.4.4%20Unnumbered%20headings/{file}`
 
 Path: `7.5%20Tables/{file}`
 
-### Section 7.7 — Mathematical Expressions
+### Section 7.7 --Mathematical Expressions
 
 | File | Status | Used? |
 |---|---|---|
@@ -146,7 +146,7 @@ Path: `7.5%20Tables/{file}`
 
 Path: `7.7%20Mathematical%20expressions/{file}`
 
-### Section 7.9 — Notes and References
+### Section 7.9 --Notes and References
 
 | File | Status | Used? |
 |---|---|---|
@@ -157,7 +157,7 @@ Path: `7.7%20Mathematical%20expressions/{file}`
 
 Path: `7.9%20Notes%20and%20references/{file}`
 
-### Section 7.10 — Optional Content
+### Section 7.10 --Optional Content
 
 | File | Status | Used? |
 |---|---|---|
@@ -168,7 +168,7 @@ Path: `7.9%20Notes%20and%20references/{file}`
 
 Path: `7.10%20Optional%20content/{file}`
 
-### Section 7.11 — Embedded Files
+### Section 7.11 --Embedded Files
 
 | File | Status | Used? |
 |---|---|---|
@@ -177,7 +177,7 @@ Path: `7.10%20Optional%20content/{file}`
 
 Path: `7.11%20Embedded%20files/{file}`
 
-### Section 7.15 — XFA
+### Section 7.15 --XFA
 
 | File | Status | Used? |
 |---|---|---|
@@ -185,7 +185,7 @@ Path: `7.11%20Embedded%20files/{file}`
 
 Path: `7.15%20XFA/{file}`
 
-### Section 7.16 — Security (Encryption Permissions)
+### Section 7.16 --Security (Encryption Permissions)
 
 | File | Status | Used? |
 |---|---|---|
@@ -194,7 +194,7 @@ Path: `7.15%20XFA/{file}`
 
 Path: `7.16%20Security/{file}`
 
-### Section 7.18 — Annotations (Forms, Links, Tab Order)
+### Section 7.18 --Annotations (Forms, Links, Tab Order)
 
 This is the largest section with ~44 test PDFs. Critical for form, link, and tab order testing.
 
@@ -279,7 +279,7 @@ Path: `7.18%20Annotations/7.18.7%20File%20Attachments/{file}`
 
 Path: `7.18%20Annotations/7.18.8%20PrinterMark/{file}`
 
-### Section 7.20 — XObjects
+### Section 7.20 --XObjects
 
 | File | Status | Used? |
 |---|---|---|
@@ -290,9 +290,9 @@ Path: `7.18%20Annotations/7.18.8%20PrinterMark/{file}`
 
 Path: `7.20%20XObjects/{file}`
 
-### Section 7.21 — Fonts (~30 PDFs)
+### Section 7.21 --Fonts (~30 PDFs)
 
-#### 7.21.3.1 Composite Fonts — General
+#### 7.21.3.1 Composite Fonts --General
 
 | File | Status | Used? |
 |---|---|---|
@@ -301,7 +301,7 @@ Path: `7.20%20XObjects/{file}`
 
 Path: `7.21%20Fonts/7.21.3%20Composite%20fonts/7.21.3.1%20General/{file}`
 
-#### 7.21.4.1 Font Embedding — General
+#### 7.21.4.1 Font Embedding --General
 
 | File | Status | Used? |
 |---|---|---|
@@ -363,14 +363,14 @@ Path: `7.21%20Fonts/7.21.8%20Use%20of%20.notdef%20glyph/{file}`
 
 ---
 
-## Repository 2: PDF Association — Techniques for Accessible PDF
+## Repository 2: PDF Association --Techniques for Accessible PDF
 
 - **Repo:** [pdf-association/techniques-for-accessible-pdf](https://github.com/pdf-association/techniques-for-accessible-pdf)
 - **License:** CC BY 4.0
 - **CDN base:** `https://cdn.jsdelivr.net/gh/pdf-association/techniques-for-accessible-pdf@main`
 - **Naming:** `UA1_Tpdf-{code}.pdf` where code = `{Category}_{number}` (pass) or `{Category}_F{number}` (fail)
 
-### Fundamentals — Basic Technical Rules (G1)
+### Fundamentals --Basic Technical Rules (G1)
 
 | Code | Description | Status | Used? |
 |---|---|---|---|
@@ -379,7 +379,7 @@ Path: `7.21%20Fonts/7.21.8%20Use%20of%20.notdef%20glyph/{file}`
 
 Path: `fundamentals/1-basic-technical-rules/{technique-folder}/UA1_Tpdf-{code}.pdf`
 
-### Fundamentals — Text (G2)
+### Fundamentals --Text (G2)
 
 | Code | Description | Status | Used? |
 |---|---|---|---|
@@ -396,7 +396,7 @@ Path: `fundamentals/1-basic-technical-rules/{technique-folder}/UA1_Tpdf-{code}.p
 
 Path: `fundamentals/2-text/{technique-folder}/UA1_Tpdf-{code}.pdf`
 
-### Fundamentals — Content (G3)
+### Fundamentals --Content (G3)
 
 | Code | Description | Status | Used? |
 |---|---|---|---|
@@ -409,7 +409,7 @@ Path: `fundamentals/2-text/{technique-folder}/UA1_Tpdf-{code}.pdf`
 
 Path: `fundamentals/3-content/{technique-folder}/UA1_Tpdf-{code}.pdf`
 
-### Fundamentals — Logical Content Order (G4)
+### Fundamentals --Logical Content Order (G4)
 
 Includes tab order tests relevant to our Forms audit.
 
@@ -430,7 +430,7 @@ Includes tab order tests relevant to our Forms audit.
 
 Path: `fundamentals/4-logical-content-order/{technique-folder}/UA1_Tpdf-{code}.pdf`
 
-### Fundamentals — Appropriate Semantics (G5)
+### Fundamentals --Appropriate Semantics (G5)
 
 | Code | Description | Status | Used? |
 |---|---|---|---|
@@ -591,7 +591,7 @@ Maps each audit module's finding IDs to available test PDFs.
 
 ### Gaps Still Unfilled
 
-- **Bookmarks (`/Outlines`)** — No test PDFs found in any of the three repos. Would need to create custom fixtures or find another source.
+- **Bookmarks (`/Outlines`)** --No test PDFs found in any of the three repos. Would need to create custom fixtures or find another source.
 
 ---
 

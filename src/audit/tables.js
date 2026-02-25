@@ -21,7 +21,7 @@ export function checkTables(pdfDoc, ctx) {
       category: 'tables',
       title: 'Table Headers',
       status: 'not-applicable',
-      summary: 'No structure tree — table structure cannot be checked.',
+      summary: 'No structure tree, so table structure cannot be checked.',
       details: [],
       remediation: null,
       wcagRef: '1.3.1',
@@ -132,7 +132,7 @@ function analyzeTable(tableDict, tableNum, context, roleMap) {
     issues.push(`Table ${tableNum}: no header cells (TH) found`);
     details.push({
       label: `Table ${tableNum} issue`,
-      value: 'No TH elements — table has no marked headers',
+      value: 'No TH elements. Table has no marked headers',
     });
   } else if (thCount > 0 && thWithScope < thCount) {
     issues.push(`Table ${tableNum}: ${thCount - thWithScope} TH cells missing Scope`);

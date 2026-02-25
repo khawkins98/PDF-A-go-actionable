@@ -37,7 +37,7 @@ export function checkLinks(pdfDoc, ctx) {
       category: 'links',
       title: 'Link Text Quality',
       status: 'not-applicable',
-      summary: 'No structure tree — link text cannot be checked.',
+      summary: 'No structure tree, so link text cannot be checked.',
       details: [],
       remediation: null,
       wcagRef: '2.4.4',
@@ -92,7 +92,7 @@ export function checkLinks(pdfDoc, ctx) {
       missingTextLinks.push(link);
       details.push({
         label: `Link ${idx + 1}`,
-        value: 'No ActualText or Alt text — link purpose unknown to assistive technology',
+        value: 'No ActualText or Alt text. Link purpose unknown to assistive technology',
       });
       return;
     }
@@ -122,7 +122,7 @@ export function checkLinks(pdfDoc, ctx) {
       category: 'links',
       title: 'Link Text Quality',
       status: 'pass',
-      summary: `${links.length} link(s) found — no generic or bare-URL text detected.`,
+      summary: `${links.length} link(s) checked, no generic or bare-URL text detected.`,
       details: [],
       remediation: null,
       wcagRef: '2.4.4',

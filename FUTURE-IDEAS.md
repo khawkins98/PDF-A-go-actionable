@@ -5,33 +5,33 @@ Features and improvements deferred from V1.0. Kept here so they don't get lost.
 ## V1.1 Candidates
 
 ### Export & Interoperability
-- **EARL (Evaluation and Report Language)** — W3C standard format for accessibility evaluation results. Enables machine-to-machine exchange of audit data.
-- **veraPDF rule mapping** — map findings to veraPDF rule IDs for interoperability with existing compliance workflows.
-- **CI/CD integration** — CLI mode or API endpoint so automated pipelines can run accessibility checks on PDF artifacts.
+- **EARL (Evaluation and Report Language)** --W3C standard format for accessibility evaluation results. Enables machine-to-machine exchange of audit data.
+- **veraPDF rule mapping** --map findings to veraPDF rule IDs for interoperability with existing compliance workflows.
+- **CI/CD integration** --CLI mode or API endpoint so automated pipelines can run accessibility checks on PDF artifacts.
 
 ### Batch & Scale
-- **Batch processing** — drag multiple PDFs, get aggregate reporting. The worker architecture already supports sequential processing; needs UI for queue management and summary-across-files.
+- **Batch processing** --drag multiple PDFs, get aggregate reporting. The worker architecture already supports sequential processing; needs UI for queue management and summary-across-files.
 
 ### Deeper Analysis
-- **Per-image decorative detection** — MCID-to-content-stream correlation to identify exactly which images are untagged (V1.0 uses a count-based heuristic).
-- **Full link text extraction** — parse content streams to extract actual rendered text from `/Link` marked content spans, rather than relying on `/ActualText` attributes.
-- **Color contrast analysis** — requires full page rendering (PDF.js or similar). Significant bundle cost (~400 KB). Would enable automated WCAG 1.4.3 / 1.4.6 checking.
-- **PDF.js visual preview** — render pages and overlay structure tree regions for visual reading-order verification. Build directly on PDF.js (pdfjs-dist) rather than embedding PDF-A-go-go. PDF-A-go-go is designed as a standalone embeddable viewer with no API for element highlighting or structure overlays — the deep integration this tool needs (mapping findings to page locations, highlighting specific structure elements, overlaying reading order) would fight against its abstraction layer. PDF-A-go-slim's experience with PDF-A-go-go also revealed pain points: canvas size is fixed at init (no auto-resize), requiring destroy/reinit on container resize. Starting from PDF.js directly gives access to the render pipeline, text layer, and annotation layer needed for a tightly integrated audit+preview experience.
+- **Per-image decorative detection** --MCID-to-content-stream correlation to identify exactly which images are untagged (V1.0 uses a count-based heuristic).
+- **Full link text extraction** --parse content streams to extract actual rendered text from `/Link` marked content spans, rather than relying on `/ActualText` attributes.
+- **Color contrast analysis** -- requires full page rendering (PDF.js or similar). Adds ~400 KB to the bundle. Would enable automated WCAG 1.4.3 / 1.4.6 checking.
+- **PDF.js visual preview** --render pages and overlay structure tree regions for visual reading-order verification. Build directly on PDF.js (pdfjs-dist) rather than embedding PDF-A-go-go. PDF-A-go-go is designed as a standalone embeddable viewer with no API for element highlighting or structure overlays --the deep integration this tool needs (mapping findings to page locations, highlighting specific structure elements, overlaying reading order) would fight against its abstraction layer. PDF-A-go-slim's experience with PDF-A-go-go also revealed pain points: canvas size is fixed at init (no auto-resize), requiring destroy/reinit on container resize. Starting from PDF.js directly gives access to the render pipeline, text layer, and annotation layer needed for a tightly integrated audit+preview experience.
 
 ### UI & Experience
-- **Dark mode** — WinBox theme variant. The V1.0 theme CSS is structured to make this straightforward.
-- **Service worker for offline** — explicit offline support with precache manifest and update strategy. The app already works offline in practice (static assets), but a service worker provides a reliable offline experience and install-to-homescreen capability.
-- **Layout persistence** — save and restore window positions/sizes in localStorage.
-- **Keyboard navigation** — full keyboard control of the window layout (beyond what WinBox provides out of the box).
+- **Dark mode** -- WinBox theme variant. The V1.0 theme CSS already uses custom properties, so this should be straightforward.
+- **Service worker for offline** -- explicit offline support with precache manifest and update strategy. The app already works offline (static assets), but a service worker would make it reliable and add install-to-homescreen.
+- **Layout persistence** --save and restore window positions/sizes in localStorage.
+- **Keyboard navigation** --full keyboard control of the window layout (beyond what WinBox provides out of the box).
 
 ### Integration
-- **PDF-A-go-slim embed** — link to or embed PDF-A-go-slim for a "fix this PDF" workflow after identifying issues.
-- **Screen reader testing guidance** — deeper integration with NVDA/VoiceOver testing workflows, possibly including a guided walkthrough.
+- **PDF-A-go-slim embed** --link to or embed PDF-A-go-slim for a "fix this PDF" workflow after identifying issues.
+- **Screen reader testing guidance** -- deeper integration with NVDA/VoiceOver testing workflows, maybe a guided walkthrough.
 
 ## Someday/Maybe
 
-- **PDF editing / remediation** — currently a non-goal ("validation tool, not remediation tool"), but users will ask for it. Could start with simple fixes like adding a document title or language tag.
-- **Full PDF/UA-1 / PDF/UA-2 conformance** — the full 300+ machine rules from the Matterhorn Protocol. Massive scope increase.
-- **Shared npm package** — extract the 7 utility modules shared with PDF-A-go-slim into a standalone package if both projects stabilize and the shared code stops diverging.
-- **Browser extension** — check PDFs directly from the browser download bar or a context menu.
-- **Internationalization** — translate the UI and remediation guidance into other languages.
+- **PDF editing / remediation** -- currently a non-goal ("validation tool, not remediation tool"), but users will ask for it. Could start with simple fixes like adding a document title or language tag.
+- **Full PDF/UA-1 / PDF/UA-2 conformance** -- the full 300+ machine rules from the Matterhorn Protocol. Huge scope increase.
+- **Shared npm package** -- extract the 7 utility modules shared with PDF-A-go-slim into a standalone package if both projects stabilize and the shared code stops diverging.
+- **Browser extension** -- check PDFs from the browser download bar or a context menu.
+- **Internationalization** -- translate the UI and remediation guidance into other languages.

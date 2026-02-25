@@ -21,7 +21,7 @@ export function checkLists(pdfDoc, ctx) {
       category: 'lists',
       title: 'List Structure',
       status: 'not-applicable',
-      summary: 'No structure tree — list structure cannot be checked.',
+      summary: 'No structure tree, so list structure cannot be checked.',
       details: [],
       remediation: null,
       wcagRef: '1.3.1',
@@ -132,14 +132,14 @@ function validateList(listDict, listNum, context, roleMap) {
         issues.push(`List ${listNum}, LI ${liCount}: missing LBody`);
         details.push({
           label: `List ${listNum}, LI ${liCount}`,
-          value: `Missing LBody — has: ${childTypes.join(', ') || 'no typed children'}`,
+          value: `Missing LBody (has: ${childTypes.join(', ') || 'no typed children'})`,
         });
       }
       if (!hasLbl) {
         issues.push(`List ${listNum}, LI ${liCount}: missing Lbl`);
         details.push({
           label: `List ${listNum}, LI ${liCount}`,
-          value: `Missing Lbl — has: ${childTypes.join(', ') || 'no typed children'}`,
+          value: `Missing Lbl (has: ${childTypes.join(', ') || 'no typed children'})`,
         });
       }
     } else if (resolvedType !== 'Caption') {
@@ -147,7 +147,7 @@ function validateList(listDict, listNum, context, roleMap) {
       issues.push(`List ${listNum}: unexpected child type "${resolvedType}"`);
       details.push({
         label: `List ${listNum}`,
-        value: `Unexpected child type "${typeName}" (-> ${resolvedType}) — expected LI`,
+        value: `Unexpected child type "${typeName}" (-> ${resolvedType}), expected LI`,
       });
     }
   }

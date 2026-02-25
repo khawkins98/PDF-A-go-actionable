@@ -32,11 +32,11 @@ export function checkMetadata(pdfDoc, ctx) {
     status: traits.title ? 'pass' : 'fail',
     summary: traits.title
       ? `Document title is set: "${traits.title}"`
-      : 'No document title found. The title bar will show the filename instead.',
+      : 'No document title set. The title bar will show the filename instead.',
     details: traits.title ? [{ label: 'Title', value: traits.title }] : [],
     remediation: traits.title
       ? null
-      : 'Set the document title in your authoring tool (File > Properties in Word/InDesign, or Document Properties in Acrobat). The title should describe the document content, not repeat the filename.',
+      : 'Set the document title in your authoring tool (File > Properties in Word/InDesign, or Document Properties in Acrobat). Use something descriptive, not the filename.',
     wcagRef: '2.4.2',
     pdfuaRef: '7.1',
   });
@@ -68,7 +68,7 @@ export function checkMetadata(pdfDoc, ctx) {
     summary: securityResult.summary,
     details: securityResult.details,
     remediation: securityResult.status === 'fail'
-      ? 'Remove security restrictions that block accessibility access. In Acrobat: File > Properties > Security > Change Settings, then enable "Enable text access for screen reader devices."'
+      ? 'Remove the security restrictions blocking accessibility. In Acrobat: File > Properties > Security > Change Settings, then enable "Enable text access for screen reader devices."'
       : null,
     wcagRef: null,
     pdfuaRef: '7.1',
@@ -97,7 +97,7 @@ export function checkMetadata(pdfDoc, ctx) {
     status: traits.isPdfUA ? 'pass' : 'warning',
     summary: traits.isPdfUA
       ? 'Document claims PDF/UA conformance.'
-      : 'Document does not claim PDF/UA conformance. This is informational — the document may still be accessible.',
+      : 'Document does not claim PDF/UA conformance. This is informational; the document may still be accessible.',
     details: [],
     remediation: traits.isPdfUA
       ? null

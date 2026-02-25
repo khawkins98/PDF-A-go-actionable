@@ -123,9 +123,9 @@ export async function runAudit(buffer, options = {}) {
         category: mod.name,
         title: `${mod.name} check error`,
         status: 'warning',
-        summary: `An error occurred during the ${mod.name} check: ${err.message}`,
+        summary: `The ${mod.name} check failed: ${err.message}`,
         details: [],
-        remediation: 'This check could not complete. The PDF may have unusual structure.',
+        remediation: 'This check didn\'t complete. The PDF may have unusual structure.',
         wcagRef: null,
         pdfuaRef: null,
       });

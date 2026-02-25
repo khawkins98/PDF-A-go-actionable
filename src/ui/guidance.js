@@ -13,7 +13,7 @@ export const externalResources = {
     {
       name: 'PAC (PDF Accessibility Checker)',
       url: 'https://pac.pdf-accessibility.org/',
-      description: 'Free PDF/UA validation tool (Windows). Comprehensive machine checks against PDF/UA standard.',
+      description: 'Free PDF/UA validation tool (Windows). Runs the full set of machine checks against the PDF/UA standard.',
       platform: 'Windows (Wine on macOS/Linux)',
     },
     {
@@ -25,7 +25,7 @@ export const externalResources = {
     {
       name: 'NVDA',
       url: 'https://www.nvaccess.org/download/',
-      description: 'Free, open-source screen reader for Windows. Essential for manual reading order testing.',
+      description: 'Free, open-source screen reader for Windows. The go-to tool for manual reading order testing.',
       platform: 'Windows',
     },
     {
@@ -37,19 +37,19 @@ export const externalResources = {
     {
       name: 'veraPDF',
       url: 'https://verapdf.org/',
-      description: 'Open-source PDF/A and PDF/UA validation. Industry reference implementation.',
+      description: 'Open-source PDF/A and PDF/UA validation. Reference implementation used by many compliance workflows.',
       platform: 'Cross-platform (Java)',
     },
     {
       name: 'Adobe Acrobat Pro',
       url: 'https://www.adobe.com/acrobat/acrobat-pro.html',
-      description: 'Full PDF editing and accessibility checking/remediation. The industry standard for PDF accessibility work.',
+      description: 'Full PDF editing with accessibility checking and remediation. Most accessibility professionals use this.',
       platform: 'Windows / macOS',
     },
     {
       name: 'axesPDF',
       url: 'https://www.axes4.com/axespdf-quickfix',
-      description: 'PDF accessibility remediation tool. Can fix many structural issues automatically.',
+      description: 'PDF accessibility remediation tool. Fixes many structural issues automatically.',
       platform: 'Windows',
     },
   ],
@@ -58,22 +58,22 @@ export const externalResources = {
     {
       name: 'WCAG 2.1 Understanding Documents',
       url: 'https://www.w3.org/WAI/WCAG21/Understanding/',
-      description: 'Detailed explanations of each WCAG success criterion.',
+      description: 'Explains each WCAG success criterion with examples.',
     },
     {
       name: 'PDF Techniques for WCAG 2.1',
       url: 'https://www.w3.org/WAI/WCAG21/Techniques/#pdf',
-      description: 'Specific techniques for meeting WCAG requirements in PDF documents.',
+      description: 'How to meet WCAG requirements in PDFs specifically.',
     },
     {
       name: 'Matterhorn Protocol',
       url: 'https://pdfa.org/resource/the-matterhorn-protocol/',
-      description: 'Detailed test conditions for PDF/UA conformance. Maps machine-checkable and human-checkable requirements.',
+      description: 'Test conditions for PDF/UA conformance. Maps which requirements can be machine-checked vs. human-checked.',
     },
     {
       name: 'PDF/UA in a Nutshell',
       url: 'https://pdfa.org/resource/pdfua-in-a-nutshell/',
-      description: 'Accessible introduction to the PDF/UA standard.',
+      description: 'Short, readable introduction to the PDF/UA standard.',
     },
   ],
 };
@@ -85,7 +85,7 @@ export const externalResources = {
 export const guidanceTemplates = {
   metadata: {
     title: 'Document Metadata',
-    description: 'Metadata provides essential information for assistive technology. Title, language, and security settings directly affect how screen readers and other tools interact with the document.',
+    description: 'Screen readers and other assistive tools rely on metadata like title, language, and security settings to interact with the document correctly.',
     steps: [
       'Set a meaningful document title (not the filename) in your authoring tool.',
       'Specify the document language (e.g., "en" for English, "fr" for French).',
@@ -97,7 +97,7 @@ export const guidanceTemplates = {
 
   structure: {
     title: 'Document Structure',
-    description: 'Tagged structure is the foundation of PDF accessibility. Tags define the reading order, identify headings, and create the navigable outline that assistive technology depends on.',
+    description: 'Tags are what make a PDF accessible. They define the reading order, identify headings, and create the navigable outline that assistive technology uses.',
     steps: [
       'Use your authoring tool\'s built-in styles (Heading 1, Heading 2, etc.) instead of manual formatting.',
       'Export with "Create Tagged PDF" enabled.',
@@ -109,31 +109,31 @@ export const guidanceTemplates = {
 
   images: {
     title: 'Images and Alt Text',
-    description: 'Every meaningful image needs alternative text that conveys the same information. Decorative images should be marked as artifacts so screen readers skip them.',
+    description: 'Meaningful images need alt text that conveys the same information. Decorative images should be marked as artifacts so screen readers skip them.',
     steps: [
       'Add alt text to every meaningful image that conveys information.',
       'Write alt text that describes the purpose and content of the image.',
       'Mark purely decorative images as artifacts (not tagged as Figure).',
       'For complex images (charts, diagrams), provide a detailed description nearby in the document text.',
-      'Avoid using images of text — use real text instead.',
+      'Avoid using images of text. Use real text instead.',
     ],
   },
 
   tables: {
     title: 'Table Structure',
-    description: 'Properly tagged tables allow screen readers to navigate cells and associate data with headers. Without proper header markup, tables become a confusing grid of unlabeled cells.',
+    description: 'Screen readers need tagged headers to connect data cells with their row and column labels. Without them, tables are just a grid of unlabeled cells.',
     steps: [
       'Designate header rows and columns in your authoring tool.',
       'In Word: check "Header Row" in Table Design.',
       'Ensure TH (header) cells have a Scope attribute (Row or Column).',
-      'Avoid merged cells when possible — they complicate table navigation.',
+      'Avoid merged cells when possible. They complicate table navigation.',
       'Add a caption or summary to describe the table\'s purpose.',
     ],
   },
 
   lists: {
     title: 'List Structure',
-    description: 'Screen readers announce list length and position (e.g., "item 3 of 7"). Properly tagged lists require the correct nesting: L > LI > Lbl + LBody.',
+    description: 'Screen readers announce list length and position (e.g., "item 3 of 7"). Lists need the correct nesting: L > LI > Lbl + LBody.',
     steps: [
       'Use your authoring tool\'s built-in bullet and numbered list styles.',
       'Avoid manually typing bullet characters or numbers.',
@@ -144,7 +144,7 @@ export const guidanceTemplates = {
 
   fonts: {
     title: 'Font Unicode Mapping',
-    description: 'ToUnicode CMaps allow text to be extracted, searched, and read by assistive technology. Without them, copy/paste may produce garbled text and screen readers may fail to read the content.',
+    description: 'ToUnicode CMaps let text be extracted, searched, and read by assistive technology. Without them, copy/paste produces garbled text and screen readers may not read the content at all.',
     steps: [
       'Use standard fonts or embed all fonts when exporting to PDF.',
       'Prefer fonts with built-in Unicode mapping.',
@@ -155,9 +155,9 @@ export const guidanceTemplates = {
 
   forms: {
     title: 'Form Accessibility',
-    description: 'Form fields need labels that screen readers can announce. The tooltip (/TU) attribute serves as the accessible name, and tab order should follow the document structure.',
+    description: 'Form fields need labels that screen readers can announce. The tooltip (/TU) attribute is the accessible name, and tab order should follow the document structure.',
     steps: [
-      'Add a tooltip (TU) to every form field — this is the label screen readers read.',
+      'Add a tooltip (TU) to every form field. This is the label screen readers read.',
       'Make tooltip text descriptive: "Enter your first name" instead of "Name".',
       'Set tab order to "Use Document Structure" for all pages.',
       'Group related fields with fieldset/legend structure where possible.',
@@ -166,7 +166,7 @@ export const guidanceTemplates = {
 
   links: {
     title: 'Link Text Quality',
-    description: 'Link text should make sense out of context. Screen reader users often navigate by links, hearing only the link text without surrounding content.',
+    description: 'Link text should make sense on its own. Screen reader users often navigate by links alone, hearing only the link text without the surrounding sentence.',
     steps: [
       'Replace generic link text ("click here", "read more") with descriptive text.',
       'Describe the destination: "Download the 2024 Annual Report (PDF)" instead of "Click here".',
@@ -177,12 +177,12 @@ export const guidanceTemplates = {
 
   'reading-order': {
     title: 'Reading Order and Manual Checks',
-    description: 'Some accessibility aspects cannot be fully automated and require human review. Reading order, screen reader testing, and comprehensive validation with PAC are essential manual steps.',
+    description: 'These checks can\'t be automated. Reading order, screen reader testing, and PAC validation all need a person to verify.',
     steps: [
       'Review the structure tree order against the visual layout.',
       'Use the Reading Order tool in Acrobat to check and fix order issues.',
       'Run the document through PAC (PDF Accessibility Checker) for PDF/UA validation.',
-      'Test with a screen reader (NVDA, VoiceOver) — listen to the entire document.',
+      'Test with a screen reader (NVDA, VoiceOver). Listen to the entire document.',
       'Pay attention to multi-column layouts, text boxes, and floating elements.',
     ],
   },

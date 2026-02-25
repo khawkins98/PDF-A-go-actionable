@@ -40,7 +40,7 @@ export function checkStructure(pdfDoc, ctx) {
       : 'Document is not tagged. Screen readers can\'t determine the document structure.';
     taggedRemediation = 'Tag the document in your authoring tool. In Word/PowerPoint: use heading styles and export with accessibility. In InDesign: enable "Create Tagged PDF" on export. In Acrobat: Accessibility > Add Tags to Document.';
   } else if (traits.hasSuspects) {
-    taggedSummary = 'Document is tagged but MarkInfo/Suspects is true — the tag structure may be unreliable and should be reviewed.';
+    taggedSummary = 'Document is tagged but MarkInfo/Suspects is true. The tag structure may be unreliable and should be reviewed.';
     taggedRemediation = 'Open the document in Acrobat Pro and run Accessibility > Full Check to identify suspect tags. Review and fix the tag tree, then clear the Suspects flag.';
   } else {
     taggedSummary = 'Document is tagged (MarkInfo/Marked is true).';
@@ -85,7 +85,7 @@ export function checkStructure(pdfDoc, ctx) {
       category: 'structure',
       title: 'Heading Hierarchy',
       status: 'not-applicable',
-      summary: 'No structure tree — heading hierarchy cannot be checked.',
+      summary: 'No structure tree, so heading hierarchy cannot be checked.',
       details: [],
       remediation: null,
       wcagRef: '1.3.1',
