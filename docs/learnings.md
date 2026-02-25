@@ -303,6 +303,12 @@ The `new URL(..., import.meta.url)` pattern lets Vite resolve the worker file as
 
 **Canvas rendering and SVG overlays.** `page.render({ canvasContext, viewport })` draws to a `<canvas>`. To overlay highlights (e.g., MCID regions), use an absolutely-positioned SVG element over the canvas. The viewport's `convertToViewportPoint(x, y)` method maps PDF coordinates (origin at bottom-left) to canvas coordinates (origin at top-left).
 
+**Operator list marked content args use raw integers, not objects.** In `page.getOperatorList()`, `OPS.beginMarkedContentProps` args are `[tagName, mcid]` where the MCID is a raw integer (e.g., `["Figure", 459]`), NOT `[tagName, {mcid: 459}]`. This differs from what you might expect from reading the PDF spec. Always check `typeof args[1] === 'number'` before trying `args[1]?.mcid`. Also note: `OPS.paintJpegXObject` is `undefined` in pdfjs-dist 4.x -- JPEG images use `OPS.paintImageXObject` like all other images.
+
+**Nested marked content requires stack scanning.** Real-world PDFs often nest MC sections: `Figure(mcid=459) > PlacedPDF(null) > image`. When tracking MCIDs through the operator list, don't just check the top of the stack -- scan downward for the nearest ancestor with a non-null MCID. Otherwise images inside wrapper MCs (PlacedPDF, Artifact) will be missed.
+
+**`getTextContent()` returns nothing for images.** `page.getTextContent({ includeMarkedContent: true })` only returns text items. Image-only marked content regions (like Figure elements containing just an image) will have `beginMarkedContent`/`endMarkedContent` markers but zero text items between them. To get image bounding boxes, use `page.getOperatorList()` and track the CTM (Current Transformation Matrix) through `save`/`restore`/`transform` operations. When `paintImageXObject` fires, the image occupies a 1×1 unit square transformed by the current CTM -- compute the axis-aligned bounding box of the four transformed corners.
+
 ### XMP Metadata Parsing
 
 XMP is XML embedded as a stream. Parsing conformance and title requires handling both element-style and attribute-style XMP:

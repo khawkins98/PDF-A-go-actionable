@@ -1156,16 +1156,6 @@ export function initAppShell(container, worker) {
 
     toolbar.appendChild(toolbarSep());
 
-    // View PDF button
-    const viewPdfBtn = document.createElement('button');
-    viewPdfBtn.type = 'button';
-    viewPdfBtn.className = 'toolbar-btn';
-    viewPdfBtn.dataset.action = 'view-pdf';
-    viewPdfBtn.textContent = 'View PDF';
-    toolbar.appendChild(viewPdfBtn);
-
-    toolbar.appendChild(toolbarSep());
-
     for (const [action, label] of [
       ['export-json', 'JSON'],
       ['export-csv', 'CSV'],
