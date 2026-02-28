@@ -21,7 +21,7 @@ export function showAboutDialog(root, WinBox, onClose) {
   content.setAttribute('tabindex', '-1');
   content.innerHTML = `
     <h2>PDF-A-go-actionable</h2>
-    <p style="color:var(--color-text);font-size:var(--font-size-base);">Version 1.0.0</p>
+    <p style="color:var(--color-text);font-size:var(--font-size-base);">Version 1.1.0</p>
     <p>Free, browser-based PDF accessibility checker. Everything runs
     in your browser. No files are uploaded, no accounts needed.</p>
     <p>Covers the 13-point PDF accessibility checklist: 10 automated
@@ -35,6 +35,7 @@ export function showAboutDialog(root, WinBox, onClose) {
       <li><a href="https://mozilla.github.io/pdf.js/" target="_blank" rel="noopener noreferrer"><strong>PDF.js</strong></a> -- PDF rendering (Apache-2.0)</li>
     </ul>
     <p>Source: <a href="https://github.com/khawkins98/PDF-A-go-actionable" target="_blank" rel="noopener noreferrer">github.com/khawkins98/PDF-A-go-actionable</a> (MIT)</p>
+    <p><a href="https://github.com/khawkins98/PDF-A-go-actionable/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">Changelog</a></p>
   `;
 
   const win = new WinBox({

@@ -79,12 +79,13 @@ All three manual-review items return `manual` status findings with actionable gu
 
 The audit produces a structured report with:
 
-1. **Summary score** --pass/fail/warning/manual/not-applicable counts with traffic-light status icons | Done
-2. **Per-check detail** --pass/fail/warning/manual-check status, explanation, remediation guidance | Done
-3. **Structure tree explorer** --interactive ARIA tree view (expand/collapse, keyboard nav, search/filter, RoleMap annotations, alt/lang badges); falls back to findings-based summary for untagged PDFs | Done
-4. **Font inventory** --all fonts with ToUnicode and embedding status | Done
-5. **Image inventory** --all images with alt text status | Done
-6. **Export** --download results as JSON, CSV, or a PDF summary report (all three formats implemented) | Done
+1. **Report Dashboard** --initial view after analysis: verdict banner (PASS/FAIL/PASS WITH WARNINGS), document properties metadata grid with warning indicators for missing accessibility fields, findings grouped by status (fail/warning as full rows, manual review as compact cards, pass/N/A as chips), and action buttons (Download Report, View Advanced Report, Preview PDF, Upload Another PDF) | Done
+2. **Summary score** --pass/fail/warning/manual/not-applicable counts with traffic-light status icons | Done
+3. **Per-check detail** --pass/fail/warning/manual-check status, explanation, remediation guidance | Done
+4. **Structure tree explorer** --interactive ARIA tree view (expand/collapse, keyboard nav, search/filter, RoleMap annotations, alt/lang badges); falls back to findings-based summary for untagged PDFs | Done
+5. **Font inventory** --all fonts with ToUnicode and embedding status | Done
+6. **Image inventory** --all images with alt text status | Done
+7. **Export** --download results as JSON, CSV, or a PDF summary report (all three formats implemented) | Done
 
 ### Remaining V1.0 Work
 
@@ -171,6 +172,8 @@ src/
     image-table.js      --image inventory table
     guidance.js         --remediation text templates and external links
     pdf-preview.js      --PDF page rendering with zoom, page nav, MCID highlighting, reading order overlay (lazy-loads pdfjs-dist)
+    dashboard.js        --Report Dashboard: verdict banner, metadata grid, status-grouped findings, action buttons
+    constants.js        --shared STATUS_GROUPS constant and helpers (groupFindings, computeVerdict) used by dashboard and export
     export.js           --JSON, CSV, and PDF report generation
   engine/utils/
     resolve.js          --PDFRef resolution helper (new)
@@ -216,7 +219,7 @@ Inbound:
 Outbound (all include `sessionId` for routing to the correct session):
 ```js
 { type: 'progress', sessionId, phase: 'structure', percent: 40 }
-{ type: 'result', sessionId, findings: Finding[], meta: { pageCount, fileSize, ... }, structureTree: { root, totalCount, truncated } | null }
+{ type: 'result', sessionId, findings: Finding[], meta: { pageCount, fileSize, author, subject, keywords, creator, producer, ... }, structureTree: { root, totalCount, truncated } | null }
 { type: 'error', sessionId, message: string }
 ```
 
@@ -334,7 +337,7 @@ All audit modules and core logic are developed using **strict TDD** --tests are 
 |---|---|
 | Every audit check --pass and fail cases | Done (117 tests across 10 test files) |
 | Utility functions --`resolveRole()`, `buildRoleMap()`, cycle detection, `resolve()`, accessibility detection, struct-tree walker, serialize-tree, stream decode, content-stream-parser | Done (80 tests across 7 test files) |
-| UI integration --panel creation contracts, render functions, event bus (including scoped session buses), export helpers | Done (168 tests across 12 test files) |
+| UI integration --panel creation contracts, render functions, event bus (including scoped session buses), dashboard, export helpers | Done (210 tests across 13 test files) |
 | Worker protocol --message handling | Done (6 tests in `src/worker.test.js`) |
 
 #### UI Integration Tests
@@ -357,6 +360,7 @@ UI code must have test coverage. The WinBox panel creation, panel render functio
 | `src/ui/image-table.test.js` | Image inventory table rendering, alt text status, sorting, empty state | 13 |
 | `src/ui/drop-zone.test.js` | Upload zone creation, drag-and-drop events, file filtering, multi-file handling | 13 |
 | `src/ui/guidance.test.js` | Remediation text templates, external tool links, WCAG/PDF-UA references | 11 |
+| `src/ui/dashboard.test.js` | Report Dashboard verdict banner, status groups, document metadata, file facts, action buttons, export menu, keyboard nav, edge states | 42 |
 | `src/ui/dev-test-pdfs.test.js` | Test PDF registry, category grouping, URL validation, expected outcomes | 8 |
 
 Any code that interfaces with a third-party UI library or renders DOM has contract tests to catch integration bugs early.
@@ -403,5 +407,5 @@ Cherry-pick a small representative set covering the 10 automated checks. Store i
 8. **Dark mode:** Light only for V1.0. Theme CSS structured with CSS custom properties for easy dark mode addition later. Done.
 9. **Export:** V1.0 feature, not deferred. Export audit results as JSON, CSV, or a PDF summary report. Done.
 10. **Service worker:** Deferred. App works offline in practice (static assets, no server). Explicit service worker in V1.1.
-11. **Testing:** TDD with Vitest --607 tests across 39 test files covering audit checks, engine utilities (resolve, accessibility detection, struct-tree walker, serialize-tree, stream decode, content-stream-parser, unicode-mapper, RoleMap), UI integration (panel creation, menu bar, window manager, dialogs, render functions, interactive tree, scoped event buses, export helpers), and worker protocol. 22 pdf-lib fixture factories in `test/fixtures/`. Uses `happy-dom` for DOM-based UI tests. Two sample PDFs bundled in `public/samples/`.
+11. **Testing:** TDD with Vitest --654 tests across 40 test files covering audit checks, engine utilities (resolve, accessibility detection, struct-tree walker, serialize-tree, stream decode, content-stream-parser, unicode-mapper, RoleMap), UI integration (panel creation, menu bar, window manager, dialogs, render functions, interactive tree, dashboard, scoped event buses, export helpers), and worker protocol. 22 pdf-lib fixture factories in `test/fixtures/`. Uses `happy-dom` for DOM-based UI tests. Two sample PDFs bundled in `public/samples/`.
 12. **Content stream robustness:** Architect the audit layer defensively --graceful fallbacks (warning findings, not crashes) if pdf-lib or stream parsing hits edge cases. Done --each audit module wraps in try/catch, runner catches per-module errors and returns warning findings.

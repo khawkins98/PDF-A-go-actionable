@@ -67,6 +67,9 @@ vi.mock('./image-table.js', () => ({
 vi.mock('./pdf-preview.js', () => ({
   renderPreviewPanel: vi.fn(),
 }));
+vi.mock('./dashboard.js', () => ({
+  renderDashboard: vi.fn(),
+}));
 
 // Mock other app-shell dependencies
 vi.mock('./drop-zone.js', () => ({
@@ -605,5 +608,129 @@ describe('initAppShell', () => {
     // Should still be only one Welcome instance
     const welcomeInstances = mockWinBoxInstances.filter((w) => w.title === 'Welcome');
     expect(welcomeInstances.length).toBe(1);
+  });
+
+  // --- Dashboard → Detailed view transition ---
+
+  describe('dashboard integration', () => {
+    /**
+     * Helper: simulate a full file-open → worker-result cycle.
+     * Returns the callbacks object that renderDashboard received.
+     */
+    async function simulateAnalysis() {
+      const { renderDashboard } = await import('./dashboard.js');
+      renderDashboard.mockClear();
+
+      initAppShell(container, worker);
+
+      // Trigger file open via the hidden input
+      const fileInput = container.querySelector('input[type="file"]');
+      const file = new File(['%PDF'], 'test.pdf', { type: 'application/pdf' });
+
+      Object.defineProperty(fileInput, 'files', { value: [file], configurable: true });
+      fileInput.dispatchEvent(new Event('change'));
+
+      // Wait for file.arrayBuffer() and then postMessage
+      await new Promise((r) => setTimeout(r, 10));
+
+      // Worker receives the audit message — grab the sessionId
+      const postCall = worker.postMessage.mock.calls[0];
+      const sessionId = postCall[0].sessionId;
+
+      // Simulate worker result
+      worker._dispatch({
+        type: 'result',
+        sessionId,
+        findings: testData.findings,
+        meta: testData.meta,
+      });
+
+      // Wait for requestAnimationFrame in showResults
+      await new Promise((r) => setTimeout(r, 10));
+
+      return { renderDashboard, sessionId };
+    }
+
+    it('should call renderDashboard when a result arrives', async () => {
+      const { renderDashboard } = await simulateAnalysis();
+
+      expect(renderDashboard).toHaveBeenCalledOnce();
+      const [el, data, callbacks] = renderDashboard.mock.calls[0];
+      expect(el).toBeInstanceOf(HTMLElement);
+      expect(data.findings).toEqual(testData.findings);
+      expect(typeof callbacks.onViewFullReport).toBe('function');
+      expect(typeof callbacks.onPreviewPdf).toBe('function');
+      expect(typeof callbacks.onExport).toBe('function');
+    });
+
+    it('should render detailed view when onViewFullReport is called', async () => {
+      const { renderSummaryPanel } = await import('./report.js');
+      const { renderFindingsPanel } = await import('./findings-list.js');
+      const { renderDetailsPanel } = await import('./details.js');
+      renderSummaryPanel.mockClear();
+      renderFindingsPanel.mockClear();
+      renderDetailsPanel.mockClear();
+
+      const { renderDashboard } = await simulateAnalysis();
+
+      // Call the onViewFullReport callback that was passed to renderDashboard
+      const callbacks = renderDashboard.mock.calls[0][2];
+      callbacks.onViewFullReport();
+
+      // Detailed view should now render: summary panel, findings panel, details panel
+      expect(renderSummaryPanel).toHaveBeenCalled();
+      expect(renderFindingsPanel).toHaveBeenCalled();
+      expect(renderDetailsPanel).toHaveBeenCalled();
+    });
+
+    it('should create a results WinBox with dashboard-rendered content', async () => {
+      await simulateAnalysis();
+
+      const resultsWin = mockWinBoxInstances.find((w) =>
+        w.title.startsWith('Results:')
+      );
+      expect(resultsWin).toBeDefined();
+      expect(resultsWin.opts.mount).toBeInstanceOf(HTMLElement);
+      expect(resultsWin.opts.mount.classList.contains('results-main')).toBe(true);
+    });
+
+    it('should pass onUploadAnother callback to renderDashboard', async () => {
+      const { renderDashboard } = await simulateAnalysis();
+      const callbacks = renderDashboard.mock.calls[0][2];
+      expect(typeof callbacks.onUploadAnother).toBe('function');
+    });
+
+    it('should render a "Dashboard" button in the detailed view toolbar that re-renders dashboard', async () => {
+      const { renderDashboard } = await simulateAnalysis();
+
+      // Transition to detailed view
+      const callbacks = renderDashboard.mock.calls[0][2];
+      callbacks.onViewFullReport();
+
+      // Find the wrapper (the mounted element in the results WinBox)
+      const resultsWin = mockWinBoxInstances.find((w) => w.title.startsWith('Results:'));
+      const wrapper = resultsWin._mountEl;
+
+      // The toolbar should contain a "← Dashboard" button
+      const backBtn = wrapper.querySelector('.results-toolbar .toolbar-btn');
+      expect(backBtn).not.toBeNull();
+      expect(backBtn.textContent).toContain('Dashboard');
+
+      // Click it — should re-render the dashboard
+      renderDashboard.mockClear();
+      backBtn.click();
+      expect(renderDashboard).toHaveBeenCalledOnce();
+    });
+
+    it('should pass onExport callback that invokes initExport methods', async () => {
+      const { initExport } = await import('./export.js');
+      const { renderDashboard } = await simulateAnalysis();
+
+      const callbacks = renderDashboard.mock.calls[0][2];
+
+      // initExport may not have been called yet — call the export callback
+      callbacks.onExport('json');
+      expect(initExport).toHaveBeenCalled();
+    });
   });
 });

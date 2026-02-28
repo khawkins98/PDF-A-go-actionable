@@ -6,6 +6,8 @@
  * out of the critical path for initial page load.
  */
 
+import { STATUS_GROUPS, groupFindings, computeVerdict } from './constants.js';
+
 /**
  * Initialize export functionality for the given audit data.
  *
@@ -93,9 +95,10 @@ async function downloadPDF(data) {
 
   const fontSize = 10;
   const titleFontSize = 18;
-  const headingFontSize = 14;
+  const verdictFontSize = 22;
+  const headingFontSize = 13;
   const subheadingFontSize = 11;
-  const lineHeight = fontSize * 1.4;
+  const smallFontSize = 9;
   const margin = 50;
   const pageWidth = 595.28; // A4
   const pageHeight = 841.89;
@@ -156,29 +159,19 @@ async function downloadPDF(data) {
     }
   }
 
-  // Title
-  drawText('PDF Accessibility Report', { size: titleFontSize, useBold: true });
-  y -= 8;
-
-  // Meta info
-  drawText(`File: ${data.meta.fileName || 'Unknown'}`, { size: fontSize });
-  drawText(`Pages: ${data.meta.pageCount || 'Unknown'}`, { size: fontSize });
-  drawText(`Generated: ${new Date().toISOString().split('T')[0]}`, { size: fontSize });
-  drawText(`Tool: PDF-A-go-actionable`, { size: fontSize });
-  y -= 12;
-
-  // Summary counts
-  const counts = { pass: 0, fail: 0, warning: 0, manual: 0, 'not-applicable': 0 };
-  for (const f of data.findings) {
-    if (f.status in counts) counts[f.status]++;
+  // Helper: draw a horizontal rule
+  function drawRule() {
+    ensureSpace(8);
+    page.drawLine({
+      start: { x: margin, y },
+      end: { x: pageWidth - margin, y },
+      thickness: 0.5,
+      color: rgb(0.7, 0.7, 0.7),
+    });
+    y -= 8;
   }
 
-  drawText('Summary', { size: headingFontSize, useBold: true });
-  y -= 4;
-  drawText(`Pass: ${counts.pass}  |  Fail: ${counts.fail}  |  Warning: ${counts.warning}  |  Manual: ${counts.manual}  |  N/A: ${counts['not-applicable']}`, { size: fontSize });
-  y -= 12;
-
-  // Status color mapping for PDF
+  // Status color mapping
   const statusColors = {
     pass: rgb(0.17, 0.54, 0.24),
     fail: rgb(0.79, 0.17, 0.17),
@@ -187,48 +180,208 @@ async function downloadPDF(data) {
     'not-applicable': rgb(0.53, 0.56, 0.59),
   };
 
-  // Findings
-  drawText('Findings', { size: headingFontSize, useBold: true });
-  y -= 6;
+  // Status background colors (lighter tints for verdict banner)
+  const statusBgColors = {
+    pass: rgb(0.83, 0.93, 0.85),
+    fail: rgb(0.97, 0.84, 0.85),
+    warning: rgb(1.0, 0.95, 0.80),
+  };
 
-  for (const finding of data.findings) {
-    ensureSpace(60);
+  // === Group findings ===
+  const groups = groupFindings(data.findings);
+  const { overallStatus, label: verdictLabel, description: verdictDesc } = computeVerdict(groups);
 
-    // Status + Title line
-    const statusColor = statusColors[finding.status] || rgb(0, 0, 0);
-    const statusLabel = formatStatus(finding.status).toUpperCase();
+  // === Title ===
+  drawText('PDF Accessibility Report', { size: titleFontSize, useBold: true });
+  y -= 4;
 
-    drawText(`[${statusLabel}] ${finding.title}`, {
-      size: subheadingFontSize,
-      useBold: true,
-      color: statusColor,
+  // === Verdict banner ===
+  const bannerPad = 14;
+  const bannerGap = 6;
+  // Font ascent ≈ 75% of size — baseline must sit below the ascender line
+  const verdictAscent = Math.ceil(verdictFontSize * 0.75);
+  const bannerHeight = bannerPad + verdictAscent + verdictFontSize + bannerGap + smallFontSize + bannerPad;
+  ensureSpace(bannerHeight + 16);
+
+  const bannerBg = statusBgColors[overallStatus];
+  const bannerColor = statusColors[overallStatus];
+
+  // Rectangle bottom-left corner; top edge aligns with current y
+  const rectBottom = y - bannerHeight;
+  page.drawRectangle({
+    x: margin,
+    y: rectBottom,
+    width: contentWidth,
+    height: bannerHeight,
+    color: bannerBg,
+    borderColor: bannerColor,
+    borderWidth: 1.5,
+  });
+
+  // Label baseline: top of banner minus padding minus ascent (ascenders stay inside)
+  const labelBaseline = y - bannerPad - verdictAscent;
+  page.drawText(verdictLabel, {
+    x: margin + bannerPad,
+    y: labelBaseline,
+    size: verdictFontSize,
+    font: fontBold,
+    color: bannerColor,
+  });
+
+  // Description baseline: below the label
+  const descBaseline = labelBaseline - verdictFontSize - bannerGap;
+  page.drawText(verdictDesc, {
+    x: margin + bannerPad,
+    y: descBaseline,
+    size: smallFontSize,
+    font,
+    color: rgb(0.25, 0.25, 0.25),
+  });
+
+  y = rectBottom - 16;
+
+  // === Document Properties ===
+  drawText('Document Properties', { size: headingFontSize, useBold: true });
+  y -= 2;
+
+  const warnColor = rgb(0.64, 0.30, 0.04);
+  const normalColor = rgb(0.2, 0.2, 0.2);
+
+  const metaItems = [
+    { label: 'File', value: data.meta.fileName || 'Unknown' },
+    { label: 'Title', value: data.meta.title, warn: !data.meta.title },
+    { label: 'Author', value: data.meta.author, warn: !data.meta.author },
+    { label: 'Subject', value: data.meta.subject, warn: !data.meta.subject },
+    { label: 'Keywords', value: data.meta.keywords, warn: !data.meta.keywords },
+    { label: 'Language', value: data.meta.lang, warn: !data.meta.lang },
+    { label: 'Pages', value: data.meta.pageCount != null ? String(data.meta.pageCount) : 'Unknown' },
+    { label: 'Tagged', value: data.meta.isTagged ? 'Yes' : 'No', warn: !data.meta.isTagged },
+    { label: 'PDF/UA', value: data.meta.isPdfUA ? 'Yes' : 'No' },
+    { label: 'PDF/A', value: data.meta.isPdfA ? `Yes (${data.meta.pdfALevel || 'level unknown'})` : 'No' },
+    { label: 'Display Doc Title', value: data.meta.displayDocTitle ? 'Yes' : 'No', warn: !data.meta.displayDocTitle },
+    { label: 'Structure Tree', value: data.meta.hasStructTree ? 'Yes' : 'No' },
+  ];
+
+  // Tool metadata (only shown when present)
+  if (data.meta.creator) metaItems.push({ label: 'Creator', value: data.meta.creator });
+  if (data.meta.producer) metaItems.push({ label: 'Producer', value: data.meta.producer });
+
+  // Render as two-column pairs for compactness
+  for (let i = 0; i < metaItems.length; i += 2) {
+    ensureSpace(fontSize * 1.4);
+    const item1 = metaItems[i];
+    const display1 = item1.value || 'Not set';
+    page.drawText(`${item1.label}: ${display1}`, {
+      x: margin,
+      y,
+      size: fontSize,
+      font,
+      color: item1.warn ? warnColor : normalColor,
     });
 
-    // Summary
-    drawText(finding.summary, { size: fontSize, indent: 10 });
-
-    // Remediation
-    if (finding.remediation) {
-      drawText(`How to fix: ${finding.remediation}`, {
+    if (i + 1 < metaItems.length) {
+      const item2 = metaItems[i + 1];
+      const display2 = item2.value || 'Not set';
+      page.drawText(`${item2.label}: ${display2}`, {
+        x: margin + contentWidth / 2,
+        y,
         size: fontSize,
-        indent: 10,
-        color: rgb(0.3, 0.3, 0.3),
+        font,
+        color: item2.warn ? warnColor : normalColor,
       });
     }
 
-    // References
-    const refs = [];
-    if (finding.wcagRef) refs.push(`WCAG ${finding.wcagRef}`);
-    if (finding.pdfuaRef) refs.push(`PDF/UA ${finding.pdfuaRef}`);
-    if (refs.length > 0) {
-      drawText(`References: ${refs.join(', ')}`, {
-        size: fontSize - 1,
-        indent: 10,
-        color: rgb(0.5, 0.5, 0.5),
-      });
+    y -= fontSize * 1.4;
+  }
+
+  y -= 4;
+  drawText(`Generated: ${new Date().toISOString().split('T')[0]}  |  Tool: PDF-A-go-actionable`, {
+    size: smallFontSize,
+    color: rgb(0.5, 0.5, 0.5),
+  });
+  y -= 8;
+
+  drawRule();
+
+  // === Findings grouped by status ===
+  for (const group of STATUS_GROUPS) {
+    const items = groups[group.key];
+    if (items.length === 0) continue;
+
+    y -= 4;
+    ensureSpace(headingFontSize * 1.4 + fontSize * 1.4 + 8);
+
+    drawText(`${group.heading.toUpperCase()} - ${items.length} check${items.length !== 1 ? 's' : ''}`, {
+      size: headingFontSize,
+      useBold: true,
+      color: statusColors[group.key] || rgb(0.2, 0.2, 0.2),
+    });
+    y -= 4;
+
+    if (group.density === 'full') {
+      // Fail and warning — full detail: title, summary, remediation, refs
+      for (const finding of items) {
+        ensureSpace(60);
+
+        const statusLabel = formatStatus(finding.status).toUpperCase();
+        drawText(`[${statusLabel}] ${finding.title}`, {
+          size: subheadingFontSize,
+          useBold: true,
+          color: statusColors[finding.status] || rgb(0, 0, 0),
+        });
+
+        drawText(finding.summary, { size: fontSize, indent: 10 });
+
+        if (finding.remediation) {
+          drawText(`How to fix: ${finding.remediation}`, {
+            size: fontSize,
+            indent: 10,
+            color: rgb(0.3, 0.3, 0.3),
+          });
+        }
+
+        const refs = [];
+        if (finding.wcagRef) refs.push(`WCAG ${finding.wcagRef}`);
+        if (finding.pdfuaRef) refs.push(`PDF/UA ${finding.pdfuaRef}`);
+        if (refs.length > 0) {
+          drawText(`References: ${refs.join(', ')}`, {
+            size: smallFontSize,
+            indent: 10,
+            color: rgb(0.5, 0.5, 0.5),
+          });
+        }
+
+        y -= 6;
+      }
+    } else if (group.density === 'compact') {
+      // Manual — title + summary, no remediation
+      for (const finding of items) {
+        ensureSpace(40);
+
+        drawText(`[${formatStatus(finding.status).toUpperCase()}] ${finding.title}`, {
+          size: subheadingFontSize,
+          useBold: true,
+          color: statusColors[finding.status] || rgb(0, 0, 0),
+        });
+
+        drawText(finding.summary, { size: fontSize, indent: 10 });
+        y -= 4;
+      }
+    } else {
+      // Pass and N/A — just titles on one line each
+      for (const finding of items) {
+        ensureSpace(fontSize * 1.4);
+
+        const prefix = group.key === 'pass' ? '[PASS]' : '[N/A]';
+        drawText(`${prefix}  ${finding.title}`, {
+          size: fontSize,
+          color: statusColors[group.key] || rgb(0.3, 0.3, 0.3),
+        });
+      }
+      y -= 4;
     }
 
-    y -= 8;
+    drawRule();
   }
 
   // Save and download

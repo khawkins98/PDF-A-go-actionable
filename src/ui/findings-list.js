@@ -193,9 +193,11 @@ export function renderFindingsPanel(el, data, bus) {
   renderList(null);
 
   // Listen for filter changes from the summary badges
-  bus.on('filterStatus', ({ active }) => {
+  const unsub = bus.on('filterStatus', ({ active }) => {
     renderList(active);
   });
+
+  return unsub;
 }
 
 /**
