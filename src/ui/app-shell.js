@@ -706,11 +706,6 @@ export function initAppShell(container, worker) {
   // === Toolbar actions (per-session) ===
 
   function handleToolbarAction(session, action) {
-    if (action === 'view-pdf') {
-      viewPdf(session);
-      return;
-    }
-
     if (!session.data) return;
 
     const exportFns = initExport(session.data);
@@ -725,15 +720,6 @@ export function initAppShell(container, worker) {
         exportFns.exportPDF();
         break;
     }
-  }
-
-  function viewPdf(session) {
-    if (!session.file) return;
-    // Reuse existing blob URL or create a new one
-    if (!session.pdfBlobUrl) {
-      session.pdfBlobUrl = URL.createObjectURL(session.file);
-    }
-    window.open(session.pdfBlobUrl, '_blank');
   }
 
   // === Export All ===
@@ -790,10 +776,6 @@ export function initAppShell(container, worker) {
     }
     session.floatingPanels.clear();
     session.bus.destroy();
-    if (session.pdfBlobUrl) {
-      URL.revokeObjectURL(session.pdfBlobUrl);
-      session.pdfBlobUrl = null;
-    }
     session.file = null;
     session.mainWin = null;
     sessions.delete(session.id);
