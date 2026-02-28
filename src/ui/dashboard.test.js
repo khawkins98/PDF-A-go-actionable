@@ -450,6 +450,19 @@ describe('renderDashboard', () => {
     expect(desc.textContent).toBe('No checks were performed.');
   });
 
+  it('should show "No automated checks" when only manual findings exist', () => {
+    const data = makeData([
+      finding({ id: 'f1', status: 'manual', title: 'Contrast' }),
+      finding({ id: 'f2', status: 'manual', title: 'Reading Order' }),
+    ]);
+    renderDashboard(el, data, callbacks);
+
+    const desc = el.querySelector('.dashboard__verdict-desc');
+    expect(desc.textContent).toBe(
+      'No automated checks were performed. 2 items flagged for manual review.',
+    );
+  });
+
   // --- Warning verdict description ---
 
   it('should include warning count and pass count in PASS WITH WARNINGS description', () => {

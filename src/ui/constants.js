@@ -52,10 +52,12 @@ export function computeVerdict(groups) {
     label = 'PASS';
     if (passCount === 0 && manualCount === 0) {
       description = 'No checks were performed.';
+    } else if (passCount === 0 && manualCount > 0) {
+      description = `No automated checks were performed. ${manualCount} item${manualCount !== 1 ? 's' : ''} flagged for manual review.`;
     } else if (manualCount > 0) {
-      description = `All ${passCount} automated checks passed. ${manualCount} item${manualCount !== 1 ? 's' : ''} flagged for manual review.`;
+      description = `All ${passCount} automated check${passCount !== 1 ? 's' : ''} passed. ${manualCount} item${manualCount !== 1 ? 's' : ''} flagged for manual review.`;
     } else {
-      description = `All ${passCount} automated checks passed.`;
+      description = `All ${passCount} automated check${passCount !== 1 ? 's' : ''} passed.`;
     }
   } else if (overallStatus === 'warning') {
     label = 'PASS WITH WARNINGS';

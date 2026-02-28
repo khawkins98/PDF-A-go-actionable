@@ -79,7 +79,7 @@ All three manual-review items return `manual` status findings with actionable gu
 
 The audit produces a structured report with:
 
-1. **Report Dashboard** --initial view after analysis: at-a-glance donut chart of pass/fail/warning/manual counts, key document metrics (page count, tagged status, title, language), and a "top issues" list highlighting the most important failures and warnings | Done
+1. **Report Dashboard** --initial view after analysis: verdict banner (PASS/FAIL/PASS WITH WARNINGS), document properties metadata grid with warning indicators for missing accessibility fields, findings grouped by status (fail/warning as full rows, manual review as compact cards, pass/N/A as chips), and action buttons (Download Report, View Advanced Report, Preview PDF, Upload Another PDF) | Done
 2. **Summary score** --pass/fail/warning/manual/not-applicable counts with traffic-light status icons | Done
 3. **Per-check detail** --pass/fail/warning/manual-check status, explanation, remediation guidance | Done
 4. **Structure tree explorer** --interactive ARIA tree view (expand/collapse, keyboard nav, search/filter, RoleMap annotations, alt/lang badges); falls back to findings-based summary for untagged PDFs | Done
@@ -172,8 +172,8 @@ src/
     image-table.js      --image inventory table
     guidance.js         --remediation text templates and external links
     pdf-preview.js      --PDF page rendering with zoom, page nav, MCID highlighting, reading order overlay (lazy-loads pdfjs-dist)
-    dashboard.js        --Report Dashboard: at-a-glance summary with donut chart, key metrics, and top issues
-    constants.js        --shared UI constants (MENUBAR_HEIGHT, CASCADE_OFFSET, etc.)
+    dashboard.js        --Report Dashboard: verdict banner, metadata grid, status-grouped findings, action buttons
+    constants.js        --shared STATUS_GROUPS constant and helpers (groupFindings, computeVerdict) used by dashboard and export
     export.js           --JSON, CSV, and PDF report generation
   engine/utils/
     resolve.js          --PDFRef resolution helper (new)
