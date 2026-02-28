@@ -114,17 +114,24 @@ export function renderSummaryPanel(el, data, bus) {
   metaTable.style.cssText = 'display: grid; grid-template-columns: auto 1fr; gap: var(--space-xs) var(--space-md); margin-bottom: var(--space-md);';
 
   const metaItems = [
-    { label: 'Title', value: meta.title || 'Not set' },
-    { label: 'Language', value: meta.lang || 'Not set' },
+    { label: 'Title', value: meta.title, warn: !meta.title },
+    { label: 'Author', value: meta.author, warn: !meta.author },
+    { label: 'Subject', value: meta.subject, warn: !meta.subject },
+    { label: 'Keywords', value: meta.keywords, warn: !meta.keywords },
+    { label: 'Language', value: meta.lang, warn: !meta.lang },
     { label: 'Pages', value: meta.pageCount != null ? String(meta.pageCount) : 'Unknown' },
     { label: 'File Size', value: formatFileSize(meta.fileSize) },
     { label: 'File Name', value: meta.fileName || 'Unknown' },
     { label: 'PDF/A', value: meta.isPdfA ? `Yes (${meta.pdfALevel || 'level unknown'})` : 'No' },
     { label: 'PDF/UA', value: meta.isPdfUA ? 'Yes' : 'No' },
-    { label: 'Tagged', value: meta.isTagged ? (meta.hasSuspects ? 'Yes (suspects)' : 'Yes') : 'No' },
+    { label: 'Tagged', value: meta.isTagged ? (meta.hasSuspects ? 'Yes (suspects)' : 'Yes') : 'No', warn: !meta.isTagged },
     { label: 'Structure Tree', value: meta.hasStructTree ? 'Yes' : 'No' },
-    { label: 'Display Doc Title', value: meta.displayDocTitle ? 'Yes' : 'No' },
+    { label: 'Display Doc Title', value: meta.displayDocTitle ? 'Yes' : 'No', warn: !meta.displayDocTitle },
   ];
+
+  // Tool metadata (only shown when present)
+  if (meta.creator) metaItems.push({ label: 'Creator', value: meta.creator });
+  if (meta.producer) metaItems.push({ label: 'Producer', value: meta.producer });
 
   for (const item of metaItems) {
     const dt = document.createElement('dt');
@@ -132,8 +139,11 @@ export function renderSummaryPanel(el, data, bus) {
     dt.style.cssText = 'font-weight: 600; color: var(--color-text-secondary); white-space: nowrap;';
 
     const dd = document.createElement('dd');
-    dd.textContent = item.value;
+    dd.textContent = item.value || 'Not set';
     dd.style.cssText = 'margin: 0; overflow-wrap: break-word;';
+    if (item.warn) {
+      dd.style.cssText += ' color: var(--color-warning); font-style: italic;';
+    }
 
     metaTable.appendChild(dt);
     metaTable.appendChild(dd);
@@ -148,7 +158,7 @@ export function renderSummaryPanel(el, data, bus) {
  * @param {number} bytes
  * @returns {string}
  */
-function formatFileSize(bytes) {
+export function formatFileSize(bytes) {
   if (bytes == null || bytes === 0) return 'Unknown';
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;

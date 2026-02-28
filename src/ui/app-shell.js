@@ -14,6 +14,7 @@ import { createUploadZone, filterPdfs } from './drop-zone.js';
 import { renderSummaryPanel } from './report.js';
 import { renderFindingsPanel } from './findings-list.js';
 import { renderDetailsPanel } from './details.js';
+import { renderDashboard } from './dashboard.js';
 import { renderTreeExplorer } from './tree-explorer.js';
 import { renderFontTable } from './font-table.js';
 import { renderImageTable } from './image-table.js';
@@ -519,71 +520,17 @@ export function initAppShell(container, worker) {
     const content = document.createElement('div');
     content.className = 'results-main';
 
-    // Summary section
-    const summaryEl = document.createElement('div');
-    summaryEl.className = 'results-summary';
-    renderSummaryPanel(summaryEl, data, session.bus);
-    content.appendChild(summaryEl);
-
-    // Toolbar (session-scoped actions only)
-    const toolbar = document.createElement('div');
-    toolbar.className = 'results-toolbar';
-    toolbar.setAttribute('role', 'toolbar');
-    toolbar.setAttribute('aria-label', 'Report tools');
-
-    for (const panel of FLOATING_PANELS) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'toolbar-btn';
-      btn.dataset.panel = panel.id;
-      btn.textContent = panel.title;
-      toolbar.appendChild(btn);
-    }
-
-    toolbar.appendChild(toolbarSep());
-
-    for (const [action, label] of [
-      ['export-json', 'JSON'],
-      ['export-csv', 'CSV'],
-      ['export-pdf', 'PDF'],
-    ]) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'toolbar-btn';
-      btn.dataset.action = action;
-      btn.textContent = `Export ${label}`;
-      toolbar.appendChild(btn);
-    }
-
-    content.appendChild(toolbar);
-
-    // Split view: findings + details (using scoped bus)
-    const split = document.createElement('div');
-    split.className = 'results-split';
-
-    const findingsEl = document.createElement('div');
-    findingsEl.className = 'results-findings';
-    renderFindingsPanel(findingsEl, data, session.bus);
-    split.appendChild(findingsEl);
-
-    const detailsEl = document.createElement('div');
-    detailsEl.className = 'results-details';
-    renderDetailsPanel(detailsEl, data, session.bus);
-    split.appendChild(detailsEl);
-
-    content.appendChild(split);
-
-    // Wire toolbar events
-    toolbar.addEventListener('click', (e) => {
-      const panelBtn = e.target.closest('[data-panel]');
-      if (panelBtn) {
-        toggleFloatingPanel(session, panelBtn.dataset.panel);
-        return;
-      }
-      const actionBtn = e.target.closest('[data-action]');
-      if (actionBtn) {
-        handleToolbarAction(session, actionBtn.dataset.action);
-      }
+    // Render dashboard as initial view
+    renderDashboard(content, data, {
+      onViewFullReport: () => showDetailedView(content, session, data),
+      onPreviewPdf: () => toggleFloatingPanel(session, 'preview'),
+      onExport: (format) => {
+        const exportFns = initExport(data);
+        if (format === 'json') exportFns.exportJSON();
+        else if (format === 'csv') exportFns.exportCSV();
+        else if (format === 'pdf') exportFns.exportPDF();
+      },
+      onUploadAnother: () => fileInput.click(),
     });
 
     // Create results window with cascade positioning
@@ -616,6 +563,81 @@ export function initAppShell(container, worker) {
           }
         },
       });
+    });
+  }
+
+  /**
+   * Swap the results window content from dashboard to the detailed findings view.
+   */
+  function showDetailedView(wrapper, session, data) {
+    wrapper.innerHTML = '';
+    wrapper.className = 'results-main';
+
+    // Summary section
+    const summaryEl = document.createElement('div');
+    summaryEl.className = 'results-summary';
+    renderSummaryPanel(summaryEl, data, session.bus);
+    wrapper.appendChild(summaryEl);
+
+    // Toolbar (session-scoped actions only)
+    const toolbar = document.createElement('div');
+    toolbar.className = 'results-toolbar';
+    toolbar.setAttribute('role', 'toolbar');
+    toolbar.setAttribute('aria-label', 'Report tools');
+
+    for (const panel of FLOATING_PANELS) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'toolbar-btn';
+      btn.dataset.panel = panel.id;
+      btn.textContent = panel.title;
+      toolbar.appendChild(btn);
+    }
+
+    toolbar.appendChild(toolbarSep());
+
+    for (const [action, label] of [
+      ['export-json', 'JSON'],
+      ['export-csv', 'CSV'],
+      ['export-pdf', 'PDF'],
+    ]) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'toolbar-btn';
+      btn.dataset.action = action;
+      btn.textContent = `Export ${label}`;
+      toolbar.appendChild(btn);
+    }
+
+    wrapper.appendChild(toolbar);
+
+    // Split view: findings + details (using scoped bus)
+    const split = document.createElement('div');
+    split.className = 'results-split';
+
+    const findingsEl = document.createElement('div');
+    findingsEl.className = 'results-findings';
+    renderFindingsPanel(findingsEl, data, session.bus);
+    split.appendChild(findingsEl);
+
+    const detailsEl = document.createElement('div');
+    detailsEl.className = 'results-details';
+    renderDetailsPanel(detailsEl, data, session.bus);
+    split.appendChild(detailsEl);
+
+    wrapper.appendChild(split);
+
+    // Wire toolbar events
+    toolbar.addEventListener('click', (e) => {
+      const panelBtn = e.target.closest('[data-panel]');
+      if (panelBtn) {
+        toggleFloatingPanel(session, panelBtn.dataset.panel);
+        return;
+      }
+      const actionBtn = e.target.closest('[data-action]');
+      if (actionBtn) {
+        handleToolbarAction(session, actionBtn.dataset.action);
+      }
     });
   }
 
