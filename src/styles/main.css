@@ -1266,48 +1266,6 @@ body {
   border-color: var(--color-primary-hover);
 }
 
-.dashboard__export-wrap {
-  position: relative;
-}
-
-.dashboard__export-menu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 10;
-  min-width: 160px;
-  margin-top: 2px;
-  padding: 2px;
-  background: var(--color-surface);
-  border: 2px solid;
-  border-color: var(--color-border-light) var(--color-border-dark) var(--color-border-dark) var(--color-border-light);
-  box-shadow: var(--shadow-lg);
-}
-
-.dashboard__export-item {
-  display: block;
-  width: 100%;
-  padding: 3px var(--space-sm);
-  border: none;
-  background: none;
-  color: var(--color-text);
-  font-family: var(--font-family);
-  font-size: var(--font-size-sm);
-  text-align: left;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.dashboard__export-item:hover {
-  background: var(--color-titlebar);
-  color: var(--color-text-inverse);
-}
-
-.dashboard__export-item:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: -2px;
-}
-
 /* Section groups */
 .dashboard__section {
   margin-bottom: var(--space-lg);

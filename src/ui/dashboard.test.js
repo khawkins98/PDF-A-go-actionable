@@ -2,7 +2,7 @@
 /**
  * Tests for the report dashboard view.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderDashboard } from './dashboard.js';
 
 /** Minimal Finding factory. */
@@ -54,11 +54,6 @@ describe('renderDashboard', () => {
   beforeEach(() => {
     el = document.createElement('div');
     callbacks = makeCallbacks();
-  });
-
-  afterEach(() => {
-    // Abort any document-level listeners from renderDashboard
-    if (el._dashboardAbort) el._dashboardAbort.abort();
   });
 
   // --- Verdict banner ---
@@ -304,27 +299,45 @@ describe('renderDashboard', () => {
 
   // --- Action buttons ---
 
-  it('should render View Full Report, Preview PDF, Download Report, and Upload Another PDF buttons', () => {
+  it('should render Download Report, View Advanced Report, Preview PDF, and Upload Another PDF buttons', () => {
     const data = makeData([]);
     renderDashboard(el, data, callbacks);
 
     const buttons = el.querySelectorAll('.dashboard__action-btn');
     const labels = [...buttons].map((b) => b.textContent);
-    expect(labels).toContain('View Full Report');
+    expect(labels).toContain('Download Report');
+    expect(labels).toContain('View Advanced Report');
     expect(labels).toContain('Preview PDF');
     expect(labels).toContain('Upload Another PDF');
-    // The download button has a down arrow
-    expect(labels.some((l) => l.startsWith('Download Report'))).toBe(true);
   });
 
-  // --- Callback wiring ---
-
-  it('should fire onViewFullReport when "View Full Report" is clicked', () => {
+  it('should render Download Report as the primary button', () => {
     const data = makeData([]);
     renderDashboard(el, data, callbacks);
 
     const btn = [...el.querySelectorAll('.dashboard__action-btn')]
-      .find((b) => b.textContent === 'View Full Report');
+      .find((b) => b.textContent === 'Download Report');
+    expect(btn.classList.contains('dashboard__action-btn--primary')).toBe(true);
+  });
+
+  // --- Callback wiring ---
+
+  it('should fire onExport with "pdf" when "Download Report" is clicked', () => {
+    const data = makeData([]);
+    renderDashboard(el, data, callbacks);
+
+    const btn = [...el.querySelectorAll('.dashboard__action-btn')]
+      .find((b) => b.textContent === 'Download Report');
+    btn.click();
+    expect(callbacks.onExport).toHaveBeenCalledWith('pdf');
+  });
+
+  it('should fire onViewFullReport when "View Advanced Report" is clicked', () => {
+    const data = makeData([]);
+    renderDashboard(el, data, callbacks);
+
+    const btn = [...el.querySelectorAll('.dashboard__action-btn')]
+      .find((b) => b.textContent === 'View Advanced Report');
     btn.click();
     expect(callbacks.onViewFullReport).toHaveBeenCalledOnce();
   });
@@ -347,45 +360,6 @@ describe('renderDashboard', () => {
       .find((b) => b.textContent === 'Upload Another PDF');
     btn.click();
     expect(callbacks.onUploadAnother).toHaveBeenCalledOnce();
-  });
-
-  // --- Export dropdown ---
-
-  it('should toggle export menu on button click', () => {
-    const data = makeData([]);
-    renderDashboard(el, data, callbacks);
-
-    const exportBtn = el.querySelector('[aria-haspopup="true"]');
-    const menu = el.querySelector('.dashboard__export-menu');
-    expect(menu.hidden).toBe(true);
-
-    exportBtn.click();
-    expect(menu.hidden).toBe(false);
-    expect(exportBtn.getAttribute('aria-expanded')).toBe('true');
-
-    exportBtn.click();
-    expect(menu.hidden).toBe(true);
-    expect(exportBtn.getAttribute('aria-expanded')).toBe('false');
-  });
-
-  it('should fire onExport with format when export menu item is clicked', () => {
-    const data = makeData([]);
-    renderDashboard(el, data, callbacks);
-
-    const exportBtn = el.querySelector('[aria-haspopup="true"]');
-    exportBtn.click();
-
-    const items = el.querySelectorAll('.dashboard__export-item');
-    expect(items.length).toBe(3);
-
-    items[0].click(); // JSON
-    expect(callbacks.onExport).toHaveBeenCalledWith('json');
-
-    items[1].click(); // CSV
-    expect(callbacks.onExport).toHaveBeenCalledWith('csv');
-
-    items[2].click(); // PDF
-    expect(callbacks.onExport).toHaveBeenCalledWith('pdf');
   });
 
   // --- Empty findings ---
@@ -491,86 +465,6 @@ describe('renderDashboard', () => {
     expect(desc.textContent).toContain('1 check passed');
   });
 
-  // --- Export menu closes on item click ---
-
-  it('should close export menu when a menu item is clicked', () => {
-    const data = makeData([]);
-    renderDashboard(el, data, callbacks);
-
-    const exportBtn = el.querySelector('[aria-haspopup="true"]');
-    const menu = el.querySelector('.dashboard__export-menu');
-    exportBtn.click();
-    expect(menu.hidden).toBe(false);
-
-    const items = el.querySelectorAll('.dashboard__export-item');
-    items[0].click();
-    expect(menu.hidden).toBe(true);
-    expect(exportBtn.getAttribute('aria-expanded')).toBe('false');
-  });
-
-  // --- Export menu keyboard navigation ---
-
-  it('should close export menu on Escape and return focus to trigger button', () => {
-    const data = makeData([]);
-    renderDashboard(el, data, callbacks);
-
-    const exportBtn = el.querySelector('[aria-haspopup="true"]');
-    const menu = el.querySelector('.dashboard__export-menu');
-    exportBtn.click();
-    expect(menu.hidden).toBe(false);
-
-    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    expect(menu.hidden).toBe(true);
-    expect(exportBtn.getAttribute('aria-expanded')).toBe('false');
-  });
-
-  it('should navigate export menu items with ArrowDown and ArrowUp', () => {
-    // Attach to document so focus() works
-    document.body.appendChild(el);
-    const data = makeData([]);
-    renderDashboard(el, data, callbacks);
-
-    const exportBtn = el.querySelector('[aria-haspopup="true"]');
-    exportBtn.click();
-
-    const items = el.querySelectorAll('.dashboard__export-item');
-    // First item should have focus after opening
-    expect(document.activeElement).toBe(items[0]);
-
-    // ArrowDown moves to next item
-    el.querySelector('.dashboard__export-menu').dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }),
-    );
-    expect(document.activeElement).toBe(items[1]);
-
-    // ArrowUp moves back
-    el.querySelector('.dashboard__export-menu').dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }),
-    );
-    expect(document.activeElement).toBe(items[0]);
-
-    document.body.removeChild(el);
-  });
-
-  it('should set tabindex="-1" on export menu items', () => {
-    const data = makeData([]);
-    renderDashboard(el, data, callbacks);
-
-    const items = el.querySelectorAll('.dashboard__export-item');
-    for (const item of items) {
-      expect(item.getAttribute('tabindex')).toBe('-1');
-    }
-  });
-
-  it('should set aria-controls on export trigger button', () => {
-    const data = makeData([]);
-    renderDashboard(el, data, callbacks);
-
-    const exportBtn = el.querySelector('[aria-haspopup="true"]');
-    const menu = el.querySelector('.dashboard__export-menu');
-    expect(exportBtn.getAttribute('aria-controls')).toBe(menu.id);
-  });
-
   // --- Creator/producer conditional rendering ---
 
   it('should show Creator and Producer in metadata when present', () => {
@@ -626,19 +520,6 @@ describe('renderDashboard', () => {
     expect(el.classList.contains('dashboard')).toBe(true);
   });
 
-  // --- Re-render cleans up previous listeners ---
-
-  it('should abort previous document listeners when re-rendered', () => {
-    const data = makeData([]);
-    renderDashboard(el, data, callbacks);
-
-    const firstAbort = el._dashboardAbort;
-    const abortSpy = vi.spyOn(firstAbort, 'abort');
-
-    renderDashboard(el, data, callbacks);
-    expect(abortSpy).toHaveBeenCalledOnce();
-  });
-
   // --- Accessibility: aria-hidden on decorative badges ---
 
   it('should set aria-hidden on status badges in finding rows and compact cards', () => {
@@ -652,29 +533,6 @@ describe('renderDashboard', () => {
     for (const badge of badges) {
       expect(badge.getAttribute('aria-hidden')).toBe('true');
     }
-  });
-
-  // --- Primary action button ---
-
-  it('should apply primary style class to "View Full Report" button', () => {
-    const data = makeData([]);
-    renderDashboard(el, data, callbacks);
-
-    const viewBtn = [...el.querySelectorAll('.dashboard__action-btn')]
-      .find((b) => b.textContent === 'View Full Report');
-    expect(viewBtn.classList.contains('dashboard__action-btn--primary')).toBe(true);
-  });
-
-  // --- Dropdown arrow aria-hidden ---
-
-  it('should wrap dropdown arrow character in aria-hidden span', () => {
-    const data = makeData([]);
-    renderDashboard(el, data, callbacks);
-
-    const exportBtn = el.querySelector('[aria-haspopup="true"]');
-    const arrowSpan = exportBtn.querySelector('span[aria-hidden="true"]');
-    expect(arrowSpan).not.toBeNull();
-    expect(arrowSpan.textContent).toBe('\u25BC');
   });
 
   // --- displayDocTitle warning ---

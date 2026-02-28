@@ -9,8 +9,6 @@
 import { formatFileSize } from './report.js';
 import { STATUS_GROUPS, groupFindings, computeVerdict } from './constants.js';
 
-let menuIdCounter = 0;
-
 /**
  * Render the report dashboard into a container element.
  *
@@ -24,11 +22,6 @@ let menuIdCounter = 0;
  */
 export function renderDashboard(el, data, callbacks) {
   const { findings, meta } = data;
-
-  // Abort any previous document-level listeners from a prior render
-  if (el._dashboardAbort) el._dashboardAbort.abort();
-  const abort = new AbortController();
-  el._dashboardAbort = abort;
 
   const groups = groupFindings(findings);
   const { overallStatus, label, description } = computeVerdict(groups);
@@ -118,123 +111,19 @@ export function renderDashboard(el, data, callbacks) {
   const actions = document.createElement('div');
   actions.className = 'dashboard__actions';
 
+  const downloadBtn = document.createElement('button');
+  downloadBtn.type = 'button';
+  downloadBtn.className = 'toolbar-btn dashboard__action-btn dashboard__action-btn--primary';
+  downloadBtn.textContent = 'Download Report';
+  downloadBtn.addEventListener('click', () => callbacks.onExport('pdf'));
+  actions.appendChild(downloadBtn);
+
   const viewBtn = document.createElement('button');
   viewBtn.type = 'button';
-  viewBtn.className = 'toolbar-btn dashboard__action-btn dashboard__action-btn--primary';
-  viewBtn.textContent = 'View Full Report';
+  viewBtn.className = 'toolbar-btn dashboard__action-btn';
+  viewBtn.textContent = 'View Advanced Report';
   viewBtn.addEventListener('click', () => callbacks.onViewFullReport());
   actions.appendChild(viewBtn);
-
-  // Export dropdown button (2nd — primary CTA after View Full Report)
-  const exportWrap = document.createElement('div');
-  exportWrap.className = 'dashboard__export-wrap';
-
-  const exportBtn = document.createElement('button');
-  exportBtn.type = 'button';
-  exportBtn.className = 'toolbar-btn dashboard__action-btn';
-  exportBtn.setAttribute('aria-haspopup', 'true');
-  exportBtn.setAttribute('aria-expanded', 'false');
-  exportBtn.textContent = 'Download Report ';
-  const arrow = document.createElement('span');
-  arrow.setAttribute('aria-hidden', 'true');
-  arrow.textContent = '\u25BC';
-  exportBtn.appendChild(arrow);
-
-  const menuId = `export-menu-${++menuIdCounter}`;
-  exportBtn.setAttribute('aria-controls', menuId);
-
-  const exportMenu = document.createElement('div');
-  exportMenu.className = 'dashboard__export-menu';
-  exportMenu.id = menuId;
-  exportMenu.setAttribute('role', 'menu');
-  exportMenu.hidden = true;
-
-  const menuItems = [];
-  for (const [format, label] of [['json', 'JSON'], ['csv', 'CSV'], ['pdf', 'PDF']]) {
-    const item = document.createElement('button');
-    item.type = 'button';
-    item.className = 'dashboard__export-item';
-    item.setAttribute('role', 'menuitem');
-    item.setAttribute('tabindex', '-1');
-    item.textContent = `Export as ${label}`;
-    item.addEventListener('click', () => {
-      closeExportMenu();
-      callbacks.onExport(format);
-    });
-    exportMenu.appendChild(item);
-    menuItems.push(item);
-  }
-
-  function openExportMenu() {
-    exportMenu.hidden = false;
-    exportBtn.setAttribute('aria-expanded', 'true');
-    if (menuItems.length > 0) menuItems[0].focus();
-  }
-
-  function closeExportMenu() {
-    exportMenu.hidden = true;
-    exportBtn.setAttribute('aria-expanded', 'false');
-  }
-
-  exportBtn.addEventListener('click', () => {
-    if (exportMenu.hidden) {
-      openExportMenu();
-    } else {
-      closeExportMenu();
-    }
-  });
-
-  // Keyboard navigation for export menu (ARIA menu pattern)
-  exportBtn.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
-      if (exportMenu.hidden) {
-        e.preventDefault();
-        openExportMenu();
-      }
-    }
-  });
-
-  exportMenu.addEventListener('keydown', (e) => {
-    const idx = menuItems.indexOf(document.activeElement);
-
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        menuItems[(idx + 1) % menuItems.length].focus();
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        menuItems[(idx - 1 + menuItems.length) % menuItems.length].focus();
-        break;
-      case 'Home':
-        e.preventDefault();
-        menuItems[0].focus();
-        break;
-      case 'End':
-        e.preventDefault();
-        menuItems[menuItems.length - 1].focus();
-        break;
-      case 'Escape':
-        e.preventDefault();
-        closeExportMenu();
-        exportBtn.focus();
-        break;
-      case 'Tab':
-        closeExportMenu();
-        break;
-    }
-  });
-
-  // Close export menu when clicking outside (uses AbortController for cleanup)
-  document.addEventListener('click', (e) => {
-    if (!exportWrap.contains(e.target) && !exportMenu.hidden) {
-      closeExportMenu();
-    }
-  }, { signal: abort.signal });
-
-  exportWrap.appendChild(exportBtn);
-  exportWrap.appendChild(exportMenu);
-  actions.appendChild(exportWrap);
 
   const previewBtn = document.createElement('button');
   previewBtn.type = 'button';
