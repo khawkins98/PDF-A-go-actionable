@@ -6,7 +6,7 @@
  * out of the critical path for initial page load.
  */
 
-import { STATUS_GROUPS } from './constants.js';
+import { STATUS_GROUPS, groupFindings, computeVerdict } from './constants.js';
 
 /**
  * Initialize export functionality for the given audit data.
@@ -188,17 +188,8 @@ async function downloadPDF(data) {
   };
 
   // === Group findings ===
-  const groups = {};
-  for (const g of STATUS_GROUPS) groups[g.key] = [];
-  for (const f of data.findings) {
-    if (groups[f.status]) groups[f.status].push(f);
-  }
-
-  const failCount = groups.fail.length;
-  const warnCount = groups.warning.length;
-  const manualCount = groups.manual.length;
-  const passCount = groups.pass.length;
-  const overallStatus = failCount > 0 ? 'fail' : warnCount > 0 ? 'warning' : 'pass';
+  const groups = groupFindings(data.findings);
+  const { overallStatus, label: verdictLabel, description: verdictDesc } = computeVerdict(groups);
 
   // === Title ===
   drawText('PDF Accessibility Report', { size: titleFontSize, useBold: true });
@@ -224,22 +215,6 @@ async function downloadPDF(data) {
     borderColor: bannerColor,
     borderWidth: 1.5,
   });
-
-  // Verdict label
-  let verdictLabel;
-  let verdictDesc;
-  if (overallStatus === 'pass') {
-    verdictLabel = 'PASS';
-    verdictDesc = manualCount > 0
-      ? `All ${passCount} automated checks passed. ${manualCount} item${manualCount !== 1 ? 's' : ''} flagged for manual review.`
-      : `All ${passCount} automated checks passed.`;
-  } else if (overallStatus === 'warning') {
-    verdictLabel = 'PASS WITH WARNINGS';
-    verdictDesc = `No failures, but ${warnCount} warning${warnCount !== 1 ? 's' : ''} need review. ${passCount} check${passCount !== 1 ? 's' : ''} passed.`;
-  } else {
-    verdictLabel = 'FAIL';
-    verdictDesc = `${failCount} accessibility issue${failCount !== 1 ? 's' : ''} must be fixed. ${passCount} check${passCount !== 1 ? 's' : ''} passed.`;
-  }
 
   // Label baseline: top of banner minus padding
   const labelBaseline = y - bannerPad;

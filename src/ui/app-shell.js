@@ -570,6 +570,11 @@ export function initAppShell(container, worker) {
    * Swap the results window content from dashboard to the detailed findings view.
    */
   function showDetailedView(wrapper, session, data) {
+    // Abort dashboard document listeners before replacing content
+    if (wrapper._dashboardAbort) {
+      wrapper._dashboardAbort.abort();
+      wrapper._dashboardAbort = null;
+    }
     wrapper.innerHTML = '';
     wrapper.className = 'results-main';
 
@@ -759,6 +764,11 @@ export function initAppShell(container, worker) {
   }
 
   function cleanupSession(session) {
+    // Abort dashboard document listeners
+    if (session.mainWin?.body) {
+      const content = session.mainWin.body.firstElementChild;
+      if (content?._dashboardAbort) content._dashboardAbort.abort();
+    }
     for (const win of session.floatingPanels.values()) {
       win.onclose = null;
       win.close();

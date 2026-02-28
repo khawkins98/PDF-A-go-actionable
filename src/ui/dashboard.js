@@ -7,7 +7,9 @@
  */
 
 import { formatFileSize } from './report.js';
-import { STATUS_GROUPS } from './constants.js';
+import { STATUS_GROUPS, groupFindings, computeVerdict } from './constants.js';
+
+let menuIdCounter = 0;
 
 /**
  * Render the report dashboard into a container element.
@@ -28,19 +30,8 @@ export function renderDashboard(el, data, callbacks) {
   const abort = new AbortController();
   el._dashboardAbort = abort;
 
-  // Group findings by status
-  const groups = {};
-  for (const g of STATUS_GROUPS) groups[g.key] = [];
-  for (const f of findings) {
-    if (groups[f.status]) groups[f.status].push(f);
-  }
-
-  // Overall verdict — three tiers
-  const failCount = groups.fail.length;
-  const warnCount = groups.warning.length;
-  const manualCount = groups.manual.length;
-  const passCount = groups.pass.length;
-  const overallStatus = failCount > 0 ? 'fail' : warnCount > 0 ? 'warning' : 'pass';
+  const groups = groupFindings(findings);
+  const { overallStatus, label, description } = computeVerdict(groups);
 
   el.innerHTML = '';
   el.classList.add('dashboard');
@@ -57,26 +48,11 @@ export function renderDashboard(el, data, callbacks) {
 
   const verdictLabel = document.createElement('div');
   verdictLabel.className = 'dashboard__verdict-label';
+  verdictLabel.textContent = label;
 
   const verdictDesc = document.createElement('p');
   verdictDesc.className = 'dashboard__verdict-desc';
-
-  if (overallStatus === 'pass') {
-    verdictLabel.textContent = 'PASS';
-    if (passCount === 0 && manualCount === 0) {
-      verdictDesc.textContent = 'No checks were performed.';
-    } else if (manualCount > 0) {
-      verdictDesc.textContent = `All ${passCount} automated checks passed. ${manualCount} item${manualCount !== 1 ? 's' : ''} flagged for manual review.`;
-    } else {
-      verdictDesc.textContent = `All ${passCount} automated checks passed.`;
-    }
-  } else if (overallStatus === 'warning') {
-    verdictLabel.textContent = 'PASS WITH WARNINGS';
-    verdictDesc.textContent = `No failures, but ${warnCount} warning${warnCount !== 1 ? 's' : ''} need review. ${passCount} check${passCount !== 1 ? 's' : ''} passed.`;
-  } else {
-    verdictLabel.textContent = 'FAIL';
-    verdictDesc.textContent = `${failCount} accessibility issue${failCount !== 1 ? 's' : ''} must be fixed. ${passCount} check${passCount !== 1 ? 's' : ''} passed.`;
-  }
+  verdictDesc.textContent = description;
 
   verdict.appendChild(verdictLabel);
   verdict.appendChild(verdictDesc);
@@ -167,7 +143,7 @@ export function renderDashboard(el, data, callbacks) {
   exportBtn.setAttribute('aria-expanded', 'false');
   exportBtn.textContent = 'Download Report \u25BE';
 
-  const menuId = `export-menu-${Date.now()}`;
+  const menuId = `export-menu-${++menuIdCounter}`;
   exportBtn.setAttribute('aria-controls', menuId);
 
   const exportMenu = document.createElement('div');
@@ -222,25 +198,24 @@ export function renderDashboard(el, data, callbacks) {
   });
 
   exportMenu.addEventListener('keydown', (e) => {
-    const items = menuItems;
-    const idx = items.indexOf(document.activeElement);
+    const idx = menuItems.indexOf(document.activeElement);
 
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        items[(idx + 1) % items.length].focus();
+        menuItems[(idx + 1) % menuItems.length].focus();
         break;
       case 'ArrowUp':
         e.preventDefault();
-        items[(idx - 1 + items.length) % items.length].focus();
+        menuItems[(idx - 1 + menuItems.length) % menuItems.length].focus();
         break;
       case 'Home':
         e.preventDefault();
-        items[0].focus();
+        menuItems[0].focus();
         break;
       case 'End':
         e.preventDefault();
-        items[items.length - 1].focus();
+        menuItems[menuItems.length - 1].focus();
         break;
       case 'Escape':
         e.preventDefault();
@@ -285,7 +260,10 @@ export function renderDashboard(el, data, callbacks) {
 
     const heading = document.createElement('h3');
     heading.className = 'dashboard__section-heading';
-    heading.innerHTML = `${escapeHtml(group.heading)} &middot; <span>${items.length} check${items.length !== 1 ? 's' : ''}</span>`;
+    heading.textContent = `${group.heading} \u00B7 `;
+    const countSpan = document.createElement('span');
+    countSpan.textContent = `${items.length} check${items.length !== 1 ? 's' : ''}`;
+    heading.appendChild(countSpan);
     section.appendChild(heading);
 
     const content = document.createElement('div');
@@ -372,10 +350,4 @@ function buildFileFacts(meta) {
   p.className = 'dashboard__file-facts';
   p.textContent = parts.join(' \u00B7 ');
   return p;
-}
-
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
 }
