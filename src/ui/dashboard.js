@@ -39,7 +39,6 @@ export function renderDashboard(el, data, callbacks) {
   // === Verdict banner ===
   const verdict = document.createElement('div');
   verdict.className = `dashboard__verdict dashboard__verdict--${overallStatus}`;
-  verdict.setAttribute('role', 'status');
 
   const verdictTitle = document.createElement('h2');
   verdictTitle.className = 'dashboard__verdict-title';
@@ -48,6 +47,7 @@ export function renderDashboard(el, data, callbacks) {
 
   const verdictLabel = document.createElement('div');
   verdictLabel.className = 'dashboard__verdict-label';
+  verdictLabel.setAttribute('role', 'status');
   verdictLabel.textContent = label;
 
   const verdictDesc = document.createElement('p');
@@ -120,19 +120,12 @@ export function renderDashboard(el, data, callbacks) {
 
   const viewBtn = document.createElement('button');
   viewBtn.type = 'button';
-  viewBtn.className = 'toolbar-btn dashboard__action-btn';
+  viewBtn.className = 'toolbar-btn dashboard__action-btn dashboard__action-btn--primary';
   viewBtn.textContent = 'View Full Report';
   viewBtn.addEventListener('click', () => callbacks.onViewFullReport());
   actions.appendChild(viewBtn);
 
-  const previewBtn = document.createElement('button');
-  previewBtn.type = 'button';
-  previewBtn.className = 'toolbar-btn dashboard__action-btn';
-  previewBtn.textContent = 'Preview PDF';
-  previewBtn.addEventListener('click', () => callbacks.onPreviewPdf());
-  actions.appendChild(previewBtn);
-
-  // Export dropdown button
+  // Export dropdown button (2nd — primary CTA after View Full Report)
   const exportWrap = document.createElement('div');
   exportWrap.className = 'dashboard__export-wrap';
 
@@ -141,7 +134,11 @@ export function renderDashboard(el, data, callbacks) {
   exportBtn.className = 'toolbar-btn dashboard__action-btn';
   exportBtn.setAttribute('aria-haspopup', 'true');
   exportBtn.setAttribute('aria-expanded', 'false');
-  exportBtn.textContent = 'Download Report \u25BE';
+  exportBtn.textContent = 'Download Report ';
+  const arrow = document.createElement('span');
+  arrow.setAttribute('aria-hidden', 'true');
+  arrow.textContent = '\u25BC';
+  exportBtn.appendChild(arrow);
 
   const menuId = `export-menu-${++menuIdCounter}`;
   exportBtn.setAttribute('aria-controls', menuId);
@@ -239,6 +236,13 @@ export function renderDashboard(el, data, callbacks) {
   exportWrap.appendChild(exportMenu);
   actions.appendChild(exportWrap);
 
+  const previewBtn = document.createElement('button');
+  previewBtn.type = 'button';
+  previewBtn.className = 'toolbar-btn dashboard__action-btn';
+  previewBtn.textContent = 'Preview PDF';
+  previewBtn.addEventListener('click', () => callbacks.onPreviewPdf());
+  actions.appendChild(previewBtn);
+
   const uploadBtn = document.createElement('button');
   uploadBtn.type = 'button';
   uploadBtn.className = 'toolbar-btn dashboard__action-btn';
@@ -278,6 +282,7 @@ export function renderDashboard(el, data, callbacks) {
         const badge = document.createElement('span');
         badge.className = `status-badge status-badge--${f.status}`;
         badge.textContent = group.icon;
+        badge.setAttribute('aria-hidden', 'true');
         row.appendChild(badge);
 
         const info = document.createElement('div');
@@ -305,6 +310,7 @@ export function renderDashboard(el, data, callbacks) {
         const badge = document.createElement('span');
         badge.className = `status-badge status-badge--${f.status}`;
         badge.textContent = group.icon;
+        badge.setAttribute('aria-hidden', 'true');
         card.appendChild(badge);
 
         const title = document.createElement('strong');

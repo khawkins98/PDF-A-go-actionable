@@ -108,12 +108,15 @@ describe('renderDashboard', () => {
     expect(label.textContent).toBe('PASS WITH WARNINGS');
   });
 
-  it('should set role="status" on the verdict banner', () => {
+  it('should set role="status" on the verdict label, not the banner', () => {
     const data = makeData([finding({ status: 'pass' })]);
     renderDashboard(el, data, callbacks);
 
     const verdict = el.querySelector('.dashboard__verdict');
-    expect(verdict.getAttribute('role')).toBe('status');
+    expect(verdict.getAttribute('role')).toBeNull();
+
+    const label = el.querySelector('.dashboard__verdict-label');
+    expect(label.getAttribute('role')).toBe('status');
   });
 
   it('should include pass count in the PASS verdict description', () => {
@@ -634,6 +637,44 @@ describe('renderDashboard', () => {
 
     renderDashboard(el, data, callbacks);
     expect(abortSpy).toHaveBeenCalledOnce();
+  });
+
+  // --- Accessibility: aria-hidden on decorative badges ---
+
+  it('should set aria-hidden on status badges in finding rows and compact cards', () => {
+    const data = makeData([
+      finding({ status: 'fail', title: 'Title Missing' }),
+      finding({ status: 'manual', title: 'Contrast' }),
+    ]);
+    renderDashboard(el, data, callbacks);
+
+    const badges = el.querySelectorAll('.status-badge');
+    for (const badge of badges) {
+      expect(badge.getAttribute('aria-hidden')).toBe('true');
+    }
+  });
+
+  // --- Primary action button ---
+
+  it('should apply primary style class to "View Full Report" button', () => {
+    const data = makeData([]);
+    renderDashboard(el, data, callbacks);
+
+    const viewBtn = [...el.querySelectorAll('.dashboard__action-btn')]
+      .find((b) => b.textContent === 'View Full Report');
+    expect(viewBtn.classList.contains('dashboard__action-btn--primary')).toBe(true);
+  });
+
+  // --- Dropdown arrow aria-hidden ---
+
+  it('should wrap dropdown arrow character in aria-hidden span', () => {
+    const data = makeData([]);
+    renderDashboard(el, data, callbacks);
+
+    const exportBtn = el.querySelector('[aria-haspopup="true"]');
+    const arrowSpan = exportBtn.querySelector('span[aria-hidden="true"]');
+    expect(arrowSpan).not.toBeNull();
+    expect(arrowSpan.textContent).toBe('\u25BC');
   });
 
   // --- displayDocTitle warning ---

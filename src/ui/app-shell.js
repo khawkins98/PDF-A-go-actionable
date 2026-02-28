@@ -516,13 +516,12 @@ export function initAppShell(container, worker) {
     });
   }
 
-  function showResults(session, data) {
-    const content = document.createElement('div');
-    content.className = 'results-main';
-
-    // Render dashboard as initial view
-    renderDashboard(content, data, {
-      onViewFullReport: () => showDetailedView(content, session, data),
+  /**
+   * Build the callbacks object shared by dashboard and detailed view.
+   */
+  function buildDashboardCallbacks(wrapper, session, data) {
+    return {
+      onViewFullReport: () => showDetailedView(wrapper, session, data),
       onPreviewPdf: () => toggleFloatingPanel(session, 'preview'),
       onExport: (format) => {
         const exportFns = initExport(data);
@@ -531,7 +530,15 @@ export function initAppShell(container, worker) {
         else if (format === 'pdf') exportFns.exportPDF();
       },
       onUploadAnother: () => fileInput.click(),
-    });
+    };
+  }
+
+  function showResults(session, data) {
+    const content = document.createElement('div');
+    content.className = 'results-main';
+
+    // Render dashboard as initial view
+    renderDashboard(content, data, buildDashboardCallbacks(content, session, data));
 
     // Create results window with cascade positioning
     requestAnimationFrame(() => {
@@ -589,6 +596,18 @@ export function initAppShell(container, worker) {
     toolbar.className = 'results-toolbar';
     toolbar.setAttribute('role', 'toolbar');
     toolbar.setAttribute('aria-label', 'Report tools');
+
+    const backBtn = document.createElement('button');
+    backBtn.type = 'button';
+    backBtn.className = 'toolbar-btn';
+    backBtn.textContent = '\u2190 Dashboard';
+    backBtn.addEventListener('click', () => {
+      wrapper.innerHTML = '';
+      wrapper.className = 'results-main';
+      renderDashboard(wrapper, data, buildDashboardCallbacks(wrapper, session, data));
+    });
+    toolbar.appendChild(backBtn);
+    toolbar.appendChild(toolbarSep());
 
     for (const panel of FLOATING_PANELS) {
       const btn = document.createElement('button');

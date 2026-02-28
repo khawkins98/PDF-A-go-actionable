@@ -196,9 +196,11 @@ async function downloadPDF(data) {
   y -= 4;
 
   // === Verdict banner ===
-  const bannerPad = 12;
+  const bannerPad = 14;
   const bannerGap = 6;
-  const bannerHeight = bannerPad + verdictFontSize + bannerGap + smallFontSize + bannerPad;
+  // Font ascent ≈ 75% of size — baseline must sit below the ascender line
+  const verdictAscent = Math.ceil(verdictFontSize * 0.75);
+  const bannerHeight = bannerPad + verdictAscent + verdictFontSize + bannerGap + smallFontSize + bannerPad;
   ensureSpace(bannerHeight + 16);
 
   const bannerBg = statusBgColors[overallStatus];
@@ -216,8 +218,8 @@ async function downloadPDF(data) {
     borderWidth: 1.5,
   });
 
-  // Label baseline: top of banner minus padding
-  const labelBaseline = y - bannerPad;
+  // Label baseline: top of banner minus padding minus ascent (ascenders stay inside)
+  const labelBaseline = y - bannerPad - verdictAscent;
   page.drawText(verdictLabel, {
     x: margin + bannerPad,
     y: labelBaseline,

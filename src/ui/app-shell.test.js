@@ -700,6 +700,28 @@ describe('initAppShell', () => {
       expect(typeof callbacks.onUploadAnother).toBe('function');
     });
 
+    it('should render a "Dashboard" button in the detailed view toolbar that re-renders dashboard', async () => {
+      const { renderDashboard } = await simulateAnalysis();
+
+      // Transition to detailed view
+      const callbacks = renderDashboard.mock.calls[0][2];
+      callbacks.onViewFullReport();
+
+      // Find the wrapper (the mounted element in the results WinBox)
+      const resultsWin = mockWinBoxInstances.find((w) => w.title.startsWith('Results:'));
+      const wrapper = resultsWin._mountEl;
+
+      // The toolbar should contain a "← Dashboard" button
+      const backBtn = wrapper.querySelector('.results-toolbar .toolbar-btn');
+      expect(backBtn).not.toBeNull();
+      expect(backBtn.textContent).toContain('Dashboard');
+
+      // Click it — should re-render the dashboard
+      renderDashboard.mockClear();
+      backBtn.click();
+      expect(renderDashboard).toHaveBeenCalledOnce();
+    });
+
     it('should pass onExport callback that invokes initExport methods', async () => {
       const { initExport } = await import('./export.js');
       const { renderDashboard } = await simulateAnalysis();
