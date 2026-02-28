@@ -168,11 +168,7 @@ export function renderDashboard(el, data, callbacks) {
         const row = document.createElement('div');
         row.className = 'dashboard__finding-row';
 
-        const badge = document.createElement('span');
-        badge.className = `status-badge status-badge--${f.status}`;
-        badge.textContent = group.icon;
-        badge.setAttribute('aria-hidden', 'true');
-        row.appendChild(badge);
+        row.appendChild(statusBadge(f.status, group.icon));
 
         const info = document.createElement('div');
         info.className = 'dashboard__finding-info';
@@ -196,11 +192,7 @@ export function renderDashboard(el, data, callbacks) {
         const card = document.createElement('div');
         card.className = 'dashboard__finding-compact';
 
-        const badge = document.createElement('span');
-        badge.className = `status-badge status-badge--${f.status}`;
-        badge.textContent = group.icon;
-        badge.setAttribute('aria-hidden', 'true');
-        card.appendChild(badge);
+        card.appendChild(statusBadge(f.status, group.icon));
 
         const title = document.createElement('strong');
         title.className = 'dashboard__finding-title';
@@ -228,6 +220,15 @@ export function renderDashboard(el, data, callbacks) {
     el.appendChild(section);
   }
 
+}
+
+/** Create a decorative status badge (aria-hidden). */
+function statusBadge(status, icon) {
+  const badge = document.createElement('span');
+  badge.className = `status-badge status-badge--${status}`;
+  badge.textContent = icon;
+  badge.setAttribute('aria-hidden', 'true');
+  return badge;
 }
 
 /**

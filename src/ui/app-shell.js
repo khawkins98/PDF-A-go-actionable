@@ -577,13 +577,11 @@ export function initAppShell(container, worker) {
    * Swap the results window content from dashboard to the detailed findings view.
    */
   function showDetailedView(wrapper, session, data) {
-    // Abort dashboard document listeners before replacing content
-    if (wrapper._dashboardAbort) {
-      wrapper._dashboardAbort.abort();
-      wrapper._dashboardAbort = null;
-    }
     wrapper.innerHTML = '';
     wrapper.className = 'results-main';
+
+    // Track bus subscriptions so we can clean up on back-navigation
+    const busUnsubs = [];
 
     // Summary section
     const summaryEl = document.createElement('div');
@@ -602,6 +600,7 @@ export function initAppShell(container, worker) {
     backBtn.className = 'toolbar-btn';
     backBtn.textContent = '\u2190 Dashboard';
     backBtn.addEventListener('click', () => {
+      for (const unsub of busUnsubs) unsub();
       wrapper.innerHTML = '';
       wrapper.className = 'results-main';
       renderDashboard(wrapper, data, buildDashboardCallbacks(wrapper, session, data));
@@ -641,12 +640,14 @@ export function initAppShell(container, worker) {
 
     const findingsEl = document.createElement('div');
     findingsEl.className = 'results-findings';
-    renderFindingsPanel(findingsEl, data, session.bus);
+    const unsubFindings = renderFindingsPanel(findingsEl, data, session.bus);
+    if (unsubFindings) busUnsubs.push(unsubFindings);
     split.appendChild(findingsEl);
 
     const detailsEl = document.createElement('div');
     detailsEl.className = 'results-details';
-    renderDetailsPanel(detailsEl, data, session.bus);
+    const unsubDetails = renderDetailsPanel(detailsEl, data, session.bus);
+    if (unsubDetails) busUnsubs.push(unsubDetails);
     split.appendChild(detailsEl);
 
     wrapper.appendChild(split);
@@ -783,11 +784,6 @@ export function initAppShell(container, worker) {
   }
 
   function cleanupSession(session) {
-    // Abort dashboard document listeners
-    if (session.mainWin?.body) {
-      const content = session.mainWin.body.firstElementChild;
-      if (content?._dashboardAbort) content._dashboardAbort.abort();
-    }
     for (const win of session.floatingPanels.values()) {
       win.onclose = null;
       win.close();

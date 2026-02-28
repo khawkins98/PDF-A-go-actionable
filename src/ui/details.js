@@ -30,7 +30,7 @@ export function renderDetailsPanel(el, data, bus) {
   renderPlaceholder(el);
 
   // Listen for finding selection
-  bus.on('selectFinding', ({ findingId }) => {
+  const unsub = bus.on('selectFinding', ({ findingId }) => {
     const finding = findingsMap.get(findingId);
     if (finding) {
       renderFinding(el, finding);
@@ -45,6 +45,8 @@ export function renderDetailsPanel(el, data, bus) {
       renderFinding(el, finding);
     }
   }
+
+  return unsub;
 }
 
 /**
