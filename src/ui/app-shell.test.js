@@ -691,7 +691,29 @@ describe('initAppShell', () => {
       );
       expect(resultsWin).toBeDefined();
       expect(resultsWin.opts.mount).toBeInstanceOf(HTMLElement);
-      expect(resultsWin.opts.mount.className).toBe('results-main');
+      expect(resultsWin.opts.mount.classList.contains('results-main')).toBe(true);
+    });
+
+    it('should pass onUploadAnother callback to renderDashboard', async () => {
+      const { renderDashboard } = await simulateAnalysis();
+      const callbacks = renderDashboard.mock.calls[0][2];
+      expect(typeof callbacks.onUploadAnother).toBe('function');
+    });
+
+    it('should pass onExport callback that invokes initExport methods', async () => {
+      const { initExport } = await import('./export.js');
+      const { renderDashboard } = await simulateAnalysis();
+
+      const callbacks = renderDashboard.mock.calls[0][2];
+      const mockFns = initExport.mock.results[0]?.value || {
+        exportJSON: vi.fn(),
+        exportCSV: vi.fn(),
+        exportPDF: vi.fn(),
+      };
+
+      // initExport may not have been called yet — call the export callback
+      callbacks.onExport('json');
+      expect(initExport).toHaveBeenCalled();
     });
   });
 });

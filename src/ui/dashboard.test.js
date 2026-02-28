@@ -2,7 +2,7 @@
 /**
  * Tests for the report dashboard view.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderDashboard } from './dashboard.js';
 
 /** Minimal Finding factory. */
@@ -54,6 +54,11 @@ describe('renderDashboard', () => {
   beforeEach(() => {
     el = document.createElement('div');
     callbacks = makeCallbacks();
+  });
+
+  afterEach(() => {
+    // Abort any document-level listeners from renderDashboard
+    if (el._dashboardAbort) el._dashboardAbort.abort();
   });
 
   // --- Verdict banner ---
@@ -456,5 +461,192 @@ describe('renderDashboard', () => {
 
     const section = el.querySelector('.dashboard__section');
     expect(section.getAttribute('aria-label')).toBe('Needs Attention');
+  });
+
+  // --- Empty findings description ---
+
+  it('should show "No checks were performed" when findings array is empty', () => {
+    const data = makeData([]);
+    renderDashboard(el, data, callbacks);
+
+    const desc = el.querySelector('.dashboard__verdict-desc');
+    expect(desc.textContent).toBe('No checks were performed.');
+  });
+
+  // --- Warning verdict description ---
+
+  it('should include warning count and pass count in PASS WITH WARNINGS description', () => {
+    const data = makeData([
+      finding({ id: 'f1', status: 'warning', title: 'Font' }),
+      finding({ id: 'f2', status: 'warning', title: 'Reading' }),
+      finding({ id: 'f3', status: 'pass', title: 'Lang' }),
+    ]);
+    renderDashboard(el, data, callbacks);
+
+    const desc = el.querySelector('.dashboard__verdict-desc');
+    expect(desc.textContent).toContain('2 warnings need review');
+    expect(desc.textContent).toContain('1 check passed');
+  });
+
+  // --- Export menu closes on item click ---
+
+  it('should close export menu when a menu item is clicked', () => {
+    const data = makeData([]);
+    renderDashboard(el, data, callbacks);
+
+    const exportBtn = el.querySelector('[aria-haspopup="true"]');
+    const menu = el.querySelector('.dashboard__export-menu');
+    exportBtn.click();
+    expect(menu.hidden).toBe(false);
+
+    const items = el.querySelectorAll('.dashboard__export-item');
+    items[0].click();
+    expect(menu.hidden).toBe(true);
+    expect(exportBtn.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  // --- Export menu keyboard navigation ---
+
+  it('should close export menu on Escape and return focus to trigger button', () => {
+    const data = makeData([]);
+    renderDashboard(el, data, callbacks);
+
+    const exportBtn = el.querySelector('[aria-haspopup="true"]');
+    const menu = el.querySelector('.dashboard__export-menu');
+    exportBtn.click();
+    expect(menu.hidden).toBe(false);
+
+    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(menu.hidden).toBe(true);
+    expect(exportBtn.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('should navigate export menu items with ArrowDown and ArrowUp', () => {
+    // Attach to document so focus() works
+    document.body.appendChild(el);
+    const data = makeData([]);
+    renderDashboard(el, data, callbacks);
+
+    const exportBtn = el.querySelector('[aria-haspopup="true"]');
+    exportBtn.click();
+
+    const items = el.querySelectorAll('.dashboard__export-item');
+    // First item should have focus after opening
+    expect(document.activeElement).toBe(items[0]);
+
+    // ArrowDown moves to next item
+    el.querySelector('.dashboard__export-menu').dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }),
+    );
+    expect(document.activeElement).toBe(items[1]);
+
+    // ArrowUp moves back
+    el.querySelector('.dashboard__export-menu').dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }),
+    );
+    expect(document.activeElement).toBe(items[0]);
+
+    document.body.removeChild(el);
+  });
+
+  it('should set tabindex="-1" on export menu items', () => {
+    const data = makeData([]);
+    renderDashboard(el, data, callbacks);
+
+    const items = el.querySelectorAll('.dashboard__export-item');
+    for (const item of items) {
+      expect(item.getAttribute('tabindex')).toBe('-1');
+    }
+  });
+
+  it('should set aria-controls on export trigger button', () => {
+    const data = makeData([]);
+    renderDashboard(el, data, callbacks);
+
+    const exportBtn = el.querySelector('[aria-haspopup="true"]');
+    const menu = el.querySelector('.dashboard__export-menu');
+    expect(exportBtn.getAttribute('aria-controls')).toBe(menu.id);
+  });
+
+  // --- Creator/producer conditional rendering ---
+
+  it('should show Creator and Producer in metadata when present', () => {
+    const data = makeData([], { creator: 'Adobe InDesign', producer: 'Adobe PDF Library' });
+    renderDashboard(el, data, callbacks);
+
+    const grid = el.querySelector('.dashboard__meta-grid');
+    const dts = [...grid.querySelectorAll('dt')];
+    const labels = dts.map((d) => d.textContent);
+    expect(labels).toContain('Creator');
+    expect(labels).toContain('Producer');
+  });
+
+  it('should not show Creator and Producer in metadata when absent', () => {
+    const data = makeData([], { creator: undefined, producer: undefined });
+    renderDashboard(el, data, callbacks);
+
+    const grid = el.querySelector('.dashboard__meta-grid');
+    const dts = [...grid.querySelectorAll('dt')];
+    const labels = dts.map((d) => d.textContent);
+    expect(labels).not.toContain('Creator');
+    expect(labels).not.toContain('Producer');
+  });
+
+  // --- File facts edge cases ---
+
+  it('should show singular "page" for single-page documents', () => {
+    const data = makeData([], { pageCount: 1 });
+    renderDashboard(el, data, callbacks);
+
+    const facts = el.querySelector('.dashboard__file-facts');
+    expect(facts.textContent).toContain('1 page');
+    expect(facts.textContent).not.toContain('1 pages');
+  });
+
+  it('should omit Tagged and PDF/UA from file facts when false', () => {
+    const data = makeData([], { isTagged: false, isPdfUA: false, lang: null });
+    renderDashboard(el, data, callbacks);
+
+    const facts = el.querySelector('.dashboard__file-facts');
+    expect(facts.textContent).not.toContain('Tagged');
+    expect(facts.textContent).not.toContain('PDF/UA');
+  });
+
+  // --- className preserves existing classes ---
+
+  it('should preserve existing classes on the container element', () => {
+    el.className = 'results-main';
+    const data = makeData([]);
+    renderDashboard(el, data, callbacks);
+
+    expect(el.classList.contains('results-main')).toBe(true);
+    expect(el.classList.contains('dashboard')).toBe(true);
+  });
+
+  // --- Re-render cleans up previous listeners ---
+
+  it('should abort previous document listeners when re-rendered', () => {
+    const data = makeData([]);
+    renderDashboard(el, data, callbacks);
+
+    const firstAbort = el._dashboardAbort;
+    const abortSpy = vi.spyOn(firstAbort, 'abort');
+
+    renderDashboard(el, data, callbacks);
+    expect(abortSpy).toHaveBeenCalledOnce();
+  });
+
+  // --- displayDocTitle warning ---
+
+  it('should show warning style for displayDocTitle when false', () => {
+    const data = makeData([], { displayDocTitle: false });
+    renderDashboard(el, data, callbacks);
+
+    const grid = el.querySelector('.dashboard__meta-grid');
+    const dts = [...grid.querySelectorAll('dt')];
+    const dt = dts.find((d) => d.textContent === 'Display Doc Title');
+    const dd = dt.nextElementSibling;
+    expect(dd.textContent).toBe('No');
+    expect(dd.classList.contains('dashboard__meta-warn')).toBe(true);
   });
 });

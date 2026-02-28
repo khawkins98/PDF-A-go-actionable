@@ -59,6 +59,7 @@ export async function runAudit(buffer, options = {}) {
           wcagRef: null,
           pdfuaRef: null,
         }],
+        structureTree: null,
         meta: {
           fileName: fileName || 'Unknown',
           fileSize: buffer.byteLength,
@@ -71,7 +72,12 @@ export async function runAudit(buffer, options = {}) {
           producer: null,
           lang: null,
           isPdfA: false,
+          pdfALevel: null,
           isPdfUA: false,
+          isTagged: false,
+          hasSuspects: false,
+          hasStructTree: false,
+          displayDocTitle: false,
         },
       };
     }

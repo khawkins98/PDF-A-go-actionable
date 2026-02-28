@@ -7,18 +7,7 @@
  */
 
 import { formatFileSize } from './report.js';
-
-/**
- * Status groups in display order. Fail first (most important), then
- * warnings, manual review, pass, and finally not-applicable.
- */
-const STATUS_GROUPS = [
-  { key: 'fail', heading: 'Needs Attention', icon: 'FAIL', density: 'full' },
-  { key: 'warning', heading: 'Warnings', icon: 'WARN', density: 'full' },
-  { key: 'manual', heading: 'Manual Review', icon: 'MANUAL', density: 'compact' },
-  { key: 'pass', heading: 'Passed', icon: '\u2713', density: 'chip' },
-  { key: 'not-applicable', heading: 'Not Applicable', icon: '\u2014', density: 'chip' },
-];
+import { STATUS_GROUPS } from './constants.js';
 
 /**
  * Render the report dashboard into a container element.
@@ -33,6 +22,11 @@ const STATUS_GROUPS = [
  */
 export function renderDashboard(el, data, callbacks) {
   const { findings, meta } = data;
+
+  // Abort any previous document-level listeners from a prior render
+  if (el._dashboardAbort) el._dashboardAbort.abort();
+  const abort = new AbortController();
+  el._dashboardAbort = abort;
 
   // Group findings by status
   const groups = {};
@@ -49,7 +43,7 @@ export function renderDashboard(el, data, callbacks) {
   const overallStatus = failCount > 0 ? 'fail' : warnCount > 0 ? 'warning' : 'pass';
 
   el.innerHTML = '';
-  el.className = 'dashboard';
+  el.classList.add('dashboard');
 
   // === Verdict banner ===
   const verdict = document.createElement('div');
@@ -69,7 +63,9 @@ export function renderDashboard(el, data, callbacks) {
 
   if (overallStatus === 'pass') {
     verdictLabel.textContent = 'PASS';
-    if (manualCount > 0) {
+    if (passCount === 0 && manualCount === 0) {
+      verdictDesc.textContent = 'No checks were performed.';
+    } else if (manualCount > 0) {
       verdictDesc.textContent = `All ${passCount} automated checks passed. ${manualCount} item${manualCount !== 1 ? 's' : ''} flagged for manual review.`;
     } else {
       verdictDesc.textContent = `All ${passCount} automated checks passed.`;
@@ -171,38 +167,98 @@ export function renderDashboard(el, data, callbacks) {
   exportBtn.setAttribute('aria-expanded', 'false');
   exportBtn.textContent = 'Download Report \u25BE';
 
+  const menuId = `export-menu-${Date.now()}`;
+  exportBtn.setAttribute('aria-controls', menuId);
+
   const exportMenu = document.createElement('div');
   exportMenu.className = 'dashboard__export-menu';
+  exportMenu.id = menuId;
   exportMenu.setAttribute('role', 'menu');
   exportMenu.hidden = true;
 
+  const menuItems = [];
   for (const [format, label] of [['json', 'JSON'], ['csv', 'CSV'], ['pdf', 'PDF']]) {
     const item = document.createElement('button');
     item.type = 'button';
     item.className = 'dashboard__export-item';
     item.setAttribute('role', 'menuitem');
+    item.setAttribute('tabindex', '-1');
     item.textContent = `Export as ${label}`;
     item.addEventListener('click', () => {
-      exportMenu.hidden = true;
-      exportBtn.setAttribute('aria-expanded', 'false');
+      closeExportMenu();
       callbacks.onExport(format);
     });
     exportMenu.appendChild(item);
+    menuItems.push(item);
+  }
+
+  function openExportMenu() {
+    exportMenu.hidden = false;
+    exportBtn.setAttribute('aria-expanded', 'true');
+    if (menuItems.length > 0) menuItems[0].focus();
+  }
+
+  function closeExportMenu() {
+    exportMenu.hidden = true;
+    exportBtn.setAttribute('aria-expanded', 'false');
   }
 
   exportBtn.addEventListener('click', () => {
-    const open = !exportMenu.hidden;
-    exportMenu.hidden = open;
-    exportBtn.setAttribute('aria-expanded', String(!open));
-  });
-
-  // Close export menu when clicking outside
-  document.addEventListener('click', (e) => {
-    if (!exportWrap.contains(e.target) && !exportMenu.hidden) {
-      exportMenu.hidden = true;
-      exportBtn.setAttribute('aria-expanded', 'false');
+    if (exportMenu.hidden) {
+      openExportMenu();
+    } else {
+      closeExportMenu();
     }
   });
+
+  // Keyboard navigation for export menu (ARIA menu pattern)
+  exportBtn.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+      if (exportMenu.hidden) {
+        e.preventDefault();
+        openExportMenu();
+      }
+    }
+  });
+
+  exportMenu.addEventListener('keydown', (e) => {
+    const items = menuItems;
+    const idx = items.indexOf(document.activeElement);
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        items[(idx + 1) % items.length].focus();
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        items[(idx - 1 + items.length) % items.length].focus();
+        break;
+      case 'Home':
+        e.preventDefault();
+        items[0].focus();
+        break;
+      case 'End':
+        e.preventDefault();
+        items[items.length - 1].focus();
+        break;
+      case 'Escape':
+        e.preventDefault();
+        closeExportMenu();
+        exportBtn.focus();
+        break;
+      case 'Tab':
+        closeExportMenu();
+        break;
+    }
+  });
+
+  // Close export menu when clicking outside (uses AbortController for cleanup)
+  document.addEventListener('click', (e) => {
+    if (!exportWrap.contains(e.target) && !exportMenu.hidden) {
+      closeExportMenu();
+    }
+  }, { signal: abort.signal });
 
   exportWrap.appendChild(exportBtn);
   exportWrap.appendChild(exportMenu);

@@ -6,6 +6,8 @@
  * out of the critical path for initial page load.
  */
 
+import { STATUS_GROUPS } from './constants.js';
+
 /**
  * Initialize export functionality for the given audit data.
  *
@@ -85,17 +87,6 @@ function downloadCSV(data) {
  *
  * @param {object} data
  */
-/**
- * Status groups in display order — mirrors dashboard.js.
- */
-const STATUS_GROUPS = [
-  { key: 'fail', heading: 'NEEDS ATTENTION', density: 'full' },
-  { key: 'warning', heading: 'WARNINGS', density: 'full' },
-  { key: 'manual', heading: 'MANUAL REVIEW', density: 'compact' },
-  { key: 'pass', heading: 'PASSED', density: 'chip' },
-  { key: 'not-applicable', heading: 'NOT APPLICABLE', density: 'chip' },
-];
-
 async function downloadPDF(data) {
   const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
   const pdfDoc = await PDFDocument.create();
@@ -343,7 +334,7 @@ async function downloadPDF(data) {
     y -= 4;
     ensureSpace(headingFontSize * 1.4 + fontSize * 1.4 + 8);
 
-    drawText(`${group.heading} - ${items.length} check${items.length !== 1 ? 's' : ''}`, {
+    drawText(`${group.heading.toUpperCase()} - ${items.length} check${items.length !== 1 ? 's' : ''}`, {
       size: headingFontSize,
       useBold: true,
       color: statusColors[group.key] || rgb(0.2, 0.2, 0.2),
