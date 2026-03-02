@@ -471,7 +471,7 @@ function drawChecklistPage(data, h) {
     color: rgb(0.4, 0.4, 0.4),
   });
 
-  drawText('Based on UNDRR 13-Point Validation Workflow', {
+  drawText('13-Point PDF Accessibility Validation Checklist', {
     size: smallFontSize,
     color: rgb(0.4, 0.4, 0.4),
   });
