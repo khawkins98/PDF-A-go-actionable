@@ -213,4 +213,103 @@ describe('renderDetailsPanel', () => {
     expect(labels).toContain('Remediation');
     expect(labels).toContain('Details');
   });
+
+  // --- UNDRR Guidance sections ---
+
+  it('should render "Why This Matters" section for a UNDRR-mapped finding', () => {
+    const el = document.createElement('div');
+    const data = {
+      findings: [makeFinding({ id: 'document-title', title: 'Document Title' })],
+      meta: {},
+    };
+
+    renderDetailsPanel(el, data, bus);
+    bus.emit('selectFinding', { findingId: 'document-title' });
+
+    const sections = el.querySelectorAll('section[aria-label]');
+    const labels = [...sections].map((s) => s.getAttribute('aria-label'));
+    expect(labels).toContain('Why This Matters');
+  });
+
+  it('should render authoring tool tips for a UNDRR-mapped finding', () => {
+    const el = document.createElement('div');
+    const data = {
+      findings: [makeFinding({ id: 'document-lang', title: 'Document Language' })],
+      meta: {},
+    };
+
+    renderDetailsPanel(el, data, bus);
+    bus.emit('selectFinding', { findingId: 'document-lang' });
+
+    const sections = el.querySelectorAll('section[aria-label]');
+    const labels = [...sections].map((s) => s.getAttribute('aria-label'));
+    expect(labels).toContain('Authoring Tool Tips');
+
+    // Should have tool-specific tips
+    const dts = el.querySelectorAll('.details__tips-list dt');
+    const tipLabels = [...dts].map((dt) => dt.textContent.replace(/ \(detected\)/, ''));
+    expect(tipLabels).toContain('General');
+    expect(tipLabels).toContain('Microsoft Word');
+  });
+
+  it('should render complementary tools for a UNDRR-mapped finding', () => {
+    const el = document.createElement('div');
+    const data = {
+      findings: [makeFinding({ id: 'heading-hierarchy', title: 'Heading Hierarchy' })],
+      meta: {},
+    };
+
+    renderDetailsPanel(el, data, bus);
+    bus.emit('selectFinding', { findingId: 'heading-hierarchy' });
+
+    const sections = el.querySelectorAll('section[aria-label]');
+    const labels = [...sections].map((s) => s.getAttribute('aria-label'));
+    expect(labels).toContain('Complementary Tools');
+  });
+
+  it('should NOT render UNDRR guidance sections for an unmapped finding', () => {
+    const el = document.createElement('div');
+    const data = {
+      findings: [makeFinding({ id: 'font-tounicode', title: 'Font Unicode' })],
+      meta: {},
+    };
+
+    renderDetailsPanel(el, data, bus);
+    bus.emit('selectFinding', { findingId: 'font-tounicode' });
+
+    const sections = el.querySelectorAll('section[aria-label]');
+    const labels = [...sections].map((s) => s.getAttribute('aria-label'));
+    expect(labels).not.toContain('Why This Matters');
+    expect(labels).not.toContain('Authoring Tool Tips');
+    expect(labels).not.toContain('Complementary Tools');
+  });
+
+  it('should highlight detected authoring tool from creator metadata', () => {
+    const el = document.createElement('div');
+    const data = {
+      findings: [makeFinding({ id: 'document-title', title: 'Document Title' })],
+      meta: { creator: 'Microsoft Word 365' },
+    };
+
+    renderDetailsPanel(el, data, bus);
+    bus.emit('selectFinding', { findingId: 'document-title' });
+
+    const detected = el.querySelector('.details__tip-detected');
+    expect(detected).not.toBeNull();
+    expect(detected.textContent).toContain('detected');
+  });
+
+  it('should not show detected badge when no authoring tool is recognized', () => {
+    const el = document.createElement('div');
+    const data = {
+      findings: [makeFinding({ id: 'document-title', title: 'Document Title' })],
+      meta: { creator: 'SomeUnknownTool' },
+    };
+
+    renderDetailsPanel(el, data, bus);
+    bus.emit('selectFinding', { findingId: 'document-title' });
+
+    const detected = el.querySelector('.details__tip-detected');
+    expect(detected).toBeNull();
+  });
 });

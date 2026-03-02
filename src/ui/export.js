@@ -7,6 +7,7 @@
  */
 
 import { STATUS_GROUPS, groupFindings, computeVerdict } from './constants.js';
+import { UNDRR_CHECKLIST, resolveChecklistStatus, getAdditionalFindings } from './undrr-checklist.js';
 
 /**
  * Initialize export functionality for the given audit data.
@@ -190,6 +191,13 @@ async function downloadPDF(data) {
   // === Group findings ===
   const groups = groupFindings(data.findings);
   const { overallStatus, label: verdictLabel, description: verdictDesc } = computeVerdict(groups);
+
+  // === Page 1: UNDRR Checklist Summary ===
+  drawChecklistPage(data, { drawText, drawRule, ensureSpace, statusColors, margin, contentWidth, fontSize, headingFontSize, smallFontSize, titleFontSize, page: () => page, y: () => y, setY: (val) => { y = val; }, rgb, font, fontBold, addPage: () => { page = pdfDoc.addPage([pageWidth, pageHeight]); y = pageHeight - margin; } });
+
+  // Start a new page for the detailed report
+  page = pdfDoc.addPage([pageWidth, pageHeight]);
+  y = pageHeight - margin;
 
   // === Title ===
   drawText('PDF Accessibility Report', { size: titleFontSize, useBold: true });
@@ -440,6 +448,166 @@ function triggerDownload(blob, filename) {
     URL.revokeObjectURL(url);
     document.body.removeChild(a);
   }, 100);
+}
+
+/**
+ * Draw the UNDRR 13-point checklist summary page.
+ * Uses columnar layout: status badge | number | title — all at fixed x positions.
+ *
+ * @param {object} data - Audit result data
+ * @param {object} h - Drawing helper functions and state
+ */
+function drawChecklistPage(data, h) {
+  const { drawText, drawRule, ensureSpace, statusColors, margin, contentWidth, fontSize, headingFontSize, smallFontSize, titleFontSize, rgb, font, fontBold } = h;
+
+  // Title
+  drawText('PDF Accessibility Checklist', { size: titleFontSize, useBold: true });
+
+  // File and date line
+  const fileName = data.meta.fileName || 'Unknown';
+  const date = new Date().toISOString().split('T')[0];
+  drawText(`File: ${fileName}  |  Date: ${date}`, {
+    size: smallFontSize,
+    color: rgb(0.4, 0.4, 0.4),
+  });
+
+  drawText('Based on UNDRR 13-Point Validation Workflow', {
+    size: smallFontSize,
+    color: rgb(0.4, 0.4, 0.4),
+  });
+
+  drawRule();
+
+  // Resolve checklist statuses
+  const checklistItems = resolveChecklistStatus(data.findings);
+
+  // Status label mapping (WinAnsi-safe, fixed-width labels)
+  const statusLabels = {
+    pass: 'PASS',
+    fail: 'FAIL',
+    warning: 'WARN',
+    manual: 'MANUAL',
+    'not-applicable': 'N/A',
+    'not-checked': '--',
+  };
+
+  // Status background colors for badge rectangles
+  const badgeBgColors = {
+    pass: rgb(0.83, 0.93, 0.85),
+    fail: rgb(0.97, 0.84, 0.85),
+    warning: rgb(1.0, 0.95, 0.80),
+    manual: rgb(0.80, 0.90, 1.0),
+    'not-applicable': rgb(0.90, 0.90, 0.90),
+    'not-checked': rgb(0.92, 0.92, 0.92),
+  };
+
+  // Fixed column positions
+  const colStatus = margin;           // Status badge starts at left margin
+  const badgeWidth = 56;              // Fixed width for all status badges
+  const colNumber = margin + badgeWidth + 8;  // Number column
+  const numberWidth = 22;             // Width for "13."
+  const colTitle = colNumber + numberWidth;   // Title text
+
+  const rowHeight = fontSize * 1.8;
+  const badgeHeight = fontSize * 1.3;
+  const badgePadY = (rowHeight - badgeHeight) / 2;
+
+  // Access page/y through the helpers (closure)
+  function drawChecklistRow(label, statusKey, numberText, titleText) {
+    const page = h.page();
+    const yPos = h.y();
+    ensureSpace(rowHeight);
+
+    const currentY = h.y();
+    const color = statusColors[statusKey] || rgb(0.4, 0.4, 0.4);
+    const bgColor = badgeBgColors[statusKey] || rgb(0.92, 0.92, 0.92);
+
+    // Draw status badge background
+    page.drawRectangle({
+      x: colStatus,
+      y: currentY - badgeHeight + fontSize * 0.25,
+      width: badgeWidth,
+      height: badgeHeight,
+      color: bgColor,
+      borderColor: color,
+      borderWidth: 0.75,
+    });
+
+    // Draw status label centered in badge
+    const labelWidth = fontBold.widthOfTextAtSize(label, fontSize - 1);
+    const labelX = colStatus + (badgeWidth - labelWidth) / 2;
+    page.drawText(label, {
+      x: labelX,
+      y: currentY,
+      size: fontSize - 1,
+      font: fontBold,
+      color,
+    });
+
+    // Draw number
+    page.drawText(numberText, {
+      x: colNumber,
+      y: currentY,
+      size: fontSize,
+      font: fontBold,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+
+    // Draw title
+    page.drawText(titleText, {
+      x: colTitle,
+      y: currentY,
+      size: fontSize,
+      font: font,
+      color: rgb(0.15, 0.15, 0.15),
+    });
+
+    h.setY(currentY - rowHeight);
+  }
+
+  // Draw each of the 13 checklist items
+  for (const item of checklistItems) {
+    const label = statusLabels[item.status] || '--';
+    drawChecklistRow(label, item.status, `${item.undrrNumber}.`, item.title);
+  }
+
+  drawRule();
+
+  // Additional checks section
+  const additional = getAdditionalFindings(data.findings);
+  if (additional.length > 0) {
+    drawText('Additional Checks', {
+      size: headingFontSize,
+      useBold: true,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+
+    for (const f of additional) {
+      const label = statusLabels[f.status] || '--';
+      drawChecklistRow(label, f.status, '', f.title);
+    }
+
+    drawRule();
+  }
+
+  // Summary line
+  const autoChecked = checklistItems.filter((i) => i.status !== 'not-checked' && i.status !== 'manual');
+  const passed = autoChecked.filter((i) => i.status === 'pass' || i.status === 'not-applicable').length;
+  const needsAttention = autoChecked.filter((i) => i.status === 'fail' || i.status === 'warning').length;
+  const manualCount = checklistItems.filter((i) => i.status === 'manual').length;
+
+  const parts = [];
+  if (autoChecked.length > 0) parts.push(`${passed}/${autoChecked.length} automated checks passed`);
+  if (needsAttention > 0) parts.push(`${needsAttention} need attention`);
+  if (manualCount > 0) parts.push(`${manualCount} for manual review`);
+
+  if (parts.length > 0) {
+    drawText(`Summary: ${parts.join('  |  ')}`, {
+      size: fontSize,
+      useBold: true,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+  }
 }
 
 /**
