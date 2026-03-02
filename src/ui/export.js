@@ -501,31 +501,44 @@ function drawChecklistPage(data, h) {
     'not-checked': rgb(0.92, 0.92, 0.92),
   };
 
-  // Fixed column positions
-  const colStatus = margin;           // Status badge starts at left margin
-  const badgeWidth = 56;              // Fixed width for all status badges
-  const colNumber = margin + badgeWidth + 8;  // Number column
-  const numberWidth = 22;             // Width for "13."
-  const colTitle = colNumber + numberWidth;   // Title text
+  // Layout constants
+  const badgeWidth = 56;
+  const badgePad = 3;                 // Vertical padding inside badge
+  const badgeTextSize = fontSize - 1;
+  const badgeHeight = badgeTextSize + badgePad * 2;
+  const rowHeight = badgeHeight + 4;  // Row = badge + spacing
+  const colStatus = margin;
+  const colNumber = margin + badgeWidth + 8;
+  const numberWidth = 22;
+  const colTitle = colNumber + numberWidth;
+  // Additional checks: no number column, title starts after badge
+  const colTitleNoNum = colNumber;
 
-  const rowHeight = fontSize * 1.8;
-  const badgeHeight = fontSize * 1.3;
-  const badgePadY = (rowHeight - badgeHeight) / 2;
-
-  // Access page/y through the helpers (closure)
-  function drawChecklistRow(label, statusKey, numberText, titleText) {
+  /**
+   * Draw a single checklist row with aligned badge, optional number, and title.
+   *
+   * h.y() gives the current text baseline (same as drawText uses).
+   * PDF y-axis goes up, so we draw the badge rect below/around the baseline.
+   *
+   * For Helvetica at a given size:
+   *   ascent  ≈ 0.72 * size (above baseline)
+   *   descent ≈ 0.22 * size (below baseline)
+   */
+  function drawChecklistRow(label, statusKey, numberText, titleText, hasNumber = true) {
     const page = h.page();
-    const yPos = h.y();
     ensureSpace(rowHeight);
 
-    const currentY = h.y();
+    const baseline = h.y();
     const color = statusColors[statusKey] || rgb(0.4, 0.4, 0.4);
     const bgColor = badgeBgColors[statusKey] || rgb(0.92, 0.92, 0.92);
 
-    // Draw status badge background
+    // Badge rectangle wraps around the text baseline
+    // Bottom of badge = baseline - descent - padding
+    const rectBottom = baseline - badgeTextSize * 0.22 - badgePad;
+
     page.drawRectangle({
       x: colStatus,
-      y: currentY - badgeHeight + fontSize * 0.25,
+      y: rectBottom,
       width: badgeWidth,
       height: badgeHeight,
       color: bgColor,
@@ -533,36 +546,38 @@ function drawChecklistPage(data, h) {
       borderWidth: 0.75,
     });
 
-    // Draw status label centered in badge
-    const labelWidth = fontBold.widthOfTextAtSize(label, fontSize - 1);
-    const labelX = colStatus + (badgeWidth - labelWidth) / 2;
+    // Status label centered horizontally in badge, on the same baseline
+    const labelWidth = fontBold.widthOfTextAtSize(label, badgeTextSize);
     page.drawText(label, {
-      x: labelX,
-      y: currentY,
-      size: fontSize - 1,
+      x: colStatus + (badgeWidth - labelWidth) / 2,
+      y: baseline,
+      size: badgeTextSize,
       font: fontBold,
       color,
     });
 
-    // Draw number
-    page.drawText(numberText, {
-      x: colNumber,
-      y: currentY,
-      size: fontSize,
-      font: fontBold,
-      color: rgb(0.2, 0.2, 0.2),
-    });
+    // Number (if present)
+    if (numberText) {
+      page.drawText(numberText, {
+        x: colNumber,
+        y: baseline,
+        size: fontSize,
+        font: fontBold,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+    }
 
-    // Draw title
+    // Title — positioned after number column, or directly after badge if no number
+    const titleX = hasNumber ? colTitle : colTitleNoNum;
     page.drawText(titleText, {
-      x: colTitle,
-      y: currentY,
+      x: titleX,
+      y: baseline,
       size: fontSize,
       font: font,
       color: rgb(0.15, 0.15, 0.15),
     });
 
-    h.setY(currentY - rowHeight);
+    h.setY(baseline - rowHeight);
   }
 
   // Draw each of the 13 checklist items
@@ -584,7 +599,7 @@ function drawChecklistPage(data, h) {
 
     for (const f of additional) {
       const label = statusLabels[f.status] || '--';
-      drawChecklistRow(label, f.status, '', f.title);
+      drawChecklistRow(label, f.status, '', f.title, false);
     }
 
     drawRule();
