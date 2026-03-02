@@ -586,6 +586,7 @@ function drawChecklistPage(data, h) {
     drawChecklistRow(label, item.status, `${item.undrrNumber}.`, item.title);
   }
 
+  h.setY(h.y() - 6); // gap before rule
   drawRule();
 
   // Additional checks section
@@ -602,6 +603,7 @@ function drawChecklistPage(data, h) {
       drawChecklistRow(label, f.status, '', f.title, false);
     }
 
+    h.setY(h.y() - 6); // gap before rule
     drawRule();
   }
 
