@@ -70,7 +70,7 @@ describe('showAboutDialog', () => {
 
     const mountedContent = WinBox._instances[0].opts.mount;
     expect(mountedContent.innerHTML).toContain('PDF-A-go-actionable');
-    expect(mountedContent.innerHTML).toContain('Version 1.1.0');
+    expect(mountedContent.innerHTML).toContain('Version 1.2.0');
     expect(mountedContent.innerHTML).toContain('pdf-lib');
   });
 });

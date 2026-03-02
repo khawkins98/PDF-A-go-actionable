@@ -22,7 +22,7 @@ export function showAboutDialog(root, WinBox, onClose) {
   content.setAttribute('tabindex', '-1');
   content.innerHTML = `
     <h2>PDF-A-go-actionable</h2>
-    <p style="color:var(--color-text);font-size:var(--font-size-base);">Version 1.1.0</p>
+    <p style="color:var(--color-text);font-size:var(--font-size-base);">Version 1.2.0</p>
     <p>Free, browser-based PDF accessibility checker. Everything runs
     in your browser. No files are uploaded, no accounts needed.</p>
     <p>Covers the 13-point PDF accessibility checklist: 10 automated
