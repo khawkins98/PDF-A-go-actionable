@@ -269,7 +269,7 @@ export function initAppShell(container, worker) {
       <ul class="welcome__features">
         <li>Runs entirely in your browser, no file uploads</li>
         <li>Fix-it guidance for every finding</li>
-        <li>Covers the UNDRR 13-point accessibility checklist</li>
+        <li>Covers the 13-point PDF accessibility checklist</li>
       </ul>
     `
     );

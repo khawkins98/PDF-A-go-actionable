@@ -6,6 +6,7 @@
  */
 
 import { MENUBAR_HEIGHT } from './menu-bar.js';
+import { COMPLEMENTARY_TOOLS } from './undrr-checklist.js';
 
 /**
  * Show the About dialog.
@@ -21,7 +22,7 @@ export function showAboutDialog(root, WinBox, onClose) {
   content.setAttribute('tabindex', '-1');
   content.innerHTML = `
     <h2>PDF-A-go-actionable</h2>
-    <p style="color:var(--color-text);font-size:var(--font-size-base);">Version 1.1.0</p>
+    <p style="color:var(--color-text);font-size:var(--font-size-base);">Version 1.2.0</p>
     <p>Free, browser-based PDF accessibility checker. Everything runs
     in your browser. No files are uploaded, no accounts needed.</p>
     <p>Covers the 13-point PDF accessibility checklist: 10 automated
@@ -96,6 +97,13 @@ export function showHelpDialog(root, WinBox, onClose) {
       <li><strong>Escape</strong> -- close menus and dialogs</li>
       <li><strong>Home / End</strong> -- jump to first or last menu item</li>
     </ul>
+    <h3>Complementary Tools</h3>
+    <p>These tools complement this checker for a thorough accessibility workflow:</p>
+    <ul class="help-tools-list">
+      ${Object.values(COMPLEMENTARY_TOOLS).map((tool) =>
+        `<li><strong>${tool.url ? `<a href="${tool.url}" target="_blank" rel="noopener noreferrer">${tool.name}</a>` : tool.name}</strong> -- ${tool.role} (${tool.platform})</li>`
+      ).join('\n      ')}
+    </ul>
   `;
 
   const win = new WinBox({
@@ -104,8 +112,8 @@ export function showHelpDialog(root, WinBox, onClose) {
     root,
     x: 'center',
     y: 'center',
-    width: 480,
-    height: 440,
+    width: 500,
+    height: 560,
     top: MENUBAR_HEIGHT,
     overflow: true,
     class: ['white', 'no-full', 'no-max', 'no-min'],

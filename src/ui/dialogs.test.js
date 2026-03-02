@@ -70,7 +70,7 @@ describe('showAboutDialog', () => {
 
     const mountedContent = WinBox._instances[0].opts.mount;
     expect(mountedContent.innerHTML).toContain('PDF-A-go-actionable');
-    expect(mountedContent.innerHTML).toContain('Version 1.1.0');
+    expect(mountedContent.innerHTML).toContain('Version 1.2.0');
     expect(mountedContent.innerHTML).toContain('pdf-lib');
   });
 });
@@ -91,6 +91,30 @@ describe('showHelpDialog', () => {
     expect(mountedContent.innerHTML).toContain('How to Use');
     expect(mountedContent.innerHTML).toContain('Open File(s)');
     expect(mountedContent.innerHTML).toContain('Keyboard Shortcuts');
+  });
+
+  it('should include complementary tools section', () => {
+    const WinBox = mockWinBox();
+    showHelpDialog(mockRoot(), WinBox);
+
+    const mountedContent = WinBox._instances[0].opts.mount;
+    expect(mountedContent.innerHTML).toContain('Complementary Tools');
+    expect(mountedContent.innerHTML).toContain('PAC');
+    expect(mountedContent.innerHTML).toContain('NVDA');
+    expect(mountedContent.innerHTML).toContain('VoiceOver');
+  });
+
+  it('should render tool links with correct attributes', () => {
+    const WinBox = mockWinBox();
+    showHelpDialog(mockRoot(), WinBox);
+
+    const mountedContent = WinBox._instances[0].opts.mount;
+    const links = mountedContent.querySelectorAll('.help-tools-list a');
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) {
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+    }
   });
 
   it('should call onClose when the dialog closes', () => {

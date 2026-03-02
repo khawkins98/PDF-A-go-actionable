@@ -8,6 +8,7 @@
 
 import { formatFileSize } from './report.js';
 import { STATUS_GROUPS, groupFindings, computeVerdict } from './constants.js';
+import { resolveChecklistStatus } from './undrr-checklist.js';
 
 /**
  * Render the report dashboard into a container element.
@@ -142,6 +143,55 @@ export function renderDashboard(el, data, callbacks) {
   header.appendChild(actions);
   el.appendChild(header);
 
+  // === UNDRR Validation Checklist ===
+  const checklistItems = resolveChecklistStatus(findings);
+  const checklistSection = document.createElement('section');
+  checklistSection.className = 'dashboard__checklist-section';
+  checklistSection.setAttribute('aria-label', 'Validation Checklist');
+
+  const checklistHeading = document.createElement('h3');
+  checklistHeading.className = 'dashboard__section-heading';
+  checklistHeading.textContent = 'Validation Checklist';
+  checklistSection.appendChild(checklistHeading);
+
+  const checklistGrid = document.createElement('div');
+  checklistGrid.className = 'dashboard__checklist';
+
+  for (const item of checklistItems) {
+    const row = document.createElement('div');
+    row.className = 'dashboard__checklist-item';
+
+    const number = document.createElement('span');
+    number.className = `dashboard__checklist-number dashboard__checklist-number--${item.status}`;
+    number.textContent = String(item.undrrNumber);
+
+    const titleWrap = document.createElement('span');
+    titleWrap.className = 'dashboard__checklist-title';
+    titleWrap.textContent = item.title;
+
+    // Show contextual summary for N/A and not-checked items
+    if ((item.status === 'not-applicable' || item.status === 'not-checked') && item.summary) {
+      const reason = document.createElement('span');
+      reason.className = 'dashboard__checklist-reason';
+      reason.textContent = item.summary;
+      titleWrap.appendChild(document.createElement('br'));
+      titleWrap.appendChild(reason);
+    }
+
+    const statusIndicator = document.createElement('span');
+    statusIndicator.className = `dashboard__checklist-status dashboard__checklist-status--${item.status}`;
+    statusIndicator.textContent = checklistStatusLabel(item.status);
+    statusIndicator.setAttribute('aria-label', `${checklistStatusLabel(item.status)}`);
+
+    row.appendChild(number);
+    row.appendChild(titleWrap);
+    row.appendChild(statusIndicator);
+    checklistGrid.appendChild(row);
+  }
+
+  checklistSection.appendChild(checklistGrid);
+  el.appendChild(checklistSection);
+
   // === Status group sections ===
   for (const group of STATUS_GROUPS) {
     const items = groups[group.key];
@@ -229,6 +279,19 @@ function statusBadge(status, icon) {
   badge.textContent = icon;
   badge.setAttribute('aria-hidden', 'true');
   return badge;
+}
+
+/** Map a checklist item status to a short display label. */
+function checklistStatusLabel(status) {
+  switch (status) {
+    case 'pass': return 'Pass';
+    case 'fail': return 'Fail';
+    case 'warning': return 'Warn';
+    case 'manual': return 'Manual';
+    case 'not-applicable': return 'N/A';
+    case 'not-checked': return '--';
+    default: return status;
+  }
 }
 
 /**

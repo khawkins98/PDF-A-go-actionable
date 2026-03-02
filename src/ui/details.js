@@ -3,8 +3,10 @@
  *
  * Listens for 'selectFinding' events on the state bus and renders the
  * selected finding's title, status badge, summary, remediation text,
- * details array, and WCAG/PDF/UA references.
+ * details array, WCAG/PDF/UA references, and UNDRR guidance sections.
  */
+
+import { getUndrrItemForFinding, COMPLEMENTARY_TOOLS } from './undrr-checklist.js';
 
 /**
  * Render the details panel into the given container element.
@@ -19,6 +21,7 @@
  */
 export function renderDetailsPanel(el, data, bus) {
   const { findings } = data;
+  const context = { meta: data.meta || {} };
 
   // Build a lookup map by finding id
   const findingsMap = new Map();
@@ -33,7 +36,7 @@ export function renderDetailsPanel(el, data, bus) {
   const unsub = bus.on('selectFinding', ({ findingId }) => {
     const finding = findingsMap.get(findingId);
     if (finding) {
-      renderFinding(el, finding);
+      renderFinding(el, finding, context);
     }
   });
 
@@ -42,7 +45,7 @@ export function renderDetailsPanel(el, data, bus) {
   if (selected) {
     const finding = findingsMap.get(selected.findingId);
     if (finding) {
-      renderFinding(el, finding);
+      renderFinding(el, finding, context);
     }
   }
 
@@ -77,8 +80,9 @@ function renderPlaceholder(el) {
  *
  * @param {HTMLElement} el
  * @param {object} finding - A Finding object
+ * @param {object} [context] - Optional context with meta for guidance
  */
-function renderFinding(el, finding) {
+function renderFinding(el, finding, context = {}) {
   el.innerHTML = '';
 
   // Header area with status badge and title
@@ -218,6 +222,143 @@ function renderFinding(el, finding) {
     refsSection.appendChild(refsList);
     el.appendChild(refsSection);
   }
+
+  // === UNDRR Guidance sections ===
+  const undrrItem = getUndrrItemForFinding(finding.id);
+  if (undrrItem) {
+    // "Why This Matters" section
+    const whySection = document.createElement('section');
+    whySection.setAttribute('aria-label', 'Why This Matters');
+    whySection.style.cssText = [
+      'margin-bottom: var(--space-md)',
+      'padding: var(--space-md)',
+      'background: var(--color-surface-alt)',
+      'border-radius: var(--radius-md)',
+      'border-left: 4px solid var(--color-manual)',
+    ].join('; ');
+
+    const whyHeading = document.createElement('h3');
+    whyHeading.textContent = 'Why This Matters';
+    whyHeading.style.cssText = 'font-size: var(--font-size-lg); margin-bottom: var(--space-xs);';
+    const whyText = document.createElement('p');
+    whyText.textContent = undrrItem.whyItMatters;
+    whyText.style.cssText = 'line-height: 1.5; color: var(--color-text-secondary);';
+    whySection.appendChild(whyHeading);
+    whySection.appendChild(whyText);
+    el.appendChild(whySection);
+
+    // "Fix in Your Authoring Tool" section
+    const tipsSection = document.createElement('section');
+    tipsSection.setAttribute('aria-label', 'Authoring Tool Tips');
+    tipsSection.style.cssText = 'margin-bottom: var(--space-md);';
+
+    const tipsHeading = document.createElement('h3');
+    tipsHeading.textContent = 'Fix in Your Authoring Tool';
+    tipsHeading.style.cssText = 'font-size: var(--font-size-lg); margin-bottom: var(--space-sm);';
+    tipsSection.appendChild(tipsHeading);
+
+    // Detect primary authoring tool from creator/producer metadata
+    const detectedTool = detectAuthoringTool(context.meta);
+
+    const tipEntries = [
+      { key: 'general', label: 'General' },
+      { key: 'word', label: 'Microsoft Word' },
+      { key: 'indesign', label: 'Adobe InDesign' },
+      { key: 'powerpoint', label: 'Microsoft PowerPoint' },
+      { key: 'acrobat', label: 'Adobe Acrobat' },
+    ];
+
+    const tipsList = document.createElement('dl');
+    tipsList.className = 'details__tips-list';
+    tipsList.style.cssText = 'display: flex; flex-direction: column; gap: var(--space-sm);';
+
+    for (const entry of tipEntries) {
+      const tip = undrrItem.authoringTips[entry.key];
+      if (!tip) continue;
+
+      const dt = document.createElement('dt');
+      dt.style.cssText = 'font-weight: 600; font-size: var(--font-size-sm);';
+      dt.textContent = entry.label;
+
+      if (detectedTool === entry.key) {
+        const highlight = document.createElement('span');
+        highlight.className = 'details__tip-detected';
+        highlight.textContent = ' (detected)';
+        highlight.style.cssText = 'color: var(--color-pass); font-weight: 400; font-size: var(--font-size-sm);';
+        dt.appendChild(highlight);
+      }
+
+      const dd = document.createElement('dd');
+      dd.style.cssText = 'margin: 0; font-size: var(--font-size-sm); color: var(--color-text-secondary); line-height: 1.5;';
+      dd.textContent = tip;
+
+      tipsList.appendChild(dt);
+      tipsList.appendChild(dd);
+    }
+
+    tipsSection.appendChild(tipsList);
+    el.appendChild(tipsSection);
+
+    // "Complementary Tools" section
+    if (undrrItem.complementaryTools && undrrItem.complementaryTools.length > 0) {
+      const toolsSection = document.createElement('section');
+      toolsSection.setAttribute('aria-label', 'Complementary Tools');
+      toolsSection.style.cssText = 'margin-bottom: var(--space-md);';
+
+      const toolsHeading = document.createElement('h3');
+      toolsHeading.textContent = 'Complementary Tools';
+      toolsHeading.style.cssText = 'font-size: var(--font-size-lg); margin-bottom: var(--space-sm);';
+      toolsSection.appendChild(toolsHeading);
+
+      const toolsList = document.createElement('ul');
+      toolsList.style.cssText = 'list-style: none; display: flex; flex-direction: column; gap: var(--space-xs);';
+
+      for (const toolKey of undrrItem.complementaryTools) {
+        const tool = COMPLEMENTARY_TOOLS[toolKey];
+        if (!tool) continue;
+
+        const li = document.createElement('li');
+        li.style.cssText = 'font-size: var(--font-size-sm);';
+
+        if (tool.url) {
+          const link = document.createElement('a');
+          link.href = tool.url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.textContent = tool.name;
+          link.style.cssText = 'color: var(--color-primary); text-decoration: underline; font-weight: 600;';
+          li.appendChild(link);
+        } else {
+          const name = document.createElement('strong');
+          name.textContent = tool.name;
+          li.appendChild(name);
+        }
+
+        const desc = document.createTextNode(` -- ${tool.role} (${tool.platform})`);
+        li.appendChild(desc);
+        toolsList.appendChild(li);
+      }
+
+      toolsSection.appendChild(toolsList);
+      el.appendChild(toolsSection);
+    }
+  }
+}
+
+/**
+ * Detect the primary authoring tool from creator/producer metadata.
+ *
+ * @param {object} meta - Document metadata
+ * @returns {string|null} Tool key ('word', 'indesign', 'powerpoint', 'acrobat') or null
+ */
+function detectAuthoringTool(meta) {
+  if (!meta) return null;
+  const str = `${meta.creator || ''} ${meta.producer || ''}`.toLowerCase();
+  if (str.includes('powerpoint')) return 'powerpoint';
+  if (str.includes('word')) return 'word';
+  if (str.includes('indesign')) return 'indesign';
+  if (str.includes('acrobat')) return 'acrobat';
+  return null;
 }
 
 /**
