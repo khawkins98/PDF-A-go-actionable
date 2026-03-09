@@ -62,7 +62,7 @@ Built on [WinBox](https://github.com/nextapps-de/winbox) with CSS overrides for 
 
 ### Conventions
 
-- **TDD** --tests are written before implementation (see PRD.md for details)
+- **TDD** --tests are written before implementation
 - **[Conventional Commits](https://www.conventionalcommits.org/)** --all commit messages use prefixes like `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`
 
 ### Advanced Menu --Test PDFs
@@ -76,9 +76,16 @@ Test PDFs are sourced from:
 
 All files are fetched via `cdn.jsdelivr.net` at runtime (CORS-friendly, no local fixtures needed).
 
+## Non-Goals
+
+- PDF editing or remediation (this is a validation tool, not a fixer)
+- Full PDF/UA-1 or PDF/UA-2 conformance validation (300+ rules)
+- Server-side processing
+- User accounts or saved history
+
 ## Status
 
-V1.3.0. See [CHANGELOG.md](CHANGELOG.md) for release history and [PRD.md](PRD.md) for the full product requirements.
+V1.3.0. See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## Acknowledgments
 
