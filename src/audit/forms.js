@@ -207,7 +207,7 @@ function checkTabOrder(pdfDoc) {
     ],
     remediation: missing === 0
       ? null
-      : 'Set tab order to "Use Document Structure" for all pages. In Acrobat: right-click each page thumbnail > Page Properties > Tab Order > Use Document Structure.',
+      : 'Set tab order to "Use Document Structure" for all pages. In Acrobat: All Tools > Organize Pages, select a page thumbnail, then Page Properties > Tab Order > Use Document Structure. For tagged PDFs this is the recommended setting (see helpx.adobe.com/acrobat/using/page-thumbnails-bookmarks-pdfs.html).',
     wcagRef: '2.4.3',
     pdfuaRef: null,
   };

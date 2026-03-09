@@ -136,7 +136,7 @@ export const UNDRR_CHECKLIST = [
       word: 'Word generally produces good reading order. Watch out for text boxes, which may appear at the end of the reading order.',
       indesign: 'Use the Articles panel to define reading order explicitly. InDesign\'s default tag order follows the z-order of frames.',
       powerpoint: 'Home > Arrange > Selection Pane. The reading order is bottom-to-top in the list. Reorder as needed.',
-      acrobat: 'View > Navigation Panels > Order. Drag items to correct the reading sequence. Also set tab order to "Use Document Structure" in Page Properties.',
+      acrobat: 'View > Navigation Panels > Order. Drag items to correct the reading sequence. For tab order: All Tools > Organize Pages > select page thumbnail > Page Properties > Tab Order > Use Document Structure. This is recommended for all tagged PDFs (see helpx.adobe.com/acrobat/using/page-thumbnails-bookmarks-pdfs.html).',
     },
     complementaryTools: ['nvda', 'jaws', 'voiceover', 'acrobatPro'],
   },
