@@ -23,13 +23,13 @@ The tool covers the practical validation workflow used by accessibility professi
 - Document title, language, and security permissions
 - Tagged PDF with structure tree
 - Image alt text coverage
-- Heading hierarchy (H1 > H2 > H3, no skips)
+- Heading hierarchy (H1 > H2 > H3, no skips; generic /H supported)
 - Table header cells and scope
 - List structure (L > LI > Lbl + LBody)
 - Font Unicode mapping (ToUnicode CMap coverage)
 - Bookmark/outline presence
 - Form field labeling
-- Link text quality
+- Link text quality (with recursive child text extraction)
 - Tab order configuration
 
 **Visual tools:**
@@ -38,6 +38,7 @@ The tool covers the practical validation workflow used by accessibility professi
 - Structure tree to preview linking -- click a tree node to highlight its MCID regions on the rendered page
 
 **Flagged for manual review:**
+- Color contrast (WCAG 1.4.3)
 - Reading order (with interactive structure tree explorer and visual reading order overlay to help)
 - Screen reader testing (with tool recommendations)
 
@@ -77,7 +78,7 @@ All files are fetched via `cdn.jsdelivr.net` at runtime (CORS-friendly, no local
 
 ## Status
 
-V1.1.0. See [CHANGELOG.md](CHANGELOG.md) for release history and [PRD.md](PRD.md) for the full product requirements.
+V1.3.0. See [CHANGELOG.md](CHANGELOG.md) for release history and [PRD.md](PRD.md) for the full product requirements.
 
 ## Acknowledgments
 

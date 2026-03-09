@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.3.0 2026-03-09
+
+### Audit accuracy
+- Fix WCAG reference for heading hierarchy: 1.3.1 → 2.4.6 (Headings and Labels)
+- Fix WCAG reference for form labels: 1.3.1 → 3.3.2 (Labels or Instructions)
+- Add WCAG reference for font ToUnicode: 4.1.1 (Parsing)
+- Recognize `/Formula` StructElem in image alt text checks (not just `/Figure`)
+- Support generic `/H` heading type (level 0) in heading hierarchy validation
+- Heading hierarchy: non-H1 start without skipped levels is now a warning, not a fail
+- Lists: missing `/Lbl` is now a warning (structural issues remain fail)
+- Link text extraction: recursively collect text from child StructElems (`/K` children with `/ActualText` or `/Alt`)
+- Add color contrast as a manual-review finding (WCAG 1.4.3)
+
+### Self-accessibility
+- Add `role="dialog"` and `aria-label` on About, Help, and Bookmark dialogs
+- Add `role="dialog"` on Welcome and Progress windows
+- Add `role="region"` on Results windows and floating panels
+- Announce analysis verdict via `aria-live` region for screen readers
+- Document-level drag-and-drop: drop PDFs anywhere on the page, not just the drop zone
+
+### Export quality
+- PDF export: set document metadata (title, author, subject, producer, creator, creation date)
+- PDF export: render finding details in full-density sections
+- CSV export: add details column (semicolon-separated label: value pairs)
+- CSV export: prepend UTF-8 BOM for Excel compatibility
+- JSON export: include UNDRR 13-point checklist status
+- Extract `buildJsonOutput()` and `buildCsvContent()` as testable pure functions
+
 ## 1.2.0 2026-03-02
 
 - 13-point validation checklist alignment throughout the tool

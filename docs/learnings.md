@@ -174,6 +174,8 @@ A document can have many image XObjects but zero Figure elements (untagged PDF),
 
 When no StructTreeRoot exists, alt text auditing is not applicable --the document isn't tagged at all.
 
+**Formula StructElem:** `/Formula` elements (mathematical equations) also require alt text, just like `/Figure`. The image alt text check must match both `/Figure` and `/Formula` resolved types. Formula elements are used by authoring tools like MathType and Word's equation editor.
+
 **Generic alt text:** Alt text like "image", "photo", "picture", "graphic", "figure", "icon", "logo", "screenshot", "illustration", "diagram", "chart" is technically present but provides no meaningful description. Flagged as a warning (not a pass).
 
 ### Heading Hierarchy Validation
@@ -184,6 +186,10 @@ Structure types `/H1` through `/H6` should follow a logical hierarchy:
 - Headings should not be used for visual styling (e.g., a pull-quote tagged as H2)
 
 Walk StructElems in document order (depth-first from StructTreeRoot), extract heading levels, flag violations.
+
+**Generic `/H` heading type:** PDF 1.7 defines `/H` as a generic heading element (no level). Some authoring tools use it instead of `/H1`-`/H6`. The audit treats `/H` as level 0: it counts as a heading for presence detection but skips gap analysis (since it has no level to compare). This prevents false positives from `/H` elements appearing between numbered headings.
+
+**Severity split:** The heading hierarchy check uses three-way status: `fail` when levels are skipped (H1→H3), `warning` when the first heading is not H1 (H2 start), `pass` when the hierarchy is clean. WCAG reference is 2.4.6 (Headings and Labels), not 1.3.1 (Info and Relationships).
 
 ### Table Structure Validation
 
@@ -200,6 +206,25 @@ Accessible lists require:
 - `/LI` (list item) as direct children
 - Each `/LI` should contain `/Lbl` (label/bullet) and `/LBody` (list body)
 - Nested lists should have `/L` inside `/LBody`
+
+**Lbl is optional per PDF/UA.** A missing `/Lbl` (label/bullet marker) in a list item is a best-practice gap, not a structural error. The audit distinguishes between structural issues (missing `/LBody`, unexpected children of `/L`) which produce `fail`, and missing `/Lbl` which produces `warning`. This prevents over-reporting on lists where the bullet/number is purely decorative or embedded in the body text.
+
+### Link Text Extraction
+
+Link StructElems (`/Link`) can carry text in multiple ways:
+- **Direct attributes:** `/ActualText` or `/Alt` on the Link element itself (preferred, checked first)
+- **Child StructElems:** The `/K` array may contain child elements (e.g., `/Span`) that carry `/ActualText` or `/Alt`
+- **MCIDs only:** When `/K` contains only integers (marked content IDs), the link text comes from the content stream and is not accessible via structure tree inspection alone
+
+The link audit recursively collects text from child StructElems when the Link element itself has no direct text. This catches common patterns like Word exports where link text lives on a child Span element. MCIDs without associated StructElem text are treated as having no extractable text (flagged for review).
+
+### WCAG Reference Accuracy
+
+WCAG Success Criteria references must be precise. Common misattributions found during expert review:
+- **Heading hierarchy** is 2.4.6 (Headings and Labels), not 1.3.1 (Info and Relationships). 1.3.1 covers the presence of structure; 2.4.6 covers whether headings are descriptive and hierarchically correct.
+- **Form labels** is 3.3.2 (Labels or Instructions), not 1.3.1. 1.3.1 covers programmatic association; 3.3.2 covers the presence and quality of labels.
+- **Font ToUnicode** maps to 4.1.1 (Parsing) -- without ToUnicode, assistive technology cannot reliably parse text content.
+- **Color contrast** is 1.4.3 (Contrast Minimum) -- requires 4.5:1 for normal text, 3:1 for large text.
 
 ### Security Permissions
 
