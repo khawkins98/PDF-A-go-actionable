@@ -197,7 +197,7 @@ export function checkLinks(pdfDoc, ctx) {
     status: missingTextLinks.length > 0 ? 'fail' : 'warning',
     summary: `${issueCount} of ${links.length} link(s) have issues (${parts.join(', ')}).`,
     details,
-    remediation: 'Use descriptive link text that makes sense out of context. Replace "click here" with a description of the destination (e.g., "download the annual report"). Avoid using bare URLs as link text. Ensure every link has accessible text.',
+    remediation: 'Use descriptive link text that makes sense out of context. Replace "click here" with a description of the destination (e.g., "download the annual report"). If a bare URL must be visible in the design, set the Link tag\'s ActualText to a descriptive phrase so screen readers announce "UNDRR strategic framework" instead of reading out the full URL. In Acrobat: use the Create Link command to ensure links are properly tagged. See helpx.adobe.com/acrobat/using/create-verify-pdf-accessibility.html for details.',
     wcagRef: '2.4.4',
     pdfuaRef: null,
   }];
