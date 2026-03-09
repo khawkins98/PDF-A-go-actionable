@@ -73,7 +73,7 @@ export const UNDRR_CHECKLIST = [
   {
     undrrNumber: 1,
     title: 'Document title is set',
-    findingIds: ['document-title', 'display-doc-title'],
+    findingIds: ['document-title'],
     whyItMatters: 'The document title appears in browser tabs, bookmarks, and is the first thing a screen reader announces. Without it, users see a filename like "Q4_report_v3_FINAL.pdf" instead of a meaningful title.',
     authoringTips: {
       general: 'Set a descriptive document title in your authoring tool before exporting to PDF. Also enable "Display Document Title" in the PDF viewer preferences.',

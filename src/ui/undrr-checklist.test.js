@@ -91,40 +91,42 @@ describe('resolveChecklistStatus', () => {
   });
 
   it('should include summary from the worst-status finding', () => {
+    // Item 4 maps to tagged-pdf + structure-tree
     const findings = [
-      { id: 'document-title', status: 'pass', summary: 'Title is set.' },
-      { id: 'display-doc-title', status: 'fail', summary: 'Display title not enabled.' },
+      { id: 'tagged-pdf', status: 'pass', summary: 'Tagged.' },
+      { id: 'structure-tree', status: 'fail', summary: 'No structure tree.' },
     ];
     const result = resolveChecklistStatus(findings);
-    expect(result[0].summary).toBe('Display title not enabled.');
+    // Item 4 is index 3
+    expect(result[3].summary).toBe('No structure tree.');
   });
 
   it('should resolve pass status when all mapped findings pass', () => {
     const findings = [
-      { id: 'document-title', status: 'pass' },
-      { id: 'display-doc-title', status: 'pass' },
+      { id: 'tagged-pdf', status: 'pass' },
+      { id: 'structure-tree', status: 'pass' },
     ];
     const result = resolveChecklistStatus(findings);
-    expect(result[0].status).toBe('pass');
+    expect(result[3].status).toBe('pass');
   });
 
   it('should use worst-status-wins for items with multiple findings', () => {
     const findings = [
-      { id: 'document-title', status: 'pass' },
-      { id: 'display-doc-title', status: 'fail' },
+      { id: 'tagged-pdf', status: 'pass' },
+      { id: 'structure-tree', status: 'fail' },
     ];
     const result = resolveChecklistStatus(findings);
-    // fail > pass, so item 1 should be fail
-    expect(result[0].status).toBe('fail');
+    // fail > pass, so item 4 should be fail
+    expect(result[3].status).toBe('fail');
   });
 
   it('should resolve warning > pass', () => {
     const findings = [
-      { id: 'document-title', status: 'warning' },
-      { id: 'display-doc-title', status: 'pass' },
+      { id: 'tagged-pdf', status: 'warning' },
+      { id: 'structure-tree', status: 'pass' },
     ];
     const result = resolveChecklistStatus(findings);
-    expect(result[0].status).toBe('warning');
+    expect(result[3].status).toBe('warning');
   });
 
   it('should resolve fail > warning', () => {
@@ -197,9 +199,9 @@ describe('getUndrrItemForFinding', () => {
     expect(item).toBeNull();
   });
 
-  it('should return the correct item for display-doc-title', () => {
+  it('should return null for display-doc-title (no longer in checklist)', () => {
     const item = getUndrrItemForFinding('display-doc-title');
-    expect(item.undrrNumber).toBe(1);
+    expect(item).toBeNull();
   });
 
   it('should return the correct item for heading-hierarchy', () => {

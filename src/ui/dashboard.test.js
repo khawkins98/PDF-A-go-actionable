@@ -652,16 +652,16 @@ describe('renderDashboard', () => {
 
   // --- displayDocTitle warning ---
 
-  it('should show warning style for displayDocTitle when false', () => {
+  it('should show Viewer Shows Title without warning style when false', () => {
     const data = makeData([], { displayDocTitle: false });
     renderDashboard(el, data, callbacks);
 
     const grid = el.querySelector('.dashboard__meta-grid');
     const dts = [...grid.querySelectorAll('dt')];
-    const dt = dts.find((d) => d.textContent === 'Display Doc Title');
+    const dt = dts.find((d) => d.textContent === 'Viewer Shows Title');
     const dd = dt.nextElementSibling;
     expect(dd.textContent).toBe('No');
-    expect(dd.classList.contains('dashboard__meta-warn')).toBe(true);
+    expect(dd.classList.contains('dashboard__meta-warn')).toBe(false);
   });
 
   // --- Phase 8: Checklist progress indicator ---

@@ -100,7 +100,7 @@ export function renderDashboard(el, data, callbacks) {
     { label: 'Tagged', value: meta.isTagged ? 'Yes' : 'No', warn: !meta.isTagged },
     { label: 'PDF/UA', value: meta.isPdfUA ? 'Yes' : 'No' },
     { label: 'PDF/A', value: meta.isPdfA ? `Yes (${meta.pdfALevel || 'level unknown'})` : 'No' },
-    { label: 'Display Doc Title', value: meta.displayDocTitle ? 'Yes' : 'No', warn: !meta.displayDocTitle },
+    { label: 'Viewer Shows Title', value: meta.displayDocTitle ? 'Yes' : 'No' },
     { label: 'Structure Tree', value: meta.hasStructTree ? 'Yes' : 'No' },
   ];
 

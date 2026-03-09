@@ -304,7 +304,7 @@ async function downloadPDF(data) {
     { label: 'Tagged', value: data.meta.isTagged ? 'Yes' : 'No', warn: !data.meta.isTagged },
     { label: 'PDF/UA', value: data.meta.isPdfUA ? 'Yes' : 'No' },
     { label: 'PDF/A', value: data.meta.isPdfA ? `Yes (${data.meta.pdfALevel || 'level unknown'})` : 'No' },
-    { label: 'Display Doc Title', value: data.meta.displayDocTitle ? 'Yes' : 'No', warn: !data.meta.displayDocTitle },
+    { label: 'Viewer Shows Title', value: data.meta.displayDocTitle ? 'Yes' : 'No' },
     { label: 'Structure Tree', value: data.meta.hasStructTree ? 'Yes' : 'No' },
   ];
 
