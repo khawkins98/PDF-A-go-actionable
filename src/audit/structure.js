@@ -14,7 +14,7 @@ import { resolve } from '../engine/utils/resolve.js';
 import { resolveRole } from '../engine/utils/role-map.js';
 import { walkStructureTree } from '../engine/utils/struct-tree-walker.js';
 
-const HEADING_TYPES = new Set(['H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
+const HEADING_TYPES = new Set(['H', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
 
 /**
  * @param {import('pdf-lib').PDFDocument} pdfDoc
@@ -88,7 +88,7 @@ export function checkStructure(pdfDoc, ctx) {
       summary: 'No structure tree, so heading hierarchy cannot be checked.',
       details: [],
       remediation: null,
-      wcagRef: '1.3.1',
+      wcagRef: '2.4.6',
       pdfuaRef: '7.4.2',
     });
   }
@@ -126,7 +126,7 @@ function checkHeadingHierarchy(pdfDoc, roleMap) {
     .map(el => ({
       type: el.type,
       resolvedType: el.resolvedType,
-      level: parseInt(el.resolvedType.substring(1), 10),
+      level: el.resolvedType === 'H' ? 0 : parseInt(el.resolvedType.substring(1), 10),
     }));
 
   if (headings.length === 0) {
@@ -138,16 +138,18 @@ function checkHeadingHierarchy(pdfDoc, roleMap) {
       summary: 'No headings found in the structure tree. Use headings to organize content.',
       details: [],
       remediation: 'Add headings using heading styles (H1, H2, H3, etc.) in your authoring tool. They create the navigable outline.',
-      wcagRef: '1.3.1',
+      wcagRef: '2.4.6',
       pdfuaRef: '7.4.2',
     };
   }
 
-  // Check for skips
+  // Check for skips (skip generic H elements for gap detection)
   const skips = [];
   for (let i = 1; i < headings.length; i++) {
     const prev = headings[i - 1];
     const curr = headings[i];
+    // Skip gap detection when either heading is generic H (level 0)
+    if (prev.level === 0 || curr.level === 0) continue;
     if (curr.level > prev.level + 1) {
       skips.push({
         label: `Skip at heading ${i + 1}`,
@@ -156,8 +158,9 @@ function checkHeadingHierarchy(pdfDoc, roleMap) {
     }
   }
 
-  // Check if first heading is H1
-  const startsWithH1 = headings[0].level === 1;
+  // Check if first numbered heading is H1 (ignore generic H)
+  const firstNumbered = headings.find(h => h.level > 0);
+  const startsWithH1 = !firstNumbered || firstNumbered.level === 1;
 
   if (skips.length === 0 && startsWithH1) {
     return {
@@ -165,34 +168,38 @@ function checkHeadingHierarchy(pdfDoc, roleMap) {
       category: 'structure',
       title: 'Heading Hierarchy',
       status: 'pass',
-      summary: `${headings.length} headings in correct hierarchy (no skips).`,
+      summary: `${headings.length} heading${headings.length !== 1 ? 's' : ''} in correct hierarchy (no skips).`,
       details: headings.map((h, i) => ({
         label: `Heading ${i + 1}`,
         value: h.type === h.resolvedType ? h.resolvedType : `${h.type} (-> ${h.resolvedType})`,
       })),
       remediation: null,
-      wcagRef: '1.3.1',
+      wcagRef: '2.4.6',
       pdfuaRef: '7.4.2',
     };
   }
 
   const issues = [...skips];
-  if (!startsWithH1) {
+  if (!startsWithH1 && firstNumbered) {
     issues.unshift({
       label: 'First heading',
-      value: `Document starts with ${headings[0].resolvedType} instead of H1`,
+      value: `Document starts with ${firstNumbered.resolvedType} instead of H1`,
     });
   }
+
+  // Severity split: skips → fail, non-H1 start only → warning
+  const hasSkips = skips.length > 0;
+  const status = hasSkips ? 'fail' : 'warning';
 
   return {
     id: 'heading-hierarchy',
     category: 'structure',
     title: 'Heading Hierarchy',
-    status: 'fail',
+    status,
     summary: `Heading hierarchy has ${issues.length} issue(s): ${issues.map(i => i.value).join('; ')}.`,
     details: issues,
     remediation: 'Fix heading levels in your source document. Start with H1 and don\'t skip levels (H1 > H2 > H3, not H1 > H3).',
-    wcagRef: '1.3.1',
+    wcagRef: '2.4.6',
     pdfuaRef: '7.4.2',
   };
 }

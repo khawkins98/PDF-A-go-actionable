@@ -19,6 +19,8 @@ vi.mock('winbox/src/js/winbox.js', () => {
     this.title = opts.title || '';
     this.min = false;
     this.max = false;
+    this.dom = document.createElement('div');
+    this.body = document.createElement('div');
     this.close = vi.fn(() => {
       if (this.onclose) this.onclose();
     });
@@ -732,5 +734,104 @@ describe('initAppShell', () => {
       callbacks.onExport('json');
       expect(initExport).toHaveBeenCalled();
     });
+  });
+
+  // --- Phase 2a: Dialog roles ---
+
+  it('should set role="dialog" and aria-label on Welcome window', () => {
+    initAppShell(container, worker);
+
+    const welcomeInstance = mockWinBoxInstances.find((w) => w.title === 'Welcome');
+    expect(welcomeInstance.dom.getAttribute('role')).toBe('dialog');
+    expect(welcomeInstance.dom.getAttribute('aria-label')).toBe('Welcome');
+  });
+
+  it('should set role="dialog" on Progress dialog', async () => {
+    initAppShell(container, worker);
+
+    const fileInput = container.querySelector('input[type="file"]');
+    const file = new File(['%PDF'], 'test.pdf', { type: 'application/pdf' });
+    Object.defineProperty(fileInput, 'files', { value: [file], configurable: true });
+    fileInput.dispatchEvent(new Event('change'));
+    await new Promise((r) => setTimeout(r, 10));
+
+    const progressInstance = mockWinBoxInstances.find((w) => w.title.startsWith('Analyzing:'));
+    expect(progressInstance).toBeDefined();
+    expect(progressInstance.dom.getAttribute('role')).toBe('dialog');
+  });
+
+  it('should set role="region" on Results window', async () => {
+    initAppShell(container, worker);
+
+    const fileInput = container.querySelector('input[type="file"]');
+    const file = new File(['%PDF'], 'test.pdf', { type: 'application/pdf' });
+    Object.defineProperty(fileInput, 'files', { value: [file], configurable: true });
+    fileInput.dispatchEvent(new Event('change'));
+    await new Promise((r) => setTimeout(r, 10));
+
+    const sessionId = worker.postMessage.mock.calls[0][0].sessionId;
+    worker._dispatch({
+      type: 'result',
+      sessionId,
+      findings: testData.findings,
+      meta: testData.meta,
+    });
+    await new Promise((r) => setTimeout(r, 10));
+
+    const resultsWin = mockWinBoxInstances.find((w) => w.title.startsWith('Results:'));
+    expect(resultsWin).toBeDefined();
+    expect(resultsWin.dom.getAttribute('role')).toBe('region');
+  });
+
+  // --- Phase 2b: Focus management / verdict announcement ---
+
+  it('should announce verdict via live region after analysis completes', async () => {
+    initAppShell(container, worker);
+
+    const fileInput = container.querySelector('input[type="file"]');
+    const file = new File(['%PDF'], 'test.pdf', { type: 'application/pdf' });
+    Object.defineProperty(fileInput, 'files', { value: [file], configurable: true });
+    fileInput.dispatchEvent(new Event('change'));
+    await new Promise((r) => setTimeout(r, 10));
+
+    const sessionId = worker.postMessage.mock.calls[0][0].sessionId;
+    worker._dispatch({
+      type: 'result',
+      sessionId,
+      findings: testData.findings,
+      meta: testData.meta,
+    });
+
+    const liveRegion = container.querySelector('[role="status"][aria-live="assertive"]');
+    expect(liveRegion.textContent).toContain('Analysis complete');
+    expect(liveRegion.textContent).toContain('test.pdf');
+  });
+
+  // --- Phase 2c: Document-level drag-and-drop ---
+
+  it('should handle document-level drop events with PDF files', async () => {
+    initAppShell(container, worker);
+
+    const file = new File(['%PDF'], 'dropped.pdf', { type: 'application/pdf' });
+    const dropEvent = new Event('drop', { bubbles: true });
+    dropEvent.preventDefault = vi.fn();
+    dropEvent.dataTransfer = { files: [file] };
+
+    document.body.dispatchEvent(dropEvent);
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Should post a message to the worker for the dropped file
+    expect(worker.postMessage).toHaveBeenCalled();
+  });
+
+  it('should prevent default on document-level dragover', () => {
+    initAppShell(container, worker);
+
+    const dragEvent = new Event('dragover', { bubbles: true });
+    dragEvent.preventDefault = vi.fn();
+    dragEvent.dataTransfer = { dropEffect: '' };
+
+    document.body.dispatchEvent(dragEvent);
+    expect(dragEvent.preventDefault).toHaveBeenCalled();
   });
 });

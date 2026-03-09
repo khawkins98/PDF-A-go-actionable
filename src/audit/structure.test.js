@@ -128,14 +128,14 @@ describe('checkStructure', () => {
 
   // --- Heading edge cases ---
 
-  it('should fail when headings start at H2 (no H1)', async () => {
+  it('should warn (not fail) when headings start at H2 (no H1, no skips)', async () => {
     const bytes = await createPdfWithHeadings(['H2', 'H3']);
     const ctx = await buildTestContext(bytes);
     const findings = checkStructure(ctx.pdfDoc, ctx);
 
     const headingFinding = findings.find(f => f.id === 'heading-hierarchy');
     expect(headingFinding).toBeDefined();
-    expect(headingFinding.status).toBe('fail');
+    expect(headingFinding.status).toBe('warning');
     expect(headingFinding.summary).toContain('H2');
     expect(headingFinding.summary).toContain('instead of H1');
   });
@@ -181,6 +181,47 @@ describe('checkStructure', () => {
     expect(headingFinding).toBeDefined();
     expect(headingFinding.status).toBe('fail');
     expect(headingFinding.summary).toContain('H2');
+  });
+
+  it('should treat generic H as a heading (level 0) and skip gap detection', async () => {
+    const bytes = await createPdfWithHeadings(['H1', 'H', 'H3']);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkStructure(ctx.pdfDoc, ctx);
+
+    const headingFinding = findings.find(f => f.id === 'heading-hierarchy');
+    expect(headingFinding).toBeDefined();
+    // H -> H3 should not trigger a skip (H is generic, level 0)
+    expect(headingFinding.status).toBe('pass');
+    expect(headingFinding.summary).toContain('3 headings');
+  });
+
+  it('should pass with only generic H headings', async () => {
+    const bytes = await createPdfWithHeadings(['H']);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkStructure(ctx.pdfDoc, ctx);
+
+    const headingFinding = findings.find(f => f.id === 'heading-hierarchy');
+    expect(headingFinding).toBeDefined();
+    expect(headingFinding.status).toBe('pass');
+  });
+
+  it('should still fail when real heading levels skip (H1 -> H3) regardless of H present', async () => {
+    const bytes = await createPdfWithHeadings(['H1', 'H', 'H3', 'H5']);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkStructure(ctx.pdfDoc, ctx);
+
+    const headingFinding = findings.find(f => f.id === 'heading-hierarchy');
+    expect(headingFinding).toBeDefined();
+    expect(headingFinding.status).toBe('fail');
+  });
+
+  it('should use WCAG 2.4.6 reference for heading-hierarchy findings', async () => {
+    const bytes = await createPdfWithHeadings(['H1', 'H2']);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkStructure(ctx.pdfDoc, ctx);
+
+    const headingFinding = findings.find(f => f.id === 'heading-hierarchy');
+    expect(headingFinding.wcagRef).toBe('2.4.6');
   });
 
   it('should resolve custom heading types via RoleMap', async () => {

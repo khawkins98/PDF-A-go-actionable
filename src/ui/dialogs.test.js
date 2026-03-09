@@ -11,6 +11,7 @@ function mockWinBox() {
   const WinBox = vi.fn(function (opts) {
     this.opts = opts;
     this.title = opts.title || '';
+    this.dom = document.createElement('div');
     this.close = vi.fn();
     this.focus = vi.fn();
     this.onclose = opts.onclose || null;
@@ -62,6 +63,15 @@ describe('showAboutDialog', () => {
     const WinBox = mockWinBox();
     const win = showAboutDialog(mockRoot(), WinBox);
     expect(win).toBe(WinBox._instances[0]);
+  });
+
+  it('should set role="dialog" and aria-label on the About dialog dom', () => {
+    const WinBox = mockWinBox();
+    showAboutDialog(mockRoot(), WinBox);
+
+    const instance = WinBox._instances[0];
+    expect(instance.dom.getAttribute('role')).toBe('dialog');
+    expect(instance.dom.getAttribute('aria-label')).toBe('About');
   });
 
   it('should include about content with version info', () => {
@@ -125,6 +135,15 @@ describe('showHelpDialog', () => {
     WinBox._instances[0].onclose();
     expect(onClose).toHaveBeenCalled();
   });
+
+  it('should set role="dialog" and aria-label on the Help dialog dom', () => {
+    const WinBox = mockWinBox();
+    showHelpDialog(mockRoot(), WinBox);
+
+    const instance = WinBox._instances[0];
+    expect(instance.dom.getAttribute('role')).toBe('dialog');
+    expect(instance.dom.getAttribute('aria-label')).toBe('Help');
+  });
 });
 
 describe('showBookmarkPlaceholder', () => {
@@ -136,5 +155,14 @@ describe('showBookmarkPlaceholder', () => {
     const content = WinBox._instances[0].opts.mount;
     expect(content.innerHTML).toContain('Bookmarks / Outlines');
     expect(content.innerHTML).toContain('CORS-friendly');
+  });
+
+  it('should set role="dialog" and aria-label on the Bookmark dialog dom', () => {
+    const WinBox = mockWinBox();
+    showBookmarkPlaceholder(mockRoot(), WinBox);
+
+    const instance = WinBox._instances[0];
+    expect(instance.dom.getAttribute('role')).toBe('dialog');
+    expect(instance.dom.getAttribute('aria-label')).toBe('Bookmarks');
   });
 });

@@ -401,12 +401,16 @@ function wcagRefToSlug(ref) {
     '1.1.1': 'non-text-content',
     '1.3.1': 'info-and-relationships',
     '1.3.2': 'meaningful-sequence',
+    '1.4.3': 'contrast-minimum',
     '2.4.2': 'page-titled',
     '2.4.3': 'focus-order',
     '2.4.4': 'link-purpose-in-context',
     '2.4.5': 'multiple-ways',
+    '2.4.6': 'headings-and-labels',
     '3.1.1': 'language-of-page',
     '3.1.2': 'language-of-parts',
+    '3.3.2': 'labels-or-instructions',
+    '4.1.1': 'parsing',
   };
   return slugMap[ref] || ref;
 }

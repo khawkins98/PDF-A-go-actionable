@@ -20,6 +20,7 @@ import { renderFontTable } from './font-table.js';
 import { renderImageTable } from './image-table.js';
 import { renderPreviewPanel } from './pdf-preview.js';
 import { initExport } from './export.js';
+import { groupFindings, computeVerdict } from './constants.js';
 
 import { getTestPdfsByCategory, fetchTestPdf, testPdfs } from './dev-test-pdfs.js';
 
@@ -90,6 +91,16 @@ export function createPanelElement(name, data, session) {
   }
 
   return el;
+}
+
+/**
+ * Set ARIA dialog/region role and label on a WinBox instance's dom element.
+ */
+function setWinBoxDialogRole(win, label, role = 'dialog') {
+  if (win && win.dom) {
+    win.dom.setAttribute('role', role);
+    win.dom.setAttribute('aria-label', label);
+  }
 }
 
 /** Generate a unique session ID. */
@@ -189,6 +200,19 @@ export function initAppShell(container, worker) {
   liveRegion.setAttribute('aria-live', 'assertive');
   liveRegion.className = 'visually-hidden';
   container.appendChild(liveRegion);
+
+  // === Document-level drag-and-drop ===
+  document.body.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  document.body.addEventListener('drop', (e) => {
+    // Guard: don't double-process drops on the upload zone
+    if (e.target.closest && e.target.closest('.drop-zone')) return;
+    e.preventDefault();
+    const files = filterPdfs(e.dataTransfer.files);
+    if (files.length > 0) handleFiles(files);
+  });
 
   // Show welcome on init
   showWelcome();
@@ -323,6 +347,7 @@ export function initAppShell(container, worker) {
       border: 1,
       ...(closable ? { onclose: function () { welcomeWin = null; } } : {}),
     });
+    setWinBoxDialogRole(welcomeWin, 'Welcome');
   }
 
   function closeWelcome() {
@@ -470,6 +495,7 @@ export function initAppShell(container, worker) {
       ],
       border: 1,
     });
+    setWinBoxDialogRole(session.progressWin, `Analyzing ${session.fileName}`);
   }
 
   function onProgress(session, { phase, percent }) {
@@ -485,6 +511,12 @@ export function initAppShell(container, worker) {
   function onResult(session, data) {
     closeProgressDialog(session);
     session.data = data;
+
+    // Announce verdict via live region
+    const groups = groupFindings(data.findings);
+    const { label: verdictLabel } = computeVerdict(groups);
+    liveRegion.textContent = `Analysis complete for ${session.fileName}. Verdict: ${verdictLabel}.`;
+
     showResults(session, data);
 
     // When a preview alt-text label is clicked, open image inventory and scroll to match
@@ -570,6 +602,7 @@ export function initAppShell(container, worker) {
           }
         },
       });
+      setWinBoxDialogRole(session.mainWin, `Results: ${data.meta.fileName || session.fileName}`, 'region');
     });
   }
 
@@ -700,6 +733,7 @@ export function initAppShell(container, worker) {
       },
     });
 
+    setWinBoxDialogRole(win, `${def.title}: ${session.fileName}`, 'region');
     session.floatingPanels.set(id, win);
   }
 

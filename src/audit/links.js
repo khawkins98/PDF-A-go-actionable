@@ -4,7 +4,8 @@
  * Informational: Link text quality analysis.
  * Flags generic text ("click here", "here", "read more", etc.) and bare URLs.
  */
-import { PDFName, PDFDict } from 'pdf-lib';
+import { PDFName, PDFDict, PDFArray } from 'pdf-lib';
+import { resolve } from '../engine/utils/resolve.js';
 import { resolveRole } from '../engine/utils/role-map.js';
 
 /** Generic link text patterns (case-insensitive match). */
@@ -28,6 +29,59 @@ const URL_PATTERN = /^(?:https?|ftp):\/\//i;
  * @param {object} ctx - Shared context from runner
  * @returns {object[]} Array of Finding objects
  */
+/**
+ * Extract accessible text from a Link StructElem.
+ * Prefers ActualText/Alt on the Link itself, then collects from children.
+ */
+function extractLinkText(obj, context) {
+  // Prefer direct ActualText/Alt on the Link element
+  const directText = obj.get(PDFName.of('ActualText')) || obj.get(PDFName.of('Alt'));
+  if (directText) return directText.decodeText();
+
+  // Recursively collect text from child StructElems
+  return collectChildText(obj, context);
+}
+
+/**
+ * Recursively collect ActualText/Alt from child StructElems.
+ */
+function collectChildText(elem, context) {
+  const k = elem.get(PDFName.of('K'));
+  if (!k) return null;
+
+  const kResolved = resolve(k, context);
+  const parts = [];
+
+  if (kResolved instanceof PDFArray) {
+    for (let i = 0; i < kResolved.size(); i++) {
+      const child = resolve(kResolved.get(i), context);
+      if (child instanceof PDFDict) {
+        const text = getTextFromElem(child, context);
+        if (text) parts.push(text);
+      }
+    }
+  } else if (kResolved instanceof PDFDict) {
+    const text = getTextFromElem(kResolved, context);
+    if (text) parts.push(text);
+  }
+
+  return parts.length > 0 ? parts.join(' ') : null;
+}
+
+/**
+ * Get text from a single StructElem: ActualText, Alt, or recurse into children.
+ */
+function getTextFromElem(elem, context) {
+  const actualText = elem.get(PDFName.of('ActualText'));
+  if (actualText) return actualText.decodeText();
+
+  const alt = elem.get(PDFName.of('Alt'));
+  if (alt) return alt.decodeText();
+
+  // Recurse into children
+  return collectChildText(elem, context);
+}
+
 export function checkLinks(pdfDoc, ctx) {
   const { traits, roleMap, context } = ctx;
 
@@ -60,9 +114,8 @@ export function checkLinks(pdfDoc, ctx) {
 
     if (resolved !== 'Link') return;
 
-    // Get actual text or alt text
-    const altObj = obj.get(PDFName.of('ActualText')) || obj.get(PDFName.of('Alt'));
-    const text = altObj ? altObj.decodeText() : null;
+    // Get text: prefer ActualText/Alt on the Link itself, then collect from children
+    const text = extractLinkText(obj, context);
 
     links.push({ typeName, text });
   });

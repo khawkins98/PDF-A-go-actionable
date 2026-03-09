@@ -86,6 +86,15 @@ describe('checkFonts', () => {
     expect(embedding.pdfuaRef).toBe('7.21.4');
   });
 
+  it('should use WCAG 4.1.1 reference for font-tounicode findings', async () => {
+    const bytes = await createUntaggedPdf();
+    const ctx = await buildTestContext(bytes);
+    const findings = checkFonts(ctx.pdfDoc, ctx);
+
+    const tounicode = findings.find(f => f.id === 'font-tounicode');
+    expect(tounicode.wcagRef).toBe('4.1.1');
+  });
+
   it('should handle font without /BaseFont gracefully', async () => {
     // Create a PDF with a manually added font dict missing /BaseFont
     const doc = await PDFDocument.create();

@@ -54,6 +54,12 @@ export function showAboutDialog(root, WinBox, onClose) {
     onclose: onClose || undefined,
   });
 
+  // Set ARIA role
+  if (win.dom) {
+    win.dom.setAttribute('role', 'dialog');
+    win.dom.setAttribute('aria-label', 'About');
+  }
+
   // Move focus into the dialog content
   requestAnimationFrame(() => content.focus());
 
@@ -121,6 +127,12 @@ export function showHelpDialog(root, WinBox, onClose) {
     onclose: onClose || undefined,
   });
 
+  // Set ARIA role
+  if (win.dom) {
+    win.dom.setAttribute('role', 'dialog');
+    win.dom.setAttribute('aria-label', 'Help');
+  }
+
   // Move focus into the dialog content
   requestAnimationFrame(() => content.focus());
 
@@ -148,7 +160,7 @@ export function showBookmarkPlaceholder(root, WinBox) {
     open an issue on GitHub and we'll add it to the test suite.</p>
   `;
 
-  new WinBox({
+  const win = new WinBox({
     title: 'Test PDFs: Bookmarks',
     mount: content,
     root,
@@ -161,4 +173,10 @@ export function showBookmarkPlaceholder(root, WinBox) {
     class: ['white', 'no-full', 'no-max', 'no-min'],
     border: 1,
   });
+
+  // Set ARIA role
+  if (win.dom) {
+    win.dom.setAttribute('role', 'dialog');
+    win.dom.setAttribute('aria-label', 'Bookmarks');
+  }
 }

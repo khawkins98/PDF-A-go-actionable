@@ -26,17 +26,28 @@ export function initExport(data) {
 }
 
 /**
+ * Build the JSON export output object.
+ *
+ * @param {object} data
+ * @returns {object}
+ */
+export function buildJsonOutput(data) {
+  return {
+    meta: data.meta,
+    findings: data.findings,
+    checklist: resolveChecklistStatus(data.findings),
+    exportedAt: new Date().toISOString(),
+    tool: 'PDF-A-go-actionable',
+  };
+}
+
+/**
  * Download audit data as a JSON file.
  *
  * @param {object} data
  */
 function downloadJSON(data) {
-  const output = {
-    meta: data.meta,
-    findings: data.findings,
-    exportedAt: new Date().toISOString(),
-    tool: 'PDF-A-go-actionable',
-  };
+  const output = buildJsonOutput(data);
 
   const blob = new Blob([JSON.stringify(output, null, 2)], {
     type: 'application/json',
@@ -45,17 +56,19 @@ function downloadJSON(data) {
 }
 
 /**
- * Download audit data as a CSV file.
+ * Build the CSV content string.
  *
  * @param {object} data
+ * @returns {string}
  */
-function downloadCSV(data) {
+export function buildCsvContent(data) {
   const headers = [
     'id',
     'category',
     'title',
     'status',
     'summary',
+    'details',
     'remediation',
     'wcagRef',
     'pdfuaRef',
@@ -64,12 +77,17 @@ function downloadCSV(data) {
   const rows = [headers.join(',')];
 
   for (const f of data.findings) {
+    const detailsStr = (f.details || [])
+      .map(d => `${d.label}: ${d.value}`)
+      .join('; ');
+
     const row = [
       escapeCsvField(f.id),
       escapeCsvField(f.category),
       escapeCsvField(f.title),
       escapeCsvField(f.status),
       escapeCsvField(f.summary),
+      escapeCsvField(detailsStr),
       escapeCsvField(f.remediation || ''),
       escapeCsvField(f.wcagRef || ''),
       escapeCsvField(f.pdfuaRef || ''),
@@ -77,7 +95,18 @@ function downloadCSV(data) {
     rows.push(row.join(','));
   }
 
-  const blob = new Blob([rows.join('\n')], {
+  return rows.join('\n');
+}
+
+/**
+ * Download audit data as a CSV file.
+ *
+ * @param {object} data
+ */
+function downloadCSV(data) {
+  const csvContent = buildCsvContent(data);
+
+  const blob = new Blob(['\uFEFF' + csvContent], {
     type: 'text/csv;charset=utf-8',
   });
   triggerDownload(blob, buildFilename(data.meta, 'csv'));
@@ -91,6 +120,15 @@ function downloadCSV(data) {
 async function downloadPDF(data) {
   const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
   const pdfDoc = await PDFDocument.create();
+
+  // Set PDF metadata on the exported report
+  pdfDoc.setTitle(`Accessibility Report: ${data.meta.fileName || 'Unknown'}`);
+  pdfDoc.setAuthor('PDF-A-go-actionable');
+  pdfDoc.setSubject('PDF accessibility audit report');
+  pdfDoc.setProducer('PDF-A-go-actionable');
+  pdfDoc.setCreator('PDF-A-go-actionable');
+  pdfDoc.setCreationDate(new Date());
+
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
@@ -339,6 +377,16 @@ async function downloadPDF(data) {
         });
 
         drawText(finding.summary, { size: fontSize, indent: 10 });
+
+        if (finding.details && finding.details.length > 0) {
+          for (const detail of finding.details) {
+            drawText(`${detail.label}: ${detail.value}`, {
+              size: smallFontSize,
+              indent: 20,
+              color: rgb(0.35, 0.35, 0.35),
+            });
+          }
+        }
 
         if (finding.remediation) {
           drawText(`How to fix: ${finding.remediation}`, {

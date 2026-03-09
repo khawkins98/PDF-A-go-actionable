@@ -37,7 +37,7 @@ export function checkForms(pdfDoc, ctx) {
           summary: 'AcroForm present but no fields found.',
           details: [],
           remediation: null,
-          wcagRef: '1.3.1',
+          wcagRef: '3.3.2',
           pdfuaRef: '7.18',
         });
       }
@@ -51,7 +51,7 @@ export function checkForms(pdfDoc, ctx) {
       summary: 'No form fields in this document.',
       details: [],
       remediation: null,
-      wcagRef: '1.3.1',
+      wcagRef: '3.3.2',
       pdfuaRef: '7.18',
     });
   }
@@ -76,7 +76,7 @@ function checkFieldLabels(fieldsArray, context) {
       summary: 'No form fields found.',
       details: [],
       remediation: null,
-      wcagRef: '1.3.1',
+      wcagRef: '3.3.2',
       pdfuaRef: '7.18',
     };
   }
@@ -111,7 +111,7 @@ function checkFieldLabels(fieldsArray, context) {
       summary: 'No form fields found.',
       details: [],
       remediation: null,
-      wcagRef: '1.3.1',
+      wcagRef: '3.3.2',
       pdfuaRef: '7.18',
     };
   }
@@ -129,7 +129,7 @@ function checkFieldLabels(fieldsArray, context) {
     remediation: missing === 0
       ? null
       : 'Add tooltip text to each form field. In Acrobat: Form Editing > right-click field > Properties > General > Tooltip. The tooltip is read by screen readers as the field label.',
-    wcagRef: '1.3.1',
+    wcagRef: '3.3.2',
     pdfuaRef: '7.18',
   };
 }

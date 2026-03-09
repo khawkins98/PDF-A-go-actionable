@@ -85,6 +85,20 @@ export function checkReadingOrder(pdfDoc, ctx) {
 
   return [
     {
+      id: 'color-contrast',
+      category: 'reading-order',
+      title: 'Color Contrast',
+      status: 'manual',
+      summary: 'Verify that all text meets minimum contrast ratios. Automated tools cannot reliably check contrast in PDF content streams.',
+      details: [
+        { label: 'WCAG requirement', value: 'Normal text: 4.5:1 contrast ratio. Large text (18pt or 14pt bold): 3:1 ratio.' },
+        { label: 'How to check', value: 'Use the Colour Contrast Analyser (free, Windows/macOS) or inspect colors in Acrobat Pro. Check body text, headings, link text, and text over images or colored backgrounds.' },
+      ],
+      remediation: 'Increase contrast by using darker text on lighter backgrounds (or vice versa). Avoid light gray text on white, or colored text on colored backgrounds. Test with the Colour Contrast Analyser tool.',
+      wcagRef: '1.4.3',
+      pdfuaRef: null,
+    },
+    {
       id: 'reading-order',
       category: 'reading-order',
       title: 'Logical Reading Order',

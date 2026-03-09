@@ -156,6 +156,15 @@ describe('checkForms', () => {
     expect(f.details.some(d => d.value && d.value.includes('This field is read-only'))).toBe(true);
   });
 
+  it('should use WCAG 3.3.2 reference for form-labels findings', async () => {
+    const bytes = await createPdfWithForms({ hasTU: true });
+    const ctx = await buildTestContext(bytes);
+    const findings = checkForms(ctx.pdfDoc, ctx);
+
+    const formFinding = findings.find(f => f.id === 'form-labels');
+    expect(formFinding.wcagRef).toBe('3.3.2');
+  });
+
   it('should warn when multi-page PDF has inconsistent tab order', async () => {
     const doc = await PDFDocument.create();
     const page1 = doc.addPage();

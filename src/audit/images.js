@@ -80,7 +80,7 @@ export function checkImages(pdfDoc, ctx) {
     const typeName = s instanceof PDFName ? s.decodeText() : s.toString().replace(/^\//, '');
     const resolved = resolveRole(typeName, roleMap);
 
-    if (resolved !== 'Figure') return;
+    if (resolved !== 'Figure' && resolved !== 'Formula') return;
 
     const altObj = obj.get(PDFName.of('Alt'));
     const alt = altObj ? altObj.decodeText() : null;

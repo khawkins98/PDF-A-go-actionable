@@ -24,8 +24,8 @@ describe('checkReadingOrder', () => {
     findings = checkReadingOrder(ctx.pdfDoc, ctx);
   });
 
-  it('should return exactly 3 findings', () => {
-    expect(findings).toHaveLength(3);
+  it('should return exactly 4 findings', () => {
+    expect(findings).toHaveLength(4);
   });
 
   it('should return all findings with status "manual"', () => {
@@ -70,6 +70,14 @@ describe('checkReadingOrder', () => {
       expect(typeof f.summary).toBe('string');
       expect(f.summary.length).toBeGreaterThan(0);
     }
+  });
+
+  it('should include color-contrast finding with manual status', () => {
+    const f = findings.find(f => f.id === 'color-contrast');
+    expect(f).toBeDefined();
+    expect(f.status).toBe('manual');
+    expect(f.wcagRef).toBe('1.4.3');
+    expect(f.category).toBe('reading-order');
   });
 
   it('should include tab order guidance when form fields exist without /Tabs /S', async () => {

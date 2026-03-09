@@ -16,6 +16,7 @@ import {
   createTaggedPdf,
   createPdfWithLinks,
   createPdfWithMixedLinks,
+  createPdfWithLinksWithChildText,
 } from '../../test/fixtures/create-test-pdfs.js';
 
 describe('checkLinks', () => {
@@ -149,6 +150,57 @@ describe('checkLinks', () => {
     expect(linkFinding).toBeDefined();
     expect(linkFinding.status).toBe('fail'); // missing text makes it a fail
     expect(linkFinding.summary).toContain('3 of 4');
+  });
+
+  // --- Link text extraction from children ---
+
+  it('should extract text from child Span elements when Link has no direct text', async () => {
+    const bytes = await createPdfWithLinksWithChildText([
+      { text: null, childTexts: ['Download the report'] },
+    ]);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkLinks(ctx.pdfDoc, ctx);
+
+    const linkFinding = findings.find(f => f.id === 'link-text');
+    expect(linkFinding).toBeDefined();
+    expect(linkFinding.status).toBe('pass');
+  });
+
+  it('should concatenate text from multiple child elements', async () => {
+    const bytes = await createPdfWithLinksWithChildText([
+      { text: null, childTexts: ['View', 'accessibility', 'guidelines'] },
+    ]);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkLinks(ctx.pdfDoc, ctx);
+
+    const linkFinding = findings.find(f => f.id === 'link-text');
+    expect(linkFinding).toBeDefined();
+    expect(linkFinding.status).toBe('pass');
+  });
+
+  it('should prefer direct ActualText over child text', async () => {
+    const bytes = await createPdfWithLinksWithChildText([
+      { text: 'click here', childTexts: ['Download the full annual report'] },
+    ]);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkLinks(ctx.pdfDoc, ctx);
+
+    const linkFinding = findings.find(f => f.id === 'link-text');
+    expect(linkFinding).toBeDefined();
+    // Direct text is "click here" (generic) so it should warn
+    expect(linkFinding.status).toBe('warning');
+  });
+
+  it('should report missing text when Link has no text and children have no text', async () => {
+    const bytes = await createPdfWithLinksWithChildText([
+      { text: null, childTexts: [] },
+    ]);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkLinks(ctx.pdfDoc, ctx);
+
+    const linkFinding = findings.find(f => f.id === 'link-text');
+    expect(linkFinding).toBeDefined();
+    expect(linkFinding.status).toBe('fail');
   });
 
   it('should fail when link text is whitespace-only', async () => {

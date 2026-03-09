@@ -62,15 +62,26 @@ describe('checkLists', () => {
     expect(listFinding.status).toBe('not-applicable');
   });
 
-  it('should fail when LI has LBody but no Lbl (PDF/UA 7.6)', async () => {
+  it('should warn (not fail) when LI has LBody but no Lbl (Lbl optional)', async () => {
     const bytes = await createPdfWithListNoLbl();
     const ctx = await buildTestContext(bytes);
     const findings = checkLists(ctx.pdfDoc, ctx);
 
     const listFinding = findings.find(f => f.id === 'list-structure');
     expect(listFinding).toBeDefined();
-    expect(listFinding.status).toBe('fail');
+    expect(listFinding.status).toBe('warning');
     expect(listFinding.summary).toContain('issue');
+  });
+
+  it('should fail when LBody is missing (structural issue), not just Lbl', async () => {
+    const bytes = await createPdfWithList({ hasLBody: false });
+    const ctx = await buildTestContext(bytes);
+    const findings = checkLists(ctx.pdfDoc, ctx);
+
+    const listFinding = findings.find(f => f.id === 'list-structure');
+    expect(listFinding).toBeDefined();
+    // Missing LBody is a structural issue → fail (not just warning)
+    expect(listFinding.status).toBe('fail');
   });
 
   it('should detect custom list type via RoleMap (e.g., "ItemList" → "L")', async () => {
@@ -288,8 +299,8 @@ describe('checkLists', () => {
     const findings = checkLists(ctx.pdfDoc, ctx);
     const f = findings.find(f => f.id === 'list-structure');
     expect(f).toBeDefined();
-    expect(f.status).toBe('fail');
-    // Should identify which LI is broken (LI 2)
+    expect(f.status).toBe('warning');
+    // Should identify which LI is missing Lbl (LI 2)
     expect(f.details.some(d => d.label && d.label.includes('LI 2') && d.value && d.value.includes('Missing Lbl'))).toBe(true);
   });
 });

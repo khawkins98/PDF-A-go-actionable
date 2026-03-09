@@ -27,7 +27,7 @@ export function checkFonts(pdfDoc, ctx) {
       summary: 'No fonts found in the document.',
       details: [],
       remediation: null,
-      wcagRef: null,
+      wcagRef: '4.1.1',
       pdfuaRef: '7.21.3',
     });
   } else {
@@ -49,7 +49,7 @@ export function checkFonts(pdfDoc, ctx) {
       remediation: missingCount === 0
         ? null
         : 'Fonts without ToUnicode CMaps may prevent text copy/paste and search. Re-export the PDF with "embed fonts" enabled, or use fonts with built-in Unicode mapping.',
-      wcagRef: null,
+      wcagRef: '4.1.1',
       pdfuaRef: '7.21.3',
     });
   }

@@ -507,6 +507,55 @@ export async function createPdfWithLinks(linkTexts = ['Click here', 'Learn more 
 }
 
 // ---------------------------------------------------------------------------
+// Factory: PDF with links with child text
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a tagged PDF with Link StructElems that have child Span elements
+ * carrying ActualText (simulating how real PDFs structure link text).
+ * @param {Array<{text: string|null, childTexts?: string[]}>} links
+ */
+export async function createPdfWithLinksWithChildText(links) {
+  const doc = await PDFDocument.create();
+  doc.addPage();
+
+  addMarkInfo(doc);
+  const { structTreeRoot, structTreeRootRef } = addStructTreeRoot(doc);
+
+  const { elem: docElem, elemRef: docElemRef } = createStructElem(
+    doc, 'Document', structTreeRootRef,
+  );
+
+  const linkRefs = links.map((link) => {
+    const linkExtras = {};
+    if (link.text !== null && link.text !== undefined) {
+      linkExtras.ActualText = PDFHexString.fromText(link.text);
+    }
+    const { elem: linkElem, elemRef: linkRef } = createStructElem(doc, 'Link', docElemRef, linkExtras);
+
+    // Add child Span elements with ActualText
+    if (link.childTexts && link.childTexts.length > 0) {
+      const childRefs = link.childTexts.map((ct) => {
+        const spanExtras = {};
+        if (ct !== null && ct !== undefined) {
+          spanExtras.ActualText = PDFHexString.fromText(ct);
+        }
+        const { elemRef: spanRef } = createStructElem(doc, 'Span', linkRef, spanExtras);
+        return spanRef;
+      });
+      linkElem.set(PDFName.of('K'), doc.context.obj(childRefs));
+    }
+
+    return linkRef;
+  });
+
+  docElem.set(PDFName.of('K'), doc.context.obj(linkRefs));
+  structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+
+  return doc.save();
+}
+
+// ---------------------------------------------------------------------------
 // Factory: PDF with Suspects flag
 // ---------------------------------------------------------------------------
 
