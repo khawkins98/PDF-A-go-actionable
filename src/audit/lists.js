@@ -100,7 +100,7 @@ export function checkLists(pdfDoc, ctx) {
     status,
     summary: `${allIssues.length} issue(s) found in list structure.`,
     details,
-    remediation: 'Use proper list formatting in your authoring tool. In Word: use bullet/numbered list styles. Avoid manually typing bullets or numbers. In Acrobat: use the Tags panel to fix list structure (L > LI > Lbl + LBody).',
+    remediation: 'Use proper list formatting in your authoring tool. In Word: use bullet/numbered list styles. In InDesign: use List paragraph styles and map them to L > LI > Lbl + LBody in Edit > Export Tagging. Avoid manually typing bullets or numbers. In Acrobat: use the Tags panel to fix list structure.',
     wcagRef: '1.3.1',
     pdfuaRef: '7.6',
   }];

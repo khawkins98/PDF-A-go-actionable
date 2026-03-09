@@ -67,7 +67,7 @@ export function checkMetadata(pdfDoc, ctx) {
   if (!traits.lang) {
     langStatus = 'fail';
     langSummary = 'No document language specified. Screen readers may use the wrong pronunciation rules.';
-    langRemediation = 'Set the document language in your authoring tool. In Word: File > Options > Language. In Acrobat: File > Properties > Advanced > Language.';
+    langRemediation = 'Set the document language in your authoring tool. In Word: File > Options > Language. In InDesign: not set directly — after export, set it in Acrobat: File > Properties > Advanced > Language.';
   } else if (!isValidBcp47(traits.lang)) {
     langStatus = 'warning';
     langSummary = `Document language is set to "${traits.lang}" but this is not a valid BCP-47 tag. Use a format like "en", "en-US", or "zh-Hans-CN".`;

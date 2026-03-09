@@ -158,7 +158,7 @@ function checkFieldLabels(fieldsArray, context) {
     details,
     remediation: missing === 0
       ? null
-      : 'Add tooltip text to each form field. In Acrobat: Form Editing > right-click field > Properties > General > Tooltip. The tooltip is read by screen readers as the field label.',
+      : 'Add tooltip text to each form field. In InDesign: select the form field > Object > Interactive > set Description (this becomes the /TU tooltip). In Acrobat: Form Editing > right-click field > Properties > General > Tooltip. The tooltip is read by screen readers as the field label.',
     wcagRef: '3.3.2',
     pdfuaRef: '7.18',
   };
@@ -207,7 +207,7 @@ function checkTabOrder(pdfDoc) {
     ],
     remediation: missing === 0
       ? null
-      : 'Set tab order to "Use Document Structure" for all pages. In Acrobat: All Tools > Organize Pages, select a page thumbnail, then Page Properties > Tab Order > Use Document Structure. For tagged PDFs this is the recommended setting (see helpx.adobe.com/acrobat/using/page-thumbnails-bookmarks-pdfs.html).',
+      : 'Set tab order to "Use Document Structure" for all pages. Note: InDesign does not set tab order — this must be done after export. In Acrobat: All Tools > Organize Pages, select a page thumbnail, then Page Properties > Tab Order > Use Document Structure. For tagged PDFs this is the recommended setting (see helpx.adobe.com/acrobat/using/page-thumbnails-bookmarks-pdfs.html).',
     wcagRef: '2.4.3',
     pdfuaRef: null,
   };

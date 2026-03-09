@@ -91,7 +91,7 @@ export function checkTables(pdfDoc, ctx) {
     status: 'fail',
     summary: `${tablesWithIssues.length} of ${tables.length} table(s) have header issues.`,
     details: allDetails,
-    remediation: 'Mark header cells as TH elements with Scope attribute (Row or Column). In Word: use "Header Row" / "Header Column" in Table Design. In Acrobat: Reading Order panel > Table Editor.',
+    remediation: 'Mark header cells as TH elements with Scope attribute (Row or Column). In Word: use "Header Row" / "Header Column" in Table Design. In InDesign: Table > Table Options > Headers and Footers to define header rows, then map header cells to TH in export tagging. In Acrobat: Reading Order panel > Table Editor.',
     wcagRef: '1.3.1',
     pdfuaRef: '7.5',
   }];

@@ -105,7 +105,7 @@ export function checkReadingOrder(pdfDoc, ctx) {
       status: 'manual',
       summary: 'Reading order must be verified manually. Use the Structure Tree panel to review element order and compare it to the visual layout.',
       details: baseDetails,
-      remediation: 'If reading order is wrong, fix it in the authoring tool by adjusting the tag order. In Acrobat: View > Navigation Panels > Order, then drag items to reorder. In Word: make sure content is in order in the document (text boxes can break flow).',
+      remediation: 'If reading order is wrong, fix it in the authoring tool by adjusting the tag order. In InDesign: use the Articles panel (Window > Articles) to define reading order explicitly — drag frames in the desired sequence. In Acrobat: View > Navigation Panels > Order, then drag items to reorder. In Word: make sure content is in order in the document (text boxes can break flow).',
       wcagRef: '1.3.2',
       pdfuaRef: '7.2',
     },

@@ -147,7 +147,7 @@ export function checkImages(pdfDoc, ctx) {
       status: 'fail',
       summary: `${figuresWithoutAlt.length} of ${figures.length} Figure element(s) missing alt text.`,
       details,
-      remediation: 'Add alt text to each meaningful image. In Word: right-click the image > Edit Alt Text. In Acrobat: Reading Order panel > right-click Figure > Edit Alternate Text.',
+      remediation: 'Add alt text to each meaningful image. In Word: right-click the image > Edit Alt Text. In InDesign: select the frame > Object > Object Export Options > Alt Text tab > Custom. In Acrobat: Reading Order panel > right-click Figure > Edit Alternate Text.',
       wcagRef: '1.1.1',
       pdfuaRef: '7.3',
     });
@@ -203,7 +203,7 @@ export function checkImages(pdfDoc, ctx) {
         { label: 'Figure StructElems', value: String(figures.length) },
         { label: 'Unmatched', value: String(unmatchedImages) },
       ],
-      remediation: 'Review unmatched images. If decorative, mark them as artifacts in the tag structure. If meaningful, add them as tagged Figure elements with alt text.',
+      remediation: 'Review unmatched images. If decorative, mark as artifacts: in InDesign, select the frame > Object > Object Export Options > Tagged PDF tab > Artifact. In Acrobat: Tags panel > change the Figure tag to Artifact. If meaningful, add them as tagged Figure elements with alt text.',
       wcagRef: '1.1.1',
       pdfuaRef: '7.3',
     });

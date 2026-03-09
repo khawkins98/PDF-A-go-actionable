@@ -138,7 +138,7 @@ function checkHeadingHierarchy(ctx) {
       status: 'warning',
       summary: 'No headings found in the structure tree. Use headings to organize content.',
       details: [],
-      remediation: 'Add headings using heading styles (H1, H2, H3, etc.) in your authoring tool. They create the navigable outline.',
+      remediation: 'Add headings using heading styles (H1, H2, H3, etc.) in your authoring tool. In InDesign: map paragraph styles to PDF heading tags via Edit > Export Tagging. They create the navigable outline.',
       wcagRef: '2.4.6',
       pdfuaRef: '7.4.2',
     };
@@ -202,7 +202,7 @@ function checkHeadingHierarchy(ctx) {
     status,
     summary: `Heading hierarchy has ${issues.length} issue(s): ${issues.map(i => i.value).join('; ')}.`,
     details: issues,
-    remediation: 'Fix heading levels in your source document. Start with H1 and don\'t skip levels (H1 > H2 > H3, not H1 > H3).',
+    remediation: 'Fix heading levels in your source document. Start with H1 and don\'t skip levels (H1 > H2 > H3, not H1 > H3). In InDesign: check your paragraph style export tags via Edit > Export Tagging to ensure styles map to the correct heading levels.',
     wcagRef: '2.4.6',
     pdfuaRef: '7.4.2',
   };
