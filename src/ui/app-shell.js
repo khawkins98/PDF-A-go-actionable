@@ -582,8 +582,11 @@ export function initAppShell(container, worker) {
       const cascadeX = 40 + (session.cascadeIndex % 8) * CASCADE_OFFSET;
       const cascadeY = MENUBAR_HEIGHT + 30 + (session.cascadeIndex % 8) * CASCADE_OFFSET;
 
+      const winTitle = data.meta.title
+        ? `Results: ${data.meta.title}`
+        : `Results: ${data.meta.fileName || session.fileName}`;
       session.mainWin = new WinBox({
-        title: `Results: ${data.meta.fileName || session.fileName}`,
+        title: winTitle,
         mount: content,
         root,
         x: cascadeX,
@@ -602,7 +605,7 @@ export function initAppShell(container, worker) {
           }
         },
       });
-      setWinBoxAriaRole(session.mainWin, `Results: ${data.meta.fileName || session.fileName}`, 'region');
+      setWinBoxAriaRole(session.mainWin, winTitle, 'region');
     });
   }
 

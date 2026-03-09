@@ -3,7 +3,7 @@
 ## 1.4.0 2026-03-09
 
 ### Audit accuracy
-- Severity corrections: `display-doc-title`, `form-labels`, `tab-order`, `font-embedding`, and `font-tounicode` promoted from warning to fail (matching PDF/UA requirements)
+- Severity corrections: `form-labels`, `tab-order`, `font-embedding`, and `font-tounicode` promoted from warning to fail (matching PDF/UA requirements)
 - Standard 14 font exemption: base PDF fonts (Helvetica, Courier, Times-Roman, Symbol, ZapfDingbats and variants) exempt from ToUnicode requirement
 - CIDFont composite font embedding: Type0 fonts now check DescendantFonts for embedding status
 - BCP-47 language validation: invalid document-level and per-element language tags (e.g., `en_US`, `English`) produce warnings

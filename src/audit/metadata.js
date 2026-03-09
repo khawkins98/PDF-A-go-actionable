@@ -142,7 +142,7 @@ export function checkMetadata(pdfDoc, ctx) {
     id: 'display-doc-title',
     category: 'metadata',
     title: 'Display Document Title',
-    status: traits.displayDocTitle === true ? 'pass' : 'fail',
+    status: traits.displayDocTitle === true ? 'pass' : 'warning',
     summary: traits.displayDocTitle === true
       ? 'Viewer is configured to show the document title in the title bar.'
       : 'Viewer preference for displaying the document title is not set. The title bar may show the filename instead.',

@@ -164,7 +164,7 @@ describe('checkMetadata', () => {
     expect(ids).toContain('bookmarks');
   });
 
-  it('should fail when DisplayDocTitle is explicitly set to false', async () => {
+  it('should warn when DisplayDocTitle is explicitly set to false', async () => {
     const doc = await PDFDocument.create();
     doc.addPage();
 
@@ -178,7 +178,7 @@ describe('checkMetadata', () => {
 
     const displayFinding = findings.find(f => f.id === 'display-doc-title');
     expect(displayFinding).toBeDefined();
-    expect(displayFinding.status).toBe('fail');
+    expect(displayFinding.status).toBe('warning');
     expect(displayFinding.summary).toContain('not set');
   });
 
