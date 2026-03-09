@@ -159,13 +159,14 @@ describe('resolveChecklistStatus', () => {
     expect(result[10].summary).toContain('passed');
   });
 
-  it('should derive item 11 status as fail when any findings fail', () => {
+  it('should derive item 11 status as warning (not fail) when findings fail', () => {
     const findings = [
       { id: 'document-title', status: 'fail', summary: 'Missing' },
       { id: 'document-lang', status: 'pass', summary: 'OK' },
     ];
     const result = resolveChecklistStatus(findings);
-    expect(result[10].status).toBe('fail');
+    // Checker was run, so it never fails — just warns about issues
+    expect(result[10].status).toBe('warning');
     expect(result[10].summary).toContain('issue');
   });
 

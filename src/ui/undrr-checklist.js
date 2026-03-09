@@ -212,9 +212,9 @@ export const UNDRR_CHECKLIST = [
   },
   {
     undrrNumber: 11,
-    title: 'Accessibility checker passes',
+    title: 'Accessibility checker is run',
     findingIds: [],
-    whyItMatters: 'Running an accessibility checker catches structural issues that manual review might miss. This tool performs that role -- review the findings above for specific issues.',
+    whyItMatters: 'Running an accessibility checker catches structural issues that manual review might miss. This tool performs that role — review the findings above for specific issues.',
     authoringTips: {
       general: 'Run an accessibility checker as a final step before publishing. Address all failures and review warnings.',
       word: 'File > Check for Issues > Check Accessibility. Review and fix all issues in the Inspection Results pane.',
@@ -338,8 +338,8 @@ export function resolveChecklistStatus(findings) {
 
 /**
  * Derive item 11 status from overall findings.
- * If there are any fail findings, this item fails. If only warnings, it's a warning.
- * If all pass, it passes. If no findings, it's not-checked.
+ * The checker is always run (we ARE the checker), so this never fails —
+ * it's either pass (all green) or warning (issues found, review above).
  */
 function resolveItem11Status(findings) {
   if (findings.length === 0) return { status: 'not-checked', summary: null };
@@ -349,14 +349,12 @@ function resolveItem11Status(findings) {
   const failCount = findings.filter((f) => f.status === 'fail').length;
   const warnCount = findings.filter((f) => f.status === 'warning').length;
   const passCount = findings.filter((f) => f.status === 'pass').length;
+  const issueCount = failCount + warnCount;
 
-  if (hasFail) {
-    return { status: 'fail', summary: `${failCount} issue${failCount !== 1 ? 's' : ''} found by this checker.` };
+  if (hasFail || hasWarning) {
+    return { status: 'warning', summary: `Checker ran — ${issueCount} issue${issueCount !== 1 ? 's' : ''} found. ${passCount} checks passed.` };
   }
-  if (hasWarning) {
-    return { status: 'warning', summary: `${warnCount} warning${warnCount !== 1 ? 's' : ''} found. ${passCount} checks passed.` };
-  }
-  return { status: 'pass', summary: `All ${passCount} automated checks passed.` };
+  return { status: 'pass', summary: `Checker ran — all ${passCount} automated checks passed.` };
 }
 
 /**
