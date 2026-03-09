@@ -39,6 +39,13 @@ The tool covers the practical validation workflow used by accessibility professi
 - Reading order visualization -- numbered badges with connecting lines showing content stream order
 - Structure tree to preview linking -- click a tree node to highlight its MCID regions on the rendered page
 
+**Report dashboard:**
+- At-a-glance verdict: PASS / PASS WITH WARNINGS / FAIL
+- UNDRR 13-point validation checklist with expandable "Why This Matters" guidance and authoring tips
+- Page numbers in finding details where available
+- Remediation hints inline on fail/warning findings
+- Clear error messages for non-PDF files, encrypted PDFs, and corrupt files
+
 **Flagged for manual review:**
 - Color contrast (WCAG 1.4.3)
 - Reading order (with interactive structure tree explorer and visual reading order overlay to help)

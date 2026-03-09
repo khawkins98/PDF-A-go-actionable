@@ -216,7 +216,7 @@ export const UNDRR_CHECKLIST = [
     findingIds: [],
     whyItMatters: 'Running an accessibility checker catches structural issues that manual review might miss. This tool performs that role — review the findings above for specific issues.',
     authoringTips: {
-      general: 'Run an accessibility checker as a final step before publishing. Address all failures and review warnings.',
+      general: 'This checker has been run. If issues were found, fix them in your authoring tool and re-check until all automated checks pass.',
       word: 'File > Check for Issues > Check Accessibility. Review and fix all issues in the Inspection Results pane.',
       indesign: 'InDesign has no built-in accessibility checker. Export to PDF and use Acrobat or PAC to validate.',
       powerpoint: 'File > Check for Issues > Check Accessibility (or Review > Check Accessibility in newer versions).',
@@ -352,9 +352,9 @@ function resolveItem11Status(findings) {
   const issueCount = failCount + warnCount;
 
   if (hasFail || hasWarning) {
-    return { status: 'warning', summary: `Checker ran — ${issueCount} issue${issueCount !== 1 ? 's' : ''} found. ${passCount} checks passed.` };
+    return { status: 'warning', summary: `Checker ran — ${issueCount} issue${issueCount !== 1 ? 's' : ''} found. Address the issues above and run the checker again.` };
   }
-  return { status: 'pass', summary: `Checker ran — all ${passCount} automated checks passed.` };
+  return { status: 'pass', summary: `Checker ran — all ${passCount} automated checks passed. No further action needed.` };
 }
 
 /**

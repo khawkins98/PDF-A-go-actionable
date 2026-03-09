@@ -24,11 +24,15 @@
 - Checklist progress indicator: "N of M automated checks pass" above the checklist grid
 - Expandable checklist items: `<details>/<summary>` elements with "Why This Matters" narrative and authoring tips
 - Remediation hints: first sentence of remediation shown inline on fail/warning finding rows
+- Document title shown in dashboard header and window title bar when available
+- `display-doc-title` decoupled from checklist item #1 — title-is-set check no longer affected by viewer preference flag
+- Metadata grid label renamed "Viewer Shows Title" (from "Display Doc Title") for clarity
+- Checklist item #11 renamed "Accessibility checker is run" — never fails (pass or warning only, since we are the checker)
 
 ### Test infrastructure
 - New shared assertion helpers: `findFindingById()`, `expectFindingStatus()`
 - 6 new PDF fixture factories: composite font, nested form fields, table without TR, invalid language tags, multi-page figures, large PDF
-- 746 tests across 42 test files (up from 718 across 40)
+- 752 tests across 42 test files (up from 718 across 40)
 
 ## 1.3.0 2026-03-09
 
