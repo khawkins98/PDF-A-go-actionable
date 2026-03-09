@@ -71,6 +71,14 @@ export function renderDashboard(el, data, callbacks) {
   fileName.textContent = meta.fileName || 'Unknown file';
   fileInfo.appendChild(fileName);
 
+  // Show document title below filename when available and different
+  if (meta.title) {
+    const docTitle = document.createElement('p');
+    docTitle.className = 'dashboard__doc-title';
+    docTitle.textContent = meta.title;
+    fileInfo.appendChild(docTitle);
+  }
+
   const fileFacts = buildFileFacts(meta);
   fileInfo.appendChild(fileFacts);
 

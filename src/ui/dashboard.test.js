@@ -428,6 +428,24 @@ describe('renderDashboard', () => {
     expect(h3s[0].textContent).toBe('test.pdf');
   });
 
+  it('should show document title below filename when title is set', () => {
+    const data = makeData([finding({ status: 'pass', title: 'Lang' })]);
+    renderDashboard(el, data, callbacks);
+
+    const docTitle = el.querySelector('.dashboard__doc-title');
+    expect(docTitle).not.toBeNull();
+    expect(docTitle.textContent).toBe('My Document');
+  });
+
+  it('should not show document title when title is missing', () => {
+    const data = makeData([finding({ status: 'pass', title: 'Lang' })]);
+    data.meta.title = '';
+    renderDashboard(el, data, callbacks);
+
+    const docTitle = el.querySelector('.dashboard__doc-title');
+    expect(docTitle).toBeNull();
+  });
+
   // --- Sections use aria-label ---
 
   it('should have aria-label on each status group section', () => {

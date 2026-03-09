@@ -1238,6 +1238,13 @@ body {
   word-break: break-all;
 }
 
+.dashboard__doc-title {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-xs);
+  font-style: italic;
+}
+
 .dashboard__file-facts {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
