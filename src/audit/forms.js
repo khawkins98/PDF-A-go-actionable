@@ -64,7 +64,37 @@ export function checkForms(pdfDoc, ctx) {
 }
 
 /**
+ * Recursively collect leaf form fields, following /Kids arrays.
+ * Leaf fields are those with /FT or without /Kids.
+ * @param {PDFArray} fieldsArray
+ * @param {object} context
+ * @param {object[]} results - accumulated leaf fields
+ * @param {number} depth - recursion depth cap
+ */
+function collectLeafFields(fieldsArray, context, results, depth = 0) {
+  if (depth > 20 || !(fieldsArray instanceof PDFArray)) return;
+
+  for (let i = 0; i < fieldsArray.size(); i++) {
+    const field = resolve(fieldsArray.get(i), context);
+    if (!(field instanceof PDFDict)) continue;
+
+    const kids = field.get(PDFName.of('Kids'));
+    if (kids) {
+      const kidsResolved = resolve(kids, context);
+      if (kidsResolved instanceof PDFArray) {
+        collectLeafFields(kidsResolved, context, results, depth + 1);
+        continue;
+      }
+    }
+
+    // Leaf field (has /FT or no /Kids)
+    results.push(field);
+  }
+}
+
+/**
  * Check form field labels (TU tooltip) for AcroForm fields.
+ * Traverses nested /Kids to find leaf fields.
  */
 function checkFieldLabels(fieldsArray, context) {
   if (!(fieldsArray instanceof PDFArray)) {
@@ -81,14 +111,14 @@ function checkFieldLabels(fieldsArray, context) {
     };
   }
 
+  const leafFields = [];
+  collectLeafFields(fieldsArray, context, leafFields);
+
   let total = 0;
   let withTU = 0;
   const details = [];
 
-  for (let i = 0; i < fieldsArray.size(); i++) {
-    const field = resolve(fieldsArray.get(i), context);
-    if (!(field instanceof PDFDict)) continue;
-
+  for (const field of leafFields) {
     total++;
     const nameObj = field.get(PDFName.of('T'));
     const name = nameObj ? nameObj.decodeText() : `Field ${total}`;
@@ -121,7 +151,7 @@ function checkFieldLabels(fieldsArray, context) {
     id: 'form-labels',
     category: 'forms',
     title: 'Form Field Labels',
-    status: missing === 0 ? 'pass' : 'warning',
+    status: missing === 0 ? 'pass' : 'fail',
     summary: missing === 0
       ? `All ${total} form field(s) have tooltip labels.`
       : `${missing} of ${total} form field(s) missing tooltip labels (/TU).`,
@@ -168,7 +198,7 @@ function checkTabOrder(pdfDoc) {
     id: 'tab-order',
     category: 'forms',
     title: 'Tab Order',
-    status: missing === 0 ? 'pass' : 'warning',
+    status: missing === 0 ? 'pass' : 'fail',
     summary: missing === 0
       ? `All ${total} page(s) have tab order set to structure order (/Tabs /S).`
       : `${missing} of ${total} page(s) missing /Tabs /S. Tab order may not follow reading order.`,

@@ -234,4 +234,45 @@ describe('checkStructure', () => {
     expect(headingFinding.status).toBe('pass');
     expect(headingFinding.summary).toContain('2 headings');
   });
+
+  // --- Page numbers in heading details ---
+
+  it('should include page numbers in heading detail values when /Pg is present', async () => {
+    const { PDFDocument, PDFName } = await import('pdf-lib');
+    const doc = await PDFDocument.create();
+    const page1 = doc.addPage();
+    const page2 = doc.addPage();
+    const page1Ref = doc.getPages()[0].ref;
+    const page2Ref = doc.getPages()[1].ref;
+
+    const markInfo = doc.context.obj({ Marked: true });
+    doc.catalog.set(PDFName.of('MarkInfo'), markInfo);
+    const structTreeRoot = doc.context.obj({ Type: 'StructTreeRoot' });
+    const strRef = doc.context.register(structTreeRoot);
+    doc.catalog.set(PDFName.of('StructTreeRoot'), strRef);
+    const docElem = doc.context.obj({ Type: 'StructElem', S: PDFName.of('Document'), P: strRef });
+    const docElemRef = doc.context.register(docElem);
+    // H1 on page 1
+    const h1 = doc.context.obj({ Type: 'StructElem', S: PDFName.of('H1'), P: docElemRef, Pg: page1Ref });
+    const h1Ref = doc.context.register(h1);
+    // H2 on page 2
+    const h2 = doc.context.obj({ Type: 'StructElem', S: PDFName.of('H2'), P: docElemRef, Pg: page2Ref });
+    const h2Ref = doc.context.register(h2);
+    docElem.set(PDFName.of('K'), doc.context.obj([h1Ref, h2Ref]));
+    structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+
+    const saved = await doc.save();
+    const ctx = await buildTestContext(saved);
+    const findings = checkStructure(ctx.pdfDoc, ctx);
+
+    const headingFinding = findings.find(f => f.id === 'heading-hierarchy');
+    expect(headingFinding).toBeDefined();
+    expect(headingFinding.status).toBe('pass');
+    // Heading on page 1 should show "Page 1: H1"
+    const page1Detail = headingFinding.details.find(d => d.value && d.value.includes('Page 1'));
+    expect(page1Detail).toBeDefined();
+    // Heading on page 2 should show "Page 2: H2"
+    const page2Detail = headingFinding.details.find(d => d.value && d.value.includes('Page 2'));
+    expect(page2Detail).toBeDefined();
+  });
 });

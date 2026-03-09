@@ -9,10 +9,7 @@
  * Informational:
  * - Structure tree summary (element count, types, max depth)
  */
-import { PDFName, PDFDict, PDFArray } from 'pdf-lib';
-import { resolve } from '../engine/utils/resolve.js';
-import { resolveRole } from '../engine/utils/role-map.js';
-import { walkStructureTree } from '../engine/utils/struct-tree-walker.js';
+import { resolvePageIndex, formatPagePrefix } from '../engine/utils/resolve.js';
 
 const HEADING_TYPES = new Set(['H', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
 
@@ -77,7 +74,7 @@ export function checkStructure(pdfDoc, ctx) {
 
   // #8 — Heading hierarchy (needs document order, so use tree walk)
   if (traits.hasStructTree) {
-    const headingResult = checkHeadingHierarchy(pdfDoc, roleMap);
+    const headingResult = checkHeadingHierarchy(ctx);
     findings.push(headingResult);
   } else {
     findings.push({
@@ -95,7 +92,7 @@ export function checkStructure(pdfDoc, ctx) {
 
   // Informational — Structure tree summary
   if (traits.hasStructTree) {
-    const summary = buildStructTreeSummary(pdfDoc, roleMap);
+    const summary = buildStructTreeSummary(ctx);
     findings.push({
       id: 'structure-summary',
       category: 'structure',
@@ -119,15 +116,19 @@ export function checkStructure(pdfDoc, ctx) {
 /**
  * Check heading hierarchy for skips (H1 -> H3 without H2).
  */
-function checkHeadingHierarchy(pdfDoc, roleMap) {
-  const elements = walkStructureTree(pdfDoc, roleMap);
+function checkHeadingHierarchy(ctx) {
+  const elements = ctx.getStructureElements();
   const headings = elements
     .filter(el => HEADING_TYPES.has(el.resolvedType))
-    .map(el => ({
-      type: el.type,
-      resolvedType: el.resolvedType,
-      level: el.resolvedType === 'H' ? 0 : parseInt(el.resolvedType.substring(1), 10),
-    }));
+    .map(el => {
+      const pageIdx = ctx.pageRefMap ? resolvePageIndex(el.element, ctx.pageRefMap) : null;
+      return {
+        type: el.type,
+        resolvedType: el.resolvedType,
+        level: el.resolvedType === 'H' ? 0 : parseInt(el.resolvedType.substring(1), 10),
+        pageIndex: pageIdx,
+      };
+    });
 
   if (headings.length === 0) {
     return {
@@ -169,10 +170,13 @@ function checkHeadingHierarchy(pdfDoc, roleMap) {
       title: 'Heading Hierarchy',
       status: 'pass',
       summary: `${headings.length} heading${headings.length !== 1 ? 's' : ''} in correct hierarchy (no skips).`,
-      details: headings.map((h, i) => ({
-        label: `Heading ${i + 1}`,
-        value: h.type === h.resolvedType ? h.resolvedType : `${h.type} (-> ${h.resolvedType})`,
-      })),
+      details: headings.map((h, i) => {
+        const pagePrefix = formatPagePrefix(h.pageIndex);
+        return {
+          label: `Heading ${i + 1}`,
+          value: h.type === h.resolvedType ? `${pagePrefix}${h.resolvedType}` : `${pagePrefix}${h.type} (-> ${h.resolvedType})`,
+        };
+      }),
       remediation: null,
       wcagRef: '2.4.6',
       pdfuaRef: '7.4.2',
@@ -207,8 +211,8 @@ function checkHeadingHierarchy(pdfDoc, roleMap) {
 /**
  * Build a summary of the structure tree.
  */
-function buildStructTreeSummary(pdfDoc, roleMap) {
-  const elements = walkStructureTree(pdfDoc, roleMap);
+function buildStructTreeSummary(ctx) {
+  const elements = ctx.getStructureElements();
   const typeSet = new Set();
   let maxDepth = 0;
 

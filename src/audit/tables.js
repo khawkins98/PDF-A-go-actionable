@@ -4,7 +4,7 @@
  * Check #9 — Tables have proper header cells (TH with /Scope).
  */
 import { PDFName, PDFDict, PDFArray } from 'pdf-lib';
-import { resolve } from '../engine/utils/resolve.js';
+import { resolve, resolvePageIndex, formatPagePrefix } from '../engine/utils/resolve.js';
 import { resolveRole } from '../engine/utils/role-map.js';
 
 /**
@@ -44,7 +44,8 @@ export function checkTables(pdfDoc, ctx) {
 
     if (resolved !== 'Table') return;
 
-    tables.push({ element: obj, typeName });
+    const pageIdx = ctx.pageRefMap ? resolvePageIndex(obj, ctx.pageRefMap) : null;
+    tables.push({ element: obj, typeName, pageIndex: pageIdx });
   });
 
   if (tables.length === 0) {
@@ -63,7 +64,7 @@ export function checkTables(pdfDoc, ctx) {
 
   // Check each table for TH children with /Scope
   const tableResults = tables.map((table, idx) => {
-    return analyzeTable(table.element, idx + 1, context, roleMap);
+    return analyzeTable(table.element, idx + 1, context, roleMap, table.pageIndex);
   });
 
   const tablesWithIssues = tableResults.filter(t => t.issues.length > 0);
@@ -99,14 +100,17 @@ export function checkTables(pdfDoc, ctx) {
 /**
  * Analyze a single table's structure for TH cells.
  */
-function analyzeTable(tableDict, tableNum, context, roleMap) {
+function analyzeTable(tableDict, tableNum, context, roleMap, pageIndex) {
+  const pagePrefix = formatPagePrefix(pageIndex);
   let thCount = 0;
   let tdCount = 0;
   let thWithScope = 0;
   const issues = [];
 
+  let missingTR = 0;
+
   // Walk the table's subtree looking for TH and TD
-  walkChildren(tableDict, context, roleMap, (typeName, resolvedType, element) => {
+  walkChildren(tableDict, context, roleMap, (typeName, resolvedType, element, parentResolvedType) => {
     if (resolvedType === 'TH') {
       thCount++;
       // Check for /A or /Scope attribute
@@ -117,15 +121,19 @@ function analyzeTable(tableDict, tableNum, context, roleMap) {
           thWithScope++;
         }
       }
+      // Check if parent is TR
+      if (parentResolvedType !== 'TR') missingTR++;
     } else if (resolvedType === 'TD') {
       tdCount++;
+      // Check if parent is TR
+      if (parentResolvedType !== 'TR') missingTR++;
     }
   });
 
   const details = [];
   details.push({
     label: `Table ${tableNum}`,
-    value: `${thCount} TH, ${tdCount} TD cells`,
+    value: `${pagePrefix}${thCount} TH, ${tdCount} TD cells`,
   });
 
   if (thCount === 0 && tdCount > 0) {
@@ -142,19 +150,36 @@ function analyzeTable(tableDict, tableNum, context, roleMap) {
     });
   }
 
+  if (missingTR > 0) {
+    issues.push(`Table ${tableNum}: ${missingTR} cell(s) not wrapped in TR`);
+    details.push({
+      label: `Table ${tableNum} issue`,
+      value: `${missingTR} TH/TD not wrapped in TR`,
+    });
+  }
+
   return { issues, details };
 }
 
 /**
  * Recursively walk children of a StructElem.
+ * Callback receives (typeName, resolvedType, element, parentResolvedType).
  */
-function walkChildren(dict, context, roleMap, callback, depth = 0) {
+function walkChildren(dict, context, roleMap, callback, depth = 0, parentResolvedType = null) {
   if (depth > 50) return; // Safety cap for subtree walk
 
   const k = dict.get(PDFName.of('K'));
   if (!k) return;
 
   const kResolved = resolve(k, context);
+
+  // Determine current element's resolved type for passing to children
+  const currentS = dict.get(PDFName.of('S'));
+  let currentResolvedType = parentResolvedType;
+  if (currentS) {
+    const currentTypeName = currentS instanceof PDFName ? currentS.decodeText() : currentS.toString().replace(/^\//, '');
+    currentResolvedType = resolveRole(currentTypeName, roleMap);
+  }
 
   const processChild = (child) => {
     const resolved = resolve(child, context);
@@ -164,10 +189,10 @@ function walkChildren(dict, context, roleMap, callback, depth = 0) {
     if (s) {
       const typeName = s instanceof PDFName ? s.decodeText() : s.toString().replace(/^\//, '');
       const resolvedType = resolveRole(typeName, roleMap);
-      callback(typeName, resolvedType, resolved);
+      callback(typeName, resolvedType, resolved, currentResolvedType);
     }
 
-    walkChildren(resolved, context, roleMap, callback, depth + 1);
+    walkChildren(resolved, context, roleMap, callback, depth + 1, currentResolvedType);
   };
 
   if (kResolved instanceof PDFArray) {

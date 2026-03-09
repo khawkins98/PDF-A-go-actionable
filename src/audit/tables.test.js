@@ -16,6 +16,7 @@ import {
   createTaggedPdf,
   createPdfWithTable,
   createPdfWithTableInvalidScope,
+  createPdfWithTableNoTR,
 } from '../../test/fixtures/create-test-pdfs.js';
 import { PDFDocument, PDFName } from 'pdf-lib';
 
@@ -353,5 +354,56 @@ describe('checkTables', () => {
     // An empty table (0 TH, 0 TD) should pass (no issues detected)
     expect(f.status).toBe('pass');
     expect(f.details.some(d => d.value && d.value.includes('0 TH, 0 TD'))).toBe(true);
+  });
+
+  it('should warn when TH/TD not inside TR element', async () => {
+    const bytes = await createPdfWithTableNoTR();
+    const ctx = await buildTestContext(bytes);
+    const findings = checkTables(ctx.pdfDoc, ctx);
+
+    const f = findings.find(f => f.id === 'table-headers');
+    expect(f).toBeDefined();
+    expect(f.status).toBe('fail');
+    expect(f.details.some(d => d.value && d.value.includes('not wrapped in TR'))).toBe(true);
+  });
+
+  // --- Page numbers in table details ---
+
+  it('should include page numbers in table detail values when /Pg is present', async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage();
+    doc.addPage();
+    const page2Ref = doc.getPages()[1].ref;
+
+    const markInfo = doc.context.obj({ Marked: true });
+    doc.catalog.set(PDFName.of('MarkInfo'), markInfo);
+    const structTreeRoot = doc.context.obj({ Type: 'StructTreeRoot' });
+    const strRef = doc.context.register(structTreeRoot);
+    doc.catalog.set(PDFName.of('StructTreeRoot'), strRef);
+    const docElem = doc.context.obj({ Type: 'StructElem', S: PDFName.of('Document'), P: strRef });
+    const docElemRef = doc.context.register(docElem);
+
+    // Table on page 2 with TD only (no TH → fail)
+    const tableElem = doc.context.obj({ Type: 'StructElem', S: PDFName.of('Table'), P: docElemRef, Pg: page2Ref });
+    const tableElemRef = doc.context.register(tableElem);
+    const tr = doc.context.obj({ Type: 'StructElem', S: PDFName.of('TR'), P: tableElemRef });
+    const trRef = doc.context.register(tr);
+    const td = doc.context.obj({ Type: 'StructElem', S: PDFName.of('TD'), P: trRef });
+    const tdRef = doc.context.register(td);
+    tr.set(PDFName.of('K'), doc.context.obj([tdRef]));
+    tableElem.set(PDFName.of('K'), doc.context.obj([trRef]));
+    docElem.set(PDFName.of('K'), doc.context.obj([tableElemRef]));
+    structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+
+    const saved = await doc.save();
+    const ctx = await buildTestContext(saved);
+    const findings = checkTables(ctx.pdfDoc, ctx);
+
+    const f = findings.find(f => f.id === 'table-headers');
+    expect(f).toBeDefined();
+    expect(f.status).toBe('fail');
+    // Table detail should show "Page 2:"
+    const detailWithPage = f.details.find(d => d.value && d.value.includes('Page 2'));
+    expect(detailWithPage).toBeDefined();
   });
 });

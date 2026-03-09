@@ -20,6 +20,8 @@ PDF fonts come in a few types, each stored differently:
 
 **Font embedding validation:** To check if a font is embedded, look for `FontFile`, `FontFile2`, or `FontFile3` in the font's `/FontDescriptor` dict. CIDFont subtypes (`CIDFontType0`, `CIDFontType2`) and `Type3` fonts should be skipped during embedding checks--CIDFonts are referenced through their parent Type0 font, and Type3 fonts define glyphs procedurally (they don't have external font programs to embed). Standard 14 fonts (Helvetica, Courier, Times-Roman, etc.) often lack a `/FontDescriptor` entirely--this is legal per the spec and shouldn't be flagged as an error.
 
+**Composite font (Type0) embedding:** Type0 fonts don't carry their own `/FontDescriptor`. Instead, resolve the `/DescendantFonts` array to find the CIDFont descendant, then check *its* `/FontDescriptor` for `FontFile`/`FontFile2`/`FontFile3`. Skipping Type0 fonts entirely during embedding checks misses unembedded CIDFonts.
+
 ### Simple vs Composite Fonts
 
 - **Simple fonts** (Type1, TrueType): Single-byte character codes (0-255), mapped to glyphs via `/Encoding` + optional `/Differences` array.
@@ -162,7 +164,7 @@ Fonts without `/ToUnicode` CMaps can't be reliably extracted to text by screen r
 - Check for `/ToUnicode` entry
 - Report fonts missing it by name
 
-Standard fonts (Helvetica, Courier, Times-Roman, etc.) sometimes lack ToUnicode even in otherwise well-tagged PDFs.
+Standard fonts (Helvetica, Courier, Times-Roman, etc.) sometimes lack ToUnicode even in otherwise well-tagged PDFs. The standard 14 fonts (Courier, Courier-Bold, Courier-BoldOblique, Courier-Oblique, Helvetica, Helvetica-Bold, Helvetica-BoldOblique, Helvetica-Oblique, Times-Roman, Times-Bold, Times-BoldItalic, Times-Italic, Symbol, ZapfDingbats) should be exempt from ToUnicode requirements since their character encodings are well-defined by the PDF spec and all conforming readers know how to map them.
 
 ### Image Alt Text
 
@@ -197,6 +199,7 @@ Accessible tables require:
 - `/Table` StructElem as the container
 - `/TH` (header) cells, not just `/TD` (data) cells
 - `/Scope` attribute on `/TH` elements with a valid value: `Row`, `Column`, or `Both`. Simply having a `/Scope` key with an arbitrary value is not sufficient --the value must be one of these three per the PDF spec.
+- `/TR` (table row) wrapping `/TH` and `/TD` cells. Cells not inside a TR element indicate malformed table structure
 - For complex tables: `/Headers` attribute linking data cells to their header cells
 
 ### List Structure Validation
@@ -225,6 +228,53 @@ WCAG Success Criteria references must be precise. Common misattributions found d
 - **Form labels** is 3.3.2 (Labels or Instructions), not 1.3.1. 1.3.1 covers programmatic association; 3.3.2 covers the presence and quality of labels.
 - **Font ToUnicode** maps to 4.1.1 (Parsing) -- without ToUnicode, assistive technology cannot reliably parse text content.
 - **Color contrast** is 1.4.3 (Contrast Minimum) -- requires 4.5:1 for normal text, 3:1 for large text.
+
+### Severity Level Accuracy
+
+PDF/UA requirements that are machine-checkable should produce `fail`, not `warning`. Several findings were initially set to `warning` out of caution but were corrected after expert review:
+- **DisplayDocTitle** (PDF/UA 7.1 requirement) -- `fail` when not set
+- **Form field labels** (WCAG 3.3.2) -- `fail` when `/TU` tooltip is missing
+- **Tab order** (PDF/UA requires `/Tabs /S`) -- `fail` when not set to Structure
+- **Font embedding** (PDF/UA 7.21.4) -- `fail` when fonts are not embedded
+- **Font ToUnicode** (WCAG 4.1.1) -- `fail` when non-standard fonts lack ToUnicode
+
+The general rule: if the PDF spec or PDF/UA explicitly requires something and its absence makes the document inaccessible, the finding should be `fail`. Use `warning` for best-practice gaps that don't block accessibility (e.g., missing bookmarks, non-H1 first heading).
+
+### BCP-47 Language Tag Validation
+
+PDF documents declare language via `/Lang` on the catalog (document-level) and optionally on individual StructElems (per-element). The value should be a valid BCP-47 tag (e.g., `en`, `en-US`, `zh-Hans-CN`), but in practice many PDFs contain invalid formats:
+- Underscore separators: `en_US` (should be `en-US`)
+- Full language names: `English` (should be `en`)
+- Locale codes: `en-us` (valid but lowercase subtag; BCP-47 is case-insensitive)
+
+A simple regex `/^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$/` catches the most common format errors without requiring a full IANA subtag registry lookup. Invalid tags are flagged as warnings rather than failures since the intent (setting a language) is correct even if the format is wrong.
+
+### Nested Form Fields
+
+AcroForm fields can be organized hierarchically via `/Kids` arrays. A parent field (with no `/FT` field type) contains child fields as `/Kids`. To find all leaf fields (the ones users interact with), walk the `/Kids` tree recursively:
+- If a field has `/Kids` and no `/FT`, it's a container -- recurse into children
+- If a field has `/FT` or no `/Kids`, it's a leaf field -- check for `/TU` (tooltip), `/T` (name), etc.
+- Cap recursion depth (20) to prevent infinite loops from malformed field trees
+
+Flat iteration over the AcroForm `/Fields` array misses nested fields entirely.
+
+### Cached Structure Tree Walk
+
+When multiple audit modules need the same structure tree data (e.g., heading hierarchy check, element language check, tree summary), walking the tree multiple times is wasteful. A lazy-computed cache in the shared context eliminates redundant walks:
+
+```js
+let _elements = null;
+const getStructureElements = () => {
+  if (_elements === null) _elements = walkStructureTree(pdfDoc, roleMap);
+  return _elements;
+};
+```
+
+Modules that need ordered elements call `ctx.getStructureElements()` instead of importing and calling `walkStructureTree` directly. The first call computes; subsequent calls return the cached array.
+
+### PDF Magic Byte Detection
+
+Before attempting `PDFDocument.load()`, check the first 5 bytes for the `%PDF-` magic header. This catches non-PDF files (images renamed to .pdf, Word documents, etc.) with a clear error message instead of a cryptic parse failure. The magic check is fast and avoids wasting time on pdf-lib's parser for obviously wrong input.
 
 ### Security Permissions
 

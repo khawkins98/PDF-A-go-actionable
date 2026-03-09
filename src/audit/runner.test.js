@@ -93,24 +93,44 @@ describe('runAudit', () => {
     expect(phases).toContain('complete');
   });
 
-  it('should return load-failure finding for corrupt data', async () => {
+  it('should detect non-PDF files by magic bytes', async () => {
     const garbage = new Uint8Array([0, 1, 2, 3, 4, 5]).buffer;
     const result = await runAudit(garbage, { fileName: 'bad.pdf' });
 
     expect(result.findings).toHaveLength(1);
     expect(result.findings[0].id).toBe('load-failure');
     expect(result.findings[0].status).toBe('fail');
-    expect(result.findings[0].category).toBe('document');
-    expect(result.findings[0].summary).toContain('Unable to parse PDF');
+    expect(result.findings[0].summary).toContain('does not appear to be a PDF');
   });
 
-  it('should return valid meta even for corrupt data', async () => {
+  it('should detect non-PDF files like PNG renamed to .pdf', async () => {
+    // PNG magic: \x89PNG\r
+    const png = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A]).buffer;
+    const result = await runAudit(png, { fileName: 'image.pdf' });
+
+    expect(result.findings[0].summary).toContain('does not appear to be a PDF');
+    expect(result.findings[0].remediation).toContain('not another format');
+  });
+
+  it('should return valid meta even for non-PDF data', async () => {
     const garbage = new Uint8Array([0, 1, 2, 3]).buffer;
     const result = await runAudit(garbage, { fileName: 'corrupt.pdf' });
 
     expect(result.meta.fileName).toBe('corrupt.pdf');
     expect(result.meta.pageCount).toBe(0);
     expect(result.meta.fileSize).toBe(4);
+  });
+
+  it('should provide specific message for corrupt PDFs with valid header', async () => {
+    // Valid PDF header but truncated/corrupt content that pdf-lib can't parse
+    const header = new TextEncoder().encode('%PDF-1.4\n1 0 obj\n<<>>stream\n');
+    const result = await runAudit(header.buffer, { fileName: 'broken.pdf' });
+
+    expect(result.findings[0].id).toBe('load-failure');
+    expect(result.findings[0].status).toBe('fail');
+    // Should get a parse error, not "does not appear to be a PDF"
+    expect(result.findings[0].summary).not.toContain('does not appear to be a PDF');
+    expect(result.findings[0].remediation).toContain('corrupted');
   });
 
   it('should include findings from all 9 audit modules for a tagged PDF', async () => {

@@ -15,6 +15,7 @@ import {
   createTaggedPdf,
   createPdfWithFigures,
   createPdfWithFigureAlts,
+  createPdfWithFiguresOnPages,
 } from '../../test/fixtures/create-test-pdfs.js';
 import { PDFDocument, PDFName, PDFHexString } from 'pdf-lib';
 
@@ -251,5 +252,23 @@ describe('checkImages', () => {
     expect(altFinding).toBeDefined();
     expect(altFinding.status).toBe('fail');
     expect(altFinding.summary).toContain('1 of 1');
+  });
+
+  // --- Page numbers in details ---
+
+  it('should include page numbers in detail values for figures on specific pages', async () => {
+    const bytes = await createPdfWithFiguresOnPages([
+      { hasAlt: true, pageIndex: 0 },
+      { hasAlt: false, pageIndex: 1 },
+    ]);
+    const ctx = await buildTestContext(bytes);
+    const findings = checkImages(ctx.pdfDoc, ctx);
+
+    const altFinding = findings.find(f => f.id === 'image-alt-text');
+    expect(altFinding).toBeDefined();
+    expect(altFinding.status).toBe('fail');
+    // The figure without alt on page 2 should show "Page 2:"
+    const detailWithPage = altFinding.details.find(d => d.value && d.value.includes('Page 2'));
+    expect(detailWithPage).toBeDefined();
   });
 });

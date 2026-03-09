@@ -13,9 +13,17 @@
  * - Bookmarks present
  * - Per-element language specifications
  */
-import { PDFName, PDFDict, PDFRef } from 'pdf-lib';
+import { PDFName, PDFDict } from 'pdf-lib';
 import { resolve } from '../engine/utils/resolve.js';
-import { walkStructureTree } from '../engine/utils/struct-tree-walker.js';
+// Structure tree walk accessed via ctx.getStructureElements() for cached single-pass
+
+/** BCP-47 language tag validation pattern. */
+const BCP47_REGEX = /^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$/;
+
+/** Check if a string is a valid BCP-47 language tag. */
+function isValidBcp47(lang) {
+  return BCP47_REGEX.test(lang);
+}
 
 /**
  * @param {import('pdf-lib').PDFDocument} pdfDoc
@@ -55,18 +63,28 @@ export function checkMetadata(pdfDoc, ctx) {
   });
 
   // #2 — Document language
+  let langStatus, langSummary, langRemediation;
+  if (!traits.lang) {
+    langStatus = 'fail';
+    langSummary = 'No document language specified. Screen readers may use the wrong pronunciation rules.';
+    langRemediation = 'Set the document language in your authoring tool. In Word: File > Options > Language. In Acrobat: File > Properties > Advanced > Language.';
+  } else if (!isValidBcp47(traits.lang)) {
+    langStatus = 'warning';
+    langSummary = `Document language is set to "${traits.lang}" but this is not a valid BCP-47 tag. Use a format like "en", "en-US", or "zh-Hans-CN".`;
+    langRemediation = `The language tag "${traits.lang}" is not valid BCP-47 format. Use standard codes: "en" for English, "fr" for French, "en-US" for American English, etc.`;
+  } else {
+    langStatus = 'pass';
+    langSummary = `Document language is set: "${traits.lang}"`;
+    langRemediation = null;
+  }
   findings.push({
     id: 'document-lang',
     category: 'metadata',
     title: 'Document Language',
-    status: traits.lang ? 'pass' : 'fail',
-    summary: traits.lang
-      ? `Document language is set: "${traits.lang}"`
-      : 'No document language specified. Screen readers may use the wrong pronunciation rules.',
+    status: langStatus,
+    summary: langSummary,
     details: traits.lang ? [{ label: 'Language', value: traits.lang }] : [],
-    remediation: traits.lang
-      ? null
-      : 'Set the document language in your authoring tool. In Word: File > Options > Language. In Acrobat: File > Properties > Advanced > Language.',
+    remediation: langRemediation,
     wcagRef: '3.1.1',
     pdfuaRef: '7.2',
   });
@@ -124,7 +142,7 @@ export function checkMetadata(pdfDoc, ctx) {
     id: 'display-doc-title',
     category: 'metadata',
     title: 'Display Document Title',
-    status: traits.displayDocTitle === true ? 'pass' : 'warning',
+    status: traits.displayDocTitle === true ? 'pass' : 'fail',
     summary: traits.displayDocTitle === true
       ? 'Viewer is configured to show the document title in the title bar.'
       : 'Viewer preference for displaying the document title is not set. The title bar may show the filename instead.',
@@ -230,7 +248,7 @@ function checkSecurity(pdfDoc) {
  * Walks the structure tree and reports which elements specify a language.
  */
 function checkPerElementLanguage(pdfDoc, ctx) {
-  const { traits, roleMap } = ctx;
+  const { traits } = ctx;
 
   if (!traits.hasStructTree) {
     return {
@@ -246,7 +264,7 @@ function checkPerElementLanguage(pdfDoc, ctx) {
     };
   }
 
-  const elements = walkStructureTree(pdfDoc, roleMap);
+  const elements = ctx.getStructureElements();
   const withLang = elements.filter(el => el.lang);
 
   if (withLang.length === 0) {
@@ -263,12 +281,16 @@ function checkPerElementLanguage(pdfDoc, ctx) {
     };
   }
 
-  // Build per-language summary
+  // Build per-language summary and check for invalid BCP-47 tags
   const langMap = new Map();
+  const invalidLangs = new Set();
   for (const el of withLang) {
     const list = langMap.get(el.lang) || [];
     list.push(el.type === el.resolvedType ? el.type : `${el.type} (${el.resolvedType})`);
     langMap.set(el.lang, list);
+    if (!isValidBcp47(el.lang)) {
+      invalidLangs.add(el.lang);
+    }
   }
 
   const details = [];
@@ -277,6 +299,26 @@ function checkPerElementLanguage(pdfDoc, ctx) {
       label: lang,
       value: `${types.length} element${types.length === 1 ? '' : 's'} (${[...new Set(types)].join(', ')})`,
     });
+  }
+
+  if (invalidLangs.size > 0) {
+    for (const lang of invalidLangs) {
+      details.push({
+        label: 'Invalid language tag',
+        value: `"${lang}" is not valid BCP-47 format`,
+      });
+    }
+    return {
+      id: 'per-element-language',
+      category: 'metadata',
+      title: 'Per-Element Language',
+      status: 'warning',
+      summary: `${withLang.length} structure element(s) specify language, but ${invalidLangs.size} use invalid BCP-47 tags.`,
+      details,
+      remediation: `Fix invalid language tags: ${[...invalidLangs].map(l => `"${l}"`).join(', ')}. Use standard BCP-47 codes like "en", "fr-FR", "zh-Hans-CN".`,
+      wcagRef: '3.1.2',
+      pdfuaRef: '7.2',
+    };
   }
 
   return {

@@ -203,6 +203,48 @@ describe('checkLinks', () => {
     expect(linkFinding.status).toBe('fail');
   });
 
+  // --- Page numbers in link details ---
+
+  it('should include page numbers in link detail values when /Pg is present', async () => {
+    const { PDFDocument, PDFName, PDFHexString } = await import('pdf-lib');
+    const doc = await PDFDocument.create();
+    doc.addPage();
+    doc.addPage();
+    const page2Ref = doc.getPages()[1].ref;
+
+    const markInfo = doc.context.obj({ Marked: true });
+    doc.catalog.set(PDFName.of('MarkInfo'), markInfo);
+    const structTreeRoot = doc.context.obj({ Type: 'StructTreeRoot' });
+    const strRef = doc.context.register(structTreeRoot);
+    doc.catalog.set(PDFName.of('StructTreeRoot'), strRef);
+    const docElem = doc.context.obj({ Type: 'StructElem', S: PDFName.of('Document'), P: strRef });
+    const docElemRef = doc.context.register(docElem);
+
+    // Link on page 2 with generic text (warning)
+    const linkElem = doc.context.obj({
+      Type: 'StructElem',
+      S: PDFName.of('Link'),
+      P: docElemRef,
+      Pg: page2Ref,
+      ActualText: PDFHexString.fromText('click here'),
+    });
+    const linkElemRef = doc.context.register(linkElem);
+    docElem.set(PDFName.of('K'), doc.context.obj([linkElemRef]));
+    structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+
+    const saved = await doc.save();
+    const ctx = await buildTestContext(saved);
+    const { checkLinks } = await import('./links.js');
+    const findings = checkLinks(ctx.pdfDoc, ctx);
+
+    const f = findings.find(f => f.id === 'link-text');
+    expect(f).toBeDefined();
+    expect(f.status).toBe('warning');
+    // Detail should show "Page 2:" prefix
+    const detailWithPage = f.details.find(d => d.value && d.value.includes('Page 2'));
+    expect(detailWithPage).toBeDefined();
+  });
+
   it('should fail when link text is whitespace-only', async () => {
     const bytes = await createPdfWithMixedLinks([
       { text: '   ' },

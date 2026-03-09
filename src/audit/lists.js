@@ -4,7 +4,7 @@
  * Check #10 — Lists are properly tagged (L > LI > Lbl + LBody).
  */
 import { PDFName, PDFDict, PDFArray } from 'pdf-lib';
-import { resolve } from '../engine/utils/resolve.js';
+import { resolve, resolvePageIndex, formatPagePrefix } from '../engine/utils/resolve.js';
 import { resolveRole } from '../engine/utils/role-map.js';
 
 /**
@@ -43,7 +43,8 @@ export function checkLists(pdfDoc, ctx) {
     const resolved = resolveRole(typeName, roleMap);
 
     if (resolved !== 'L') return;
-    lists.push({ element: obj, typeName });
+    const pageIdx = ctx.pageRefMap ? resolvePageIndex(obj, ctx.pageRefMap) : null;
+    lists.push({ element: obj, typeName, pageIndex: pageIdx });
   });
 
   if (lists.length === 0) {
@@ -66,7 +67,7 @@ export function checkLists(pdfDoc, ctx) {
   const details = [];
 
   lists.forEach((list, idx) => {
-    const result = validateList(list.element, idx + 1, context, roleMap);
+    const result = validateList(list.element, idx + 1, context, roleMap, list.pageIndex);
     details.push(...result.details);
     structuralIssues.push(...result.structuralIssues);
     lblIssues.push(...result.lblIssues);
@@ -108,7 +109,8 @@ export function checkLists(pdfDoc, ctx) {
 /**
  * Validate a single list's structure: L > LI > Lbl + LBody.
  */
-function validateList(listDict, listNum, context, roleMap) {
+function validateList(listDict, listNum, context, roleMap, pageIndex) {
+  const pagePrefix = formatPagePrefix(pageIndex);
   const structuralIssues = [];
   const lblIssues = [];
   const details = [];
@@ -141,14 +143,14 @@ function validateList(listDict, listNum, context, roleMap) {
         structuralIssues.push(`List ${listNum}, LI ${liCount}: missing LBody`);
         details.push({
           label: `List ${listNum}, LI ${liCount}`,
-          value: `Missing LBody (has: ${childTypes.join(', ') || 'no typed children'})`,
+          value: `${pagePrefix}Missing LBody (has: ${childTypes.join(', ') || 'no typed children'})`,
         });
       }
       if (!hasLbl) {
         lblIssues.push(`List ${listNum}, LI ${liCount}: missing Lbl`);
         details.push({
           label: `List ${listNum}, LI ${liCount}`,
-          value: `Missing Lbl (has: ${childTypes.join(', ') || 'no typed children'})`,
+          value: `${pagePrefix}Missing Lbl (has: ${childTypes.join(', ') || 'no typed children'})`,
         });
       }
     } else if (resolvedType !== 'Caption') {

@@ -26,11 +26,13 @@ The tool covers the practical validation workflow used by accessibility professi
 - Heading hierarchy (H1 > H2 > H3, no skips; generic /H supported)
 - Table header cells and scope
 - List structure (L > LI > Lbl + LBody)
-- Font Unicode mapping (ToUnicode CMap coverage)
+- Font Unicode mapping (ToUnicode CMap coverage; standard 14 fonts exempt)
+- Font embedding (including CIDFont composites via DescendantFonts)
 - Bookmark/outline presence
-- Form field labeling
+- Form field labeling (including nested fields via /Kids traversal)
 - Link text quality (with recursive child text extraction)
 - Tab order configuration
+- BCP-47 language tag validation (document-level and per-element)
 
 **Visual tools:**
 - PDF Preview panel with page navigation and zoom (50%-300% + fit-to-width)
@@ -85,7 +87,7 @@ All files are fetched via `cdn.jsdelivr.net` at runtime (CORS-friendly, no local
 
 ## Status
 
-V1.3.0. See [CHANGELOG.md](CHANGELOG.md) for release history.
+V1.4.0. See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## Acknowledgments
 

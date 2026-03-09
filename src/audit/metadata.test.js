@@ -20,6 +20,7 @@ import {
   createTaggedPdf,
   createPdfWithBookmarks,
   createPdfWithPerElementLang,
+  createPdfWithInvalidLang,
 } from '../../test/fixtures/create-test-pdfs.js';
 
 /**
@@ -163,7 +164,7 @@ describe('checkMetadata', () => {
     expect(ids).toContain('bookmarks');
   });
 
-  it('should warn when DisplayDocTitle is explicitly set to false', async () => {
+  it('should fail when DisplayDocTitle is explicitly set to false', async () => {
     const doc = await PDFDocument.create();
     doc.addPage();
 
@@ -177,7 +178,7 @@ describe('checkMetadata', () => {
 
     const displayFinding = findings.find(f => f.id === 'display-doc-title');
     expect(displayFinding).toBeDefined();
-    expect(displayFinding.status).toBe('warning');
+    expect(displayFinding.status).toBe('fail');
     expect(displayFinding.summary).toContain('not set');
   });
 
@@ -346,6 +347,53 @@ describe('checkMetadata', () => {
 
     const ids = findings.map(f => f.id);
     expect(ids).toContain('per-element-language');
+  });
+
+  // --- BCP-47 language validation ---
+
+  it('should warn when document lang is invalid BCP-47 (e.g., en_US)', async () => {
+    const bytes = await createPdfWithInvalidLang('en_US');
+    const ctx = await buildTestContext(bytes);
+    const findings = checkMetadata(ctx.pdfDoc, ctx);
+
+    const langFinding = findings.find(f => f.id === 'document-lang');
+    expect(langFinding.status).toBe('warning');
+    expect(langFinding.summary).toContain('not a valid BCP-47');
+  });
+
+  it('should warn when document lang is invalid BCP-47 (e.g., English)', async () => {
+    const bytes = await createPdfWithInvalidLang('English');
+    const ctx = await buildTestContext(bytes);
+    const findings = checkMetadata(ctx.pdfDoc, ctx);
+
+    const langFinding = findings.find(f => f.id === 'document-lang');
+    expect(langFinding.status).toBe('warning');
+  });
+
+  it('should pass for valid BCP-47 subtags (en-US, zh-Hans-CN)', async () => {
+    for (const lang of ['en-US', 'zh-Hans-CN', 'fr', 'de-DE']) {
+      const bytes = await createPdfWithLang(lang);
+      const ctx = await buildTestContext(bytes);
+      const findings = checkMetadata(ctx.pdfDoc, ctx);
+      const langFinding = findings.find(f => f.id === 'document-lang');
+      expect(langFinding.status).toBe('pass');
+    }
+  });
+
+  it('should warn when per-element lang has invalid BCP-47 format', async () => {
+    const bytes = await createPdfWithPerElementLang({
+      docLang: 'en-US',
+      elements: [
+        { type: 'P', lang: 'en_US' },
+        { type: 'Span', lang: 'fr-FR' },
+      ],
+    });
+    const ctx = await buildTestContext(bytes);
+    const findings = checkMetadata(ctx.pdfDoc, ctx);
+
+    const langFinding = findings.find(f => f.id === 'per-element-language');
+    expect(langFinding.status).toBe('warning');
+    expect(langFinding.details.some(d => d.label === 'Invalid language tag')).toBe(true);
   });
 
   it('should reference WCAG 3.1.2 for per-element language', async () => {

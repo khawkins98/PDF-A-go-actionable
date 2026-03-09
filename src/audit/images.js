@@ -6,7 +6,7 @@
  * #7 — Decorative images flagged for review
  */
 import { PDFName, PDFDict, PDFStream } from 'pdf-lib';
-import { resolve } from '../engine/utils/resolve.js';
+import { resolve, resolvePageIndex, formatPagePrefix } from '../engine/utils/resolve.js';
 import { resolveRole } from '../engine/utils/role-map.js';
 
 /** Generic alt text patterns (case-insensitive match). */
@@ -31,7 +31,7 @@ const GENERIC_ALT_TEXT = [
  * @returns {object[]} Array of Finding objects
  */
 export function checkImages(pdfDoc, ctx) {
-  const { traits, roleMap, context } = ctx;
+  const { traits, roleMap, context, pageRefMap } = ctx;
   const findings = [];
 
   if (!traits.hasStructTree) {
@@ -89,12 +89,15 @@ export function checkImages(pdfDoc, ctx) {
     const isGeneric = trimmedAlt.length > 0 && GENERIC_ALT_TEXT.includes(trimmedAlt.toLowerCase());
     const isShort = trimmedAlt.length > 0 && trimmedAlt.length <= 2 && !isGeneric;
 
+    const pageIdx = pageRefMap ? resolvePageIndex(obj, pageRefMap) : null;
+
     figures.push({
       type: typeName,
       alt,
       hasAlt: !!alt && trimmedAlt.length > 0,
       isGeneric,
       isShort,
+      pageIndex: pageIdx,
     });
   });
 
@@ -118,10 +121,13 @@ export function checkImages(pdfDoc, ctx) {
       pdfuaRef: '7.3',
     });
   } else if (figuresWithoutAlt.length > 0) {
-    const details = figuresWithoutAlt.map((f) => ({
-      label: 'Figure without alt',
-      value: f.type === 'Figure' ? 'No /Alt attribute' : `Custom type "${f.type}" (maps to Figure), no /Alt attribute`,
-    }));
+    const details = figuresWithoutAlt.map((f) => {
+      const pagePrefix = formatPagePrefix(f.pageIndex);
+      return {
+        label: 'Figure without alt',
+        value: f.type === 'Figure' ? `${pagePrefix}No /Alt attribute` : `${pagePrefix}Custom type "${f.type}" (maps to Figure), no /Alt attribute`,
+      };
+    });
     if (figuresWithGenericAlt.length > 0) {
       details.push(...figuresWithGenericAlt.map((f) => ({
         label: 'Generic alt text',

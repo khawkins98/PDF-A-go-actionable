@@ -18,6 +18,7 @@ import {
   PDFArray,
   PDFString,
   PDFHexString,
+  PDFNumber,
 } from 'pdf-lib';
 
 // ---------------------------------------------------------------------------
@@ -871,6 +872,236 @@ export async function createPdfWithFormsNoFT() {
   });
   const acroFormRef = doc.context.register(acroForm);
   doc.catalog.set(PDFName.of('AcroForm'), acroFormRef);
+
+  return doc.save();
+}
+
+// ---------------------------------------------------------------------------
+// Factory: PDF with composite (Type0) font
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a PDF with a Type0 composite font backed by a CIDFontType2 descendant.
+ * @param {object} options
+ * @param {boolean} options.embedded - Whether the CIDFont has a FontFile2
+ */
+export async function createPdfWithCompositeFont(options = { embedded: true }) {
+  const doc = await PDFDocument.create();
+  doc.addPage();
+
+  // Create FontDescriptor for the CIDFont
+  const descriptor = doc.context.obj({
+    Type: 'FontDescriptor',
+    FontName: PDFName.of('TestComposite-Regular'),
+  });
+  if (options.embedded) {
+    const dummyFile = doc.context.obj({});
+    const dummyFileRef = doc.context.register(dummyFile);
+    descriptor.set(PDFName.of('FontFile2'), dummyFileRef);
+  }
+  const descriptorRef = doc.context.register(descriptor);
+
+  // Create CIDFontType2 descendant
+  const cidFont = doc.context.obj({
+    Type: 'Font',
+    Subtype: PDFName.of('CIDFontType2'),
+    BaseFont: PDFName.of('TestComposite-Regular'),
+    FontDescriptor: descriptorRef,
+  });
+  const cidFontRef = doc.context.register(cidFont);
+
+  // Create Type0 parent font
+  const type0Font = doc.context.obj({
+    Type: 'Font',
+    Subtype: PDFName.of('Type0'),
+    BaseFont: PDFName.of('TestComposite-Regular'),
+    DescendantFonts: doc.context.obj([cidFontRef]),
+  });
+  doc.context.register(type0Font);
+
+  return doc.save();
+}
+
+// ---------------------------------------------------------------------------
+// Factory: PDF with nested form fields (/Kids)
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a PDF with AcroForm where a parent field has /Kids children.
+ * @param {object} options
+ * @param {boolean} options.hasTU - Whether leaf fields have /TU tooltips
+ */
+export async function createPdfWithNestedFormFields(options = { hasTU: true }) {
+  const doc = await PDFDocument.create();
+  doc.addPage();
+
+  // Create leaf fields (inside /Kids of a parent)
+  const leafFields = [];
+  for (let i = 0; i < 2; i++) {
+    const fieldEntries = {
+      Type: 'Annot',
+      Subtype: PDFName.of('Widget'),
+      FT: PDFName.of('Tx'),
+      T: PDFString.of(`leaf_field_${i + 1}`),
+      Rect: doc.context.obj([0, 0, 100, 20]),
+    };
+    if (options.hasTU) {
+      fieldEntries.TU = PDFString.of(`Tooltip for leaf ${i + 1}`);
+    }
+    const leaf = doc.context.obj(fieldEntries);
+    leafFields.push(doc.context.register(leaf));
+  }
+
+  // Create parent field with /Kids
+  const parentField = doc.context.obj({
+    T: PDFString.of('parent_field'),
+    Kids: doc.context.obj(leafFields),
+  });
+  const parentFieldRef = doc.context.register(parentField);
+
+  // Create AcroForm
+  const acroForm = doc.context.obj({
+    Fields: doc.context.obj([parentFieldRef]),
+  });
+  const acroFormRef = doc.context.register(acroForm);
+  doc.catalog.set(PDFName.of('AcroForm'), acroFormRef);
+
+  return doc.save();
+}
+
+// ---------------------------------------------------------------------------
+// Factory: PDF with Table > TH/TD without TR wrapper
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a tagged PDF with Table containing TH and TD directly (no TR wrapper).
+ */
+export async function createPdfWithTableNoTR() {
+  const doc = await PDFDocument.create();
+  doc.addPage();
+
+  addMarkInfo(doc);
+  const { structTreeRoot, structTreeRootRef } = addStructTreeRoot(doc);
+
+  const { elem: docElem, elemRef: docElemRef } = createStructElem(
+    doc, 'Document', structTreeRootRef,
+  );
+
+  const { elem: tableElem, elemRef: tableRef } = createStructElem(
+    doc, 'Table', docElemRef,
+  );
+
+  // TH and TD directly under Table (no TR wrapper)
+  const attrDict = doc.context.obj({
+    O: PDFName.of('Table'),
+    Scope: PDFName.of('Column'),
+  });
+  const { elemRef: thRef } = createStructElem(doc, 'TH', tableRef, {
+    A: doc.context.register(attrDict),
+  });
+  const { elemRef: tdRef } = createStructElem(doc, 'TD', tableRef);
+
+  tableElem.set(PDFName.of('K'), doc.context.obj([thRef, tdRef]));
+  docElem.set(PDFName.of('K'), doc.context.obj([tableRef]));
+  structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+
+  return doc.save();
+}
+
+// ---------------------------------------------------------------------------
+// Factory: PDF with invalid BCP-47 language tag
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a PDF with an invalid BCP-47 language tag.
+ * @param {string} lang - The invalid language tag (e.g. 'en_US', 'English')
+ */
+export async function createPdfWithInvalidLang(lang = 'en_US') {
+  const doc = await PDFDocument.create();
+  doc.addPage();
+  doc.catalog.set(PDFName.of('Lang'), PDFString.of(lang));
+  return doc.save();
+}
+
+// ---------------------------------------------------------------------------
+// Factory: PDF with Figure elements on specific pages
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a tagged PDF with Figure StructElems that reference specific pages via /Pg.
+ * @param {Array<{hasAlt: boolean, pageIndex: number}>} figures
+ */
+export async function createPdfWithFiguresOnPages(figures = [
+  { hasAlt: true, pageIndex: 0 },
+  { hasAlt: false, pageIndex: 1 },
+]) {
+  const doc = await PDFDocument.create();
+
+  // Determine max page index and create pages
+  const maxPage = Math.max(...figures.map(f => f.pageIndex), 0);
+  const pages = [];
+  for (let i = 0; i <= maxPage; i++) {
+    pages.push(doc.addPage());
+  }
+
+  addMarkInfo(doc);
+  const { structTreeRoot, structTreeRootRef } = addStructTreeRoot(doc);
+
+  const { elem: docElem, elemRef: docElemRef } = createStructElem(
+    doc, 'Document', structTreeRootRef,
+  );
+
+  const figureRefs = figures.map((fig) => {
+    const extras = {};
+    if (fig.hasAlt) {
+      extras.Alt = PDFHexString.fromText('A figure');
+    }
+    // Set /Pg to reference the appropriate page
+    extras.Pg = pages[fig.pageIndex].ref;
+    const { elemRef } = createStructElem(doc, 'Figure', docElemRef, extras);
+    return elemRef;
+  });
+
+  docElem.set(PDFName.of('K'), doc.context.obj(figureRefs));
+  structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+
+  return doc.save();
+}
+
+// ---------------------------------------------------------------------------
+// Factory: Large tagged PDF for performance testing
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a tagged PDF with N paragraph StructElems for performance testing.
+ * @param {number} numElements - Number of P elements to create
+ */
+export async function createLargePdf(numElements = 100) {
+  const doc = await PDFDocument.create();
+  doc.addPage();
+
+  addMarkInfo(doc);
+  doc.catalog.set(PDFName.of('Lang'), PDFString.of('en-US'));
+  doc.setTitle('Performance Test Document');
+
+  const { structTreeRoot, structTreeRootRef } = addStructTreeRoot(doc);
+
+  const { elem: docElem, elemRef: docElemRef } = createStructElem(
+    doc, 'Document', structTreeRootRef,
+  );
+
+  // Add H1 at the start
+  const { elemRef: h1Ref } = createStructElem(doc, 'H1', docElemRef);
+  const childRefs = [h1Ref];
+
+  // Add N paragraph elements
+  for (let i = 0; i < numElements; i++) {
+    const { elemRef } = createStructElem(doc, 'P', docElemRef);
+    childRefs.push(elemRef);
+  }
+
+  docElem.set(PDFName.of('K'), doc.context.obj(childRefs));
+  structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
 
   return doc.save();
 }

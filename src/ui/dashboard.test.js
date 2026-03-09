@@ -645,4 +645,107 @@ describe('renderDashboard', () => {
     expect(dd.textContent).toBe('No');
     expect(dd.classList.contains('dashboard__meta-warn')).toBe(true);
   });
+
+  // --- Phase 8: Checklist progress indicator ---
+
+  it('should show compliance progress indicator', () => {
+    const data = makeData([
+      finding({ id: 'document-title', status: 'pass', title: 'Document Title' }),
+      finding({ id: 'display-doc-title', status: 'pass', title: 'Display Doc Title' }),
+      finding({ id: 'document-lang', status: 'fail', title: 'Document Language' }),
+    ]);
+    renderDashboard(el, data, callbacks);
+
+    const progress = el.querySelector('.dashboard__checklist-progress');
+    expect(progress).not.toBeNull();
+    expect(progress.textContent).toMatch(/\d+ of \d+ automated checks pass/);
+  });
+
+  // --- Phase 8: Expandable checklist items ---
+
+  it('should render expandable checklist items as details/summary', () => {
+    const data = makeData([]);
+    renderDashboard(el, data, callbacks);
+
+    const items = el.querySelectorAll('.dashboard__checklist-item');
+    expect(items.length).toBe(13);
+    // Each item should be a <details> element
+    for (const item of items) {
+      expect(item.tagName.toLowerCase()).toBe('details');
+      expect(item.querySelector('summary')).not.toBeNull();
+    }
+  });
+
+  it('should show Why This Matters in expanded checklist item', () => {
+    const data = makeData([]);
+    renderDashboard(el, data, callbacks);
+
+    const items = el.querySelectorAll('.dashboard__checklist-item');
+    // Item 1: "Document title is set" — has whyItMatters
+    const body = items[0].querySelector('.dashboard__checklist-body');
+    expect(body).not.toBeNull();
+
+    const why = body.querySelector('.dashboard__checklist-why');
+    expect(why).not.toBeNull();
+    expect(why.textContent).toContain('document title');
+  });
+
+  it('should show authoring tip in expanded checklist item', () => {
+    const data = makeData([]);
+    renderDashboard(el, data, callbacks);
+
+    const items = el.querySelectorAll('.dashboard__checklist-item');
+    const tip = items[0].querySelector('.dashboard__checklist-tip');
+    expect(tip).not.toBeNull();
+    expect(tip.textContent.length).toBeGreaterThan(0);
+  });
+
+  // --- Phase 8: Remediation hints on fail/warning rows ---
+
+  it('should show remediation hint on fail finding rows', () => {
+    const data = makeData([
+      finding({
+        status: 'fail',
+        title: 'Missing Title',
+        summary: 'No title set.',
+        remediation: 'Set the document title in your authoring tool. Use something descriptive.',
+      }),
+    ]);
+    renderDashboard(el, data, callbacks);
+
+    const hint = el.querySelector('.dashboard__finding-hint');
+    expect(hint).not.toBeNull();
+    expect(hint.textContent).toBe('Set the document title in your authoring tool.');
+  });
+
+  it('should show remediation hint on warning finding rows', () => {
+    const data = makeData([
+      finding({
+        status: 'warning',
+        title: 'Font Issue',
+        summary: 'Some fonts lack ToUnicode.',
+        remediation: 'Embed all fonts when exporting. In Word: use standard fonts.',
+      }),
+    ]);
+    renderDashboard(el, data, callbacks);
+
+    const hint = el.querySelector('.dashboard__finding-hint');
+    expect(hint).not.toBeNull();
+    expect(hint.textContent).toBe('Embed all fonts when exporting.');
+  });
+
+  it('should not show remediation hint when finding has no remediation', () => {
+    const data = makeData([
+      finding({
+        status: 'fail',
+        title: 'Missing Title',
+        summary: 'No title set.',
+        remediation: null,
+      }),
+    ]);
+    renderDashboard(el, data, callbacks);
+
+    const hint = el.querySelector('.dashboard__finding-hint');
+    expect(hint).toBeNull();
+  });
 });

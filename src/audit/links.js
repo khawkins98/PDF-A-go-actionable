@@ -5,7 +5,7 @@
  * Flags generic text ("click here", "here", "read more", etc.) and bare URLs.
  */
 import { PDFName, PDFDict, PDFArray } from 'pdf-lib';
-import { resolve } from '../engine/utils/resolve.js';
+import { resolve, resolvePageIndex, formatPagePrefix } from '../engine/utils/resolve.js';
 import { resolveRole } from '../engine/utils/role-map.js';
 
 /** Generic link text patterns (case-insensitive match). */
@@ -117,7 +117,8 @@ export function checkLinks(pdfDoc, ctx) {
     // Get text: prefer ActualText/Alt on the Link itself, then collect from children
     const text = extractLinkText(obj, context);
 
-    links.push({ typeName, text });
+    const pageIdx = ctx.pageRefMap ? resolvePageIndex(obj, ctx.pageRefMap) : null;
+    links.push({ typeName, text, pageIndex: pageIdx });
   });
 
   if (links.length === 0) {
@@ -141,11 +142,12 @@ export function checkLinks(pdfDoc, ctx) {
   const details = [];
 
   links.forEach((link, idx) => {
+    const pagePrefix = formatPagePrefix(link.pageIndex);
     if (!link.text || link.text.trim().length === 0) {
       missingTextLinks.push(link);
       details.push({
         label: `Link ${idx + 1}`,
-        value: 'No ActualText or Alt text. Link purpose unknown to assistive technology',
+        value: `${pagePrefix}No ActualText or Alt text. Link purpose unknown to assistive technology`,
       });
       return;
     }
@@ -156,13 +158,13 @@ export function checkLinks(pdfDoc, ctx) {
       genericLinks.push(link);
       details.push({
         label: `Link ${idx + 1}`,
-        value: `Generic text: "${link.text}"`,
+        value: `${pagePrefix}Generic text: "${link.text}"`,
       });
     } else if (URL_PATTERN.test(link.text.trim())) {
       urlLinks.push(link);
       details.push({
         label: `Link ${idx + 1}`,
-        value: `Bare URL: "${link.text}"`,
+        value: `${pagePrefix}Bare URL: "${link.text}"`,
       });
     }
   });

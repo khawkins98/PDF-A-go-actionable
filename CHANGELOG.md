@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.4.0 2026-03-09
+
+### Audit accuracy
+- Severity corrections: `display-doc-title`, `form-labels`, `tab-order`, `font-embedding`, and `font-tounicode` promoted from warning to fail (matching PDF/UA requirements)
+- Standard 14 font exemption: base PDF fonts (Helvetica, Courier, Times-Roman, Symbol, ZapfDingbats and variants) exempt from ToUnicode requirement
+- CIDFont composite font embedding: Type0 fonts now check DescendantFonts for embedding status
+- BCP-47 language validation: invalid document-level and per-element language tags (e.g., `en_US`, `English`) produce warnings
+- Nested form field traversal: recursive `/Kids` resolution finds leaf fields inside parent containers (depth cap 20)
+- Table TR wrapper validation: TH/TD cells not wrapped in TR elements are flagged
+- Page numbers in finding details: all structure-based checks (images, tables, lists, links, headings) include `Page N:` prefix in detail values when page reference is available
+
+### Performance
+- Single-pass structure tree walk: `getStructureElements()` cached in shared context, reducing tree walks from 3 to 1
+- Performance benchmark: 1000-element PDF audited in under 3 seconds
+
+### Better error messages
+- Non-PDF file detection via `%PDF-` magic byte check (specific message instead of parse error)
+- Password-protected PDF detection with specific remediation guidance
+- Corrupt PDF detection with clearer messaging
+
+### Dashboard UX
+- Checklist progress indicator: "N of M automated checks pass" above the checklist grid
+- Expandable checklist items: `<details>/<summary>` elements with "Why This Matters" narrative and authoring tips
+- Remediation hints: first sentence of remediation shown inline on fail/warning finding rows
+
+### Test infrastructure
+- New shared assertion helpers: `findFindingById()`, `expectFindingStatus()`
+- 6 new PDF fixture factories: composite font, nested form fields, table without TR, invalid language tags, multi-page figures, large PDF
+- 746 tests across 42 test files (up from 718 across 40)
+
 ## 1.3.0 2026-03-09
 
 ### Audit accuracy

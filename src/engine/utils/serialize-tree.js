@@ -254,7 +254,7 @@ export function buildSerializableTree(pdfDoc, roleMap) {
  * @param {import('pdf-lib').PDFDocument} pdfDoc
  * @returns {Map<string, number>}
  */
-function buildPageRefMap(pdfDoc) {
+export function buildPageRefMap(pdfDoc) {
   const map = new Map();
   const pages = pdfDoc.getPages();
   for (let i = 0; i < pages.length; i++) {
