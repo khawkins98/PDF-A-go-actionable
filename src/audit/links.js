@@ -25,11 +25,6 @@ const GENERIC_LINK_TEXT = [
 const URL_PATTERN = /^(?:https?|ftp):\/\//i;
 
 /**
- * @param {import('pdf-lib').PDFDocument} pdfDoc
- * @param {object} ctx - Shared context from runner
- * @returns {object[]} Array of Finding objects
- */
-/**
  * Extract accessible text from a Link StructElem.
  * Prefers ActualText/Alt on the Link itself, then collects from children.
  */
@@ -82,6 +77,11 @@ function getTextFromElem(elem, context) {
   return collectChildText(elem, context);
 }
 
+/**
+ * @param {import('pdf-lib').PDFDocument} pdfDoc
+ * @param {object} ctx - Shared context from runner
+ * @returns {object[]} Array of Finding objects
+ */
 export function checkLinks(pdfDoc, ctx) {
   const { traits, roleMap, context } = ctx;
 

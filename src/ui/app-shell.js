@@ -94,9 +94,9 @@ export function createPanelElement(name, data, session) {
 }
 
 /**
- * Set ARIA dialog/region role and label on a WinBox instance's dom element.
+ * Set ARIA role and label on a WinBox instance's dom element.
  */
-function setWinBoxDialogRole(win, label, role = 'dialog') {
+function setWinBoxAriaRole(win, label, role = 'dialog') {
   if (win && win.dom) {
     win.dom.setAttribute('role', role);
     win.dom.setAttribute('aria-label', label);
@@ -347,7 +347,7 @@ export function initAppShell(container, worker) {
       border: 1,
       ...(closable ? { onclose: function () { welcomeWin = null; } } : {}),
     });
-    setWinBoxDialogRole(welcomeWin, 'Welcome');
+    setWinBoxAriaRole(welcomeWin, 'Welcome');
   }
 
   function closeWelcome() {
@@ -495,7 +495,7 @@ export function initAppShell(container, worker) {
       ],
       border: 1,
     });
-    setWinBoxDialogRole(session.progressWin, `Analyzing ${session.fileName}`);
+    setWinBoxAriaRole(session.progressWin, `Analyzing ${session.fileName}`);
   }
 
   function onProgress(session, { phase, percent }) {
@@ -602,7 +602,7 @@ export function initAppShell(container, worker) {
           }
         },
       });
-      setWinBoxDialogRole(session.mainWin, `Results: ${data.meta.fileName || session.fileName}`, 'region');
+      setWinBoxAriaRole(session.mainWin, `Results: ${data.meta.fileName || session.fileName}`, 'region');
     });
   }
 
@@ -733,7 +733,7 @@ export function initAppShell(container, worker) {
       },
     });
 
-    setWinBoxDialogRole(win, `${def.title}: ${session.fileName}`, 'region');
+    setWinBoxAriaRole(win, `${def.title}: ${session.fileName}`, 'region');
     session.floatingPanels.set(id, win);
   }
 
