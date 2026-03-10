@@ -648,6 +648,11 @@ async function downloadPDF(data) {
   for (let i = 0; i < totalPages; i++) {
     const p = pages[i];
 
+    // Mark entire footer as Artifact (decorative/running content, not structural)
+    p.pushOperators(
+      PDFOperator.of('BDC', [PDFName.of('Artifact'), pdfDoc.context.obj({ Type: 'Pagination', Subtype: 'Footer' })]),
+    );
+
     // Thin line above footer
     p.drawLine({
       start: { x: margin, y: footerLineY },
@@ -701,6 +706,8 @@ async function downloadPDF(data) {
       font,
       color: footerColor,
     });
+
+    p.pushOperators(PDFOperator.of('EMC'));
   }
 
   // === Structure Tree (Tagged PDF) ===
