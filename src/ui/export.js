@@ -120,7 +120,7 @@ export const TOOL_URL = 'https://khawkins98.github.io/PDF-A-go-actionable/';
 export const REPO_URL = 'https://github.com/khawkins98/PDF-A-go-actionable';
 
 async function downloadPDF(data) {
-  const { PDFDocument, StandardFonts, rgb, PDFName, PDFString, PDFHexString, PDFStream, PDFOperator } = await import('pdf-lib');
+  const { PDFDocument, StandardFonts, rgb, PDFName, PDFString, PDFHexString, PDFOperator } = await import('pdf-lib');
   const pdfDoc = await PDFDocument.create();
 
   const reportTitle = `Accessibility Report: ${data.meta.fileName || 'Unknown'}`;
@@ -166,6 +166,7 @@ async function downloadPDF(data) {
     const p = pdfDoc.addPage([pageWidth, pageHeight]);
     p.node.set(PDFName.of('Tabs'), PDFName.of('S'));
     pages.push(p);
+    nextMcid = 0; // MCIDs are per-page per PDF spec
     return p;
   }
 
@@ -293,7 +294,11 @@ async function downloadPDF(data) {
     );
     const existing = targetPage.node.get(PDFName.of('Annots'));
     if (existing) {
-      pdfDoc.context.lookup(existing).push(linkAnnot);
+      // Handle both direct PDFArray and indirect PDFRef
+      const annots = typeof existing.push === 'function'
+        ? existing
+        : pdfDoc.context.lookup(existing);
+      annots.push(linkAnnot);
     } else {
       targetPage.node.set(PDFName.of('Annots'), pdfDoc.context.obj([linkAnnot]));
     }
@@ -755,15 +760,10 @@ async function downloadPDF(data) {
     for (const p of pages) {
       const entries = pageToMcids.get(p.ref);
       if (entries) {
-        // Build array mapping MCID index → StructElem ref
-        const mcidToElem = [];
-        for (const e of entries) mcidToElem[e.mcid] = e.elemRef;
-        // Fill gaps with null refs
-        const arr = [];
-        for (let m = 0; m <= Math.max(...entries.map(e => e.mcid)); m++) {
-          arr.push(mcidToElem[m] || null);
-        }
-        parentTreeNums.push(pageIdx, pdfDoc.context.obj(arr.filter(Boolean)));
+        // Build array mapping MCID index → StructElem ref (MCIDs are per-page, starting at 0)
+        const arr = new Array(entries.length);
+        for (const e of entries) arr[e.mcid] = e.elemRef;
+        parentTreeNums.push(pageIdx, pdfDoc.context.obj(arr));
       }
       // Set StructParents on the page
       p.node.set(PDFName.of('StructParents'), pdfDoc.context.obj(pageIdx));

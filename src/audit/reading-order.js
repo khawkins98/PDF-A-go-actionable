@@ -1,9 +1,10 @@
 /**
  * Reading order audit module.
  *
- * Manual review checks #11, #12, #13.
+ * Manual review checks #11, #13.
  * Returns manual-status findings with guidance text.
  * Inspects the PDF for context-specific details (form tab order, headings).
+ * PAC validation (formerly #12) is covered by the pdfua-conformance finding in metadata.js.
  */
 import { PDFName, PDFDict, PDFArray } from 'pdf-lib';
 import { resolve } from '../engine/utils/resolve.js';
@@ -109,20 +110,6 @@ export function checkReadingOrder(pdfDoc, ctx) {
       remediation: getRemediation('reading-order'),
       wcagRef: '1.3.2',
       pdfuaRef: '7.2',
-    },
-    {
-      id: 'pac-validation',
-      category: 'reading-order',
-      title: 'PAC Validation',
-      status: 'manual',
-      summary: 'Run the document through PAC (PDF Accessibility Checker) for full PDF/UA validation.',
-      details: [
-        { label: 'Download PAC', value: 'https://pac.pdf-accessibility.org/' },
-        { label: 'Note', value: 'PAC is Windows-only. Use Wine on macOS/Linux, or the online version at https://pac.pdf-accessibility.org/en/pac-online' },
-      ],
-      remediation: getRemediation('pac-validation'),
-      wcagRef: null,
-      pdfuaRef: null,
     },
     {
       id: 'screen-reader-test',

@@ -21,6 +21,13 @@
 - XMP metadata with `dc:title`, `dc:creator`, `xmp:CreatorTool` (fixes "Document Title" XMP warning)
 - Keywords set on exported PDF: "PDF accessibility, WCAG, audit report, PDF/UA, assistive technology"
 - Per-element language (`Lang='en'`) set on Document StructElem (fixes "Per-Element Language" warning)
+- Footer content marked as Artifact with Pagination/Footer type for proper AT skip
+- Fix: MCID counter now resets per page (spec-correct; prevents index misalignment in ParentTree on multi-page reports)
+- Fix: link annotation handler supports both direct PDFArray and indirect PDFRef (prevents crash when multiple links on same page)
+
+### Audit changes
+- PDF/UA Conformance finding changed from `warning` to `manual` — it's advisory, not a remediation target
+- PAC Validation finding removed — redundant with PDF/UA Conformance which already references PAC and veraPDF
 
 ## 1.3.0 2026-03-10
 

@@ -454,7 +454,11 @@ When generating PDFs programmatically with pdf-lib (e.g., the report export), yo
 
 4. **Page-level flags:** Set `/StructParents N` on each page (index into ParentTree) and `/Tabs /S` for tab order following structure.
 
-**Key gotcha:** MCIDs are page-scoped. If `ensureSpace()` triggers a page break mid-section, any open BDC must be closed on the old page and reopened with a new MCID on the new page. The simpler approach (used in the export) is to mark each `drawText` call individually — since `ensureSpace` runs before drawing, the entire text block is guaranteed to be on one page.
+**Key gotcha — MCIDs are per-page:** MCIDs are scoped to individual pages in the PDF spec. The MCID counter must reset to 0 when creating a new page. The ParentTree maps each page's StructParents index to an array where `arr[mcid]` → StructElem ref. If MCIDs are global (not reset per page), multi-page documents will have sparse arrays with wrong index-to-element mappings.
+
+**Key gotcha — page breaks:** If `ensureSpace()` triggers a page break mid-section, any open BDC must be closed on the old page and reopened with a new MCID on the new page. The simpler approach (used in the export) is to mark each `drawText` call individually — since `ensureSpace` runs before drawing, the entire text block is guaranteed to be on one page.
+
+**Key gotcha — link annotations:** When adding multiple link annotations to the same page, the `/Annots` array may be stored as a direct PDFArray (not behind a PDFRef). After the first `targetPage.node.set('Annots', ...)`, subsequent calls must check whether `existing` is a direct array (has `.push()`) or a PDFRef (needs `context.lookup()`).
 
 ### pdf-lib Lazy Object Creation
 

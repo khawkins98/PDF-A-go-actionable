@@ -19,7 +19,7 @@ describe('FINDINGS', () => {
     'image-alt-text', 'decorative-images', 'table-headers',
     'list-structure', 'font-tounicode', 'font-embedding',
     'form-labels', 'tab-order', 'link-text',
-    'color-contrast', 'reading-order', 'pac-validation',
+    'color-contrast', 'reading-order',
     'screen-reader-test', 'pdfa-conformance', 'pdfua-conformance',
     'display-doc-title', 'bookmarks', 'per-element-language',
     'load-failure',
