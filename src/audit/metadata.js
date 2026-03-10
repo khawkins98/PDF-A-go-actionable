@@ -129,7 +129,7 @@ export function checkMetadata(pdfDoc, ctx) {
     status: traits.isPdfUA ? 'pass' : 'manual',
     summary: traits.isPdfUA
       ? 'Document claims PDF/UA conformance.'
-      : 'Document does not claim PDF/UA conformance. Consider validating with a dedicated PDF/UA checker such as PAC or veraPDF if full conformance is a goal.',
+      : 'No PDF/UA conformance claim found. If full PDF/UA conformance is a goal, validate with PAC or veraPDF.',
     details: [],
     remediation: traits.isPdfUA
       ? null

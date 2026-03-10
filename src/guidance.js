@@ -114,8 +114,8 @@ export const FINDINGS = {
     remediation: null,
   },
   'pdfua-conformance': {
-    why: 'PDF/UA conformance declares that the document meets the universal accessibility standard for PDFs. Tools and workflows can use this flag to verify compliance.',
-    remediation: 'PDF/UA conformance is declared via XMP metadata. Tools like Acrobat Pro and axesPDF can add this declaration after validation.',
+    why: 'A PDF/UA conformance flag tells tools and workflows the document meets the ISO 14289 accessibility standard. Not required to be accessible, but useful for compliance pipelines.',
+    remediation: 'PDF/UA conformance is set via XMP metadata. Acrobat Pro and axesPDF can add the declaration after you validate the document.',
   },
   'display-doc-title': {
     why: 'When the viewer shows the filename instead of the document title, screen reader users hear a cryptic label rather than a meaningful description.',

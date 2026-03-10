@@ -118,6 +118,9 @@ describe('showAboutDialog', () => {
 
     const wikiLinks = mountedContent.querySelectorAll('a[href*="wikipedia.org"]');
     expect(wikiLinks.length).toBe(4);
+
+    const nutrientLink = mountedContent.querySelector('a[href*="nutrient.io"]');
+    expect(nutrientLink).not.toBeNull();
   });
 });
 

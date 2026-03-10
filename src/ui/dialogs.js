@@ -60,7 +60,8 @@ export function showAboutDialog(root, WinBox, onClose) {
         and <a href="https://en.wikipedia.org/wiki/PDF#History" target="_blank" rel="noopener noreferrer">PDF itself</a>
         grew out of PostScript. When Apple acquired NeXT in 1997, that technology became
         <a href="https://en.wikipedia.org/wiki/Quartz_(graphics_layer)" target="_blank" rel="noopener noreferrer">Quartz</a>,
-        the macOS graphics layer that renders PDF natively to this day.</p>
+        the macOS graphics layer that renders PDF natively to this day.
+        <a href="https://www.nutrient.io/blog/apple-and-pdf-history/" target="_blank" rel="noopener noreferrer">Read more about this history</a>.</p>
       </details>
     </div>
   `;
