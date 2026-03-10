@@ -356,7 +356,7 @@ describe('checkTables', () => {
     expect(f.details.some(d => d.value && d.value.includes('0 TH, 0 TD'))).toBe(true);
   });
 
-  it('should warn when TH/TD not inside TR element', async () => {
+  it('should fail when TH/TD not inside TR element', async () => {
     const bytes = await createPdfWithTableNoTR();
     const ctx = await buildTestContext(bytes);
     const findings = checkTables(ctx.pdfDoc, ctx);

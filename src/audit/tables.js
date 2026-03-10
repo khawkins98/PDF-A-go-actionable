@@ -154,7 +154,7 @@ function analyzeTable(tableDict, tableNum, context, roleMap, pageIndex) {
     issues.push(`Table ${tableNum}: ${missingTR} cell(s) not wrapped in TR`);
     details.push({
       label: `Table ${tableNum} issue`,
-      value: `${missingTR} TH/TD not wrapped in TR`,
+      value: `${pagePrefix}${missingTR} TH/TD not wrapped in TR`,
     });
   }
 

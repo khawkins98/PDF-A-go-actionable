@@ -190,7 +190,7 @@ export const STANDARD_14_FONTS = new Set([
  * Standard 14 fonts are flagged and counted as covered.
  *
  * @param {import('pdf-lib').PDFDocument} pdfDoc
- * @returns {{ total: number, withToUnicode: number, fonts: Array<{ name: string, hasToUnicode: boolean, isStandard14: boolean }> }}
+ * @returns {{ total: number, fonts: Array<{ name: string, hasToUnicode: boolean, isStandard14: boolean }> }}
  */
 export function auditToUnicodeCoverage(pdfDoc) {
   const fonts = [];
