@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.0 2026-03-10
+## 1.3.0 2026-03-10
 
 ### Audit accuracy
 - Severity corrections: `form-labels`, `tab-order`, `font-embedding`, and `font-tounicode` promoted from warning to fail (matching PDF/UA requirements)

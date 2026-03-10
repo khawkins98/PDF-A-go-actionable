@@ -94,7 +94,7 @@ All files are fetched via `cdn.jsdelivr.net` at runtime (CORS-friendly, no local
 
 ## Status
 
-V1.2.0. See [CHANGELOG.md](CHANGELOG.md) for release history.
+V1.3.0. See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## Acknowledgments
 
