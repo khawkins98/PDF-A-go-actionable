@@ -165,7 +165,7 @@ describe('renderDashboard', () => {
     const sections = el.querySelectorAll('.dashboard__section');
     const labels = [...sections].map((s) => s.getAttribute('aria-label'));
     expect(labels).toEqual([
-      'Needs Attention',
+      'Requires Attention',
       'Warnings',
       'Manual Review',
       'Passed',
@@ -386,8 +386,8 @@ describe('renderDashboard', () => {
 
     const sections = el.querySelectorAll('.dashboard__section');
     const labels = [...sections].map((s) => s.getAttribute('aria-label'));
-    // Should only have "Needs Attention" and "Passed", not Warning/Manual/N/A
-    expect(labels).toEqual(['Needs Attention', 'Passed']);
+    // Should only have "Requires Attention" and "Passed", not Warning/Manual/N/A
+    expect(labels).toEqual(['Requires Attention', 'Passed']);
   });
 
   // --- File facts line ---
@@ -423,7 +423,7 @@ describe('renderDashboard', () => {
     expect(h2s[0].textContent).toBe('PDF Accessibility Report');
 
     const h3s = el.querySelectorAll('h3');
-    // File name, "Validation Checklist", "Needs Attention", "Passed"
+    // File name, "Validation Checklist", "Requires Attention", "Passed"
     expect(h3s.length).toBe(4);
     expect(h3s[0].textContent).toBe('test.pdf');
   });
@@ -455,7 +455,7 @@ describe('renderDashboard', () => {
     renderDashboard(el, data, callbacks);
 
     const section = el.querySelector('.dashboard__section');
-    expect(section.getAttribute('aria-label')).toBe('Needs Attention');
+    expect(section.getAttribute('aria-label')).toBe('Requires Attention');
   });
 
   // --- Empty findings description ---

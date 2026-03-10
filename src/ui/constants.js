@@ -11,7 +11,7 @@
  * - export.js uses key, heading, density
  */
 export const STATUS_GROUPS = [
-  { key: 'fail', heading: 'Needs Attention', icon: 'FAIL', density: 'full' },
+  { key: 'fail', heading: 'Requires Attention', icon: 'FAIL', density: 'full' },
   { key: 'warning', heading: 'Warnings', icon: 'WARN', density: 'full' },
   { key: 'manual', heading: 'Manual Review', icon: 'MANUAL', density: 'compact' },
   { key: 'pass', heading: 'Passed', icon: '\u2713', density: 'chip' },
