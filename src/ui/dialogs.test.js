@@ -83,6 +83,19 @@ describe('showAboutDialog', () => {
     expect(mountedContent.innerHTML).toContain('Version 1.3.0');
     expect(mountedContent.innerHTML).toContain('pdf-lib');
   });
+
+  it('should include NeXTSTEP design trivia with links', () => {
+    const WinBox = mockWinBox();
+    showAboutDialog(mockRoot(), WinBox);
+
+    const mountedContent = WinBox._instances[0].opts.mount;
+    expect(mountedContent.innerHTML).toContain('Why NeXTSTEP?');
+    expect(mountedContent.innerHTML).toContain('Display PostScript');
+    expect(mountedContent.innerHTML).toContain('Quartz');
+
+    const links = mountedContent.querySelectorAll('a[href*="wikipedia.org"]');
+    expect(links.length).toBe(4);
+  });
 });
 
 describe('showHelpDialog', () => {

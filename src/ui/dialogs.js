@@ -36,6 +36,15 @@ export function showAboutDialog(root, WinBox, onClose) {
       <li><a href="https://github.com/nextapps-de/winbox" target="_blank" rel="noopener noreferrer"><strong>WinBox</strong></a> -- window management (Apache-2.0)</li>
       <li><a href="https://mozilla.github.io/pdf.js/" target="_blank" rel="noopener noreferrer"><strong>PDF.js</strong></a> -- PDF rendering (Apache-2.0)</li>
     </ul>
+    <h3>Why NeXTSTEP?</h3>
+    <p>PDF has <a href="https://en.wikipedia.org/wiki/NeXTSTEP" target="_blank" rel="noopener noreferrer">NeXTSTEP</a>
+    in its DNA. NeXT's display engine was built on Adobe's
+    <a href="https://en.wikipedia.org/wiki/Display_PostScript" target="_blank" rel="noopener noreferrer">Display PostScript</a>,
+    and <a href="https://en.wikipedia.org/wiki/PDF#History" target="_blank" rel="noopener noreferrer">PDF itself</a>
+    grew out of PostScript. When Apple acquired NeXT in 1997, that technology became
+    <a href="https://en.wikipedia.org/wiki/Quartz_(graphics_layer)" target="_blank" rel="noopener noreferrer">Quartz</a>,
+    the macOS graphics layer that renders PDF natively. A PDF accessibility tool in
+    a NeXTSTEP-inspired interface is a small nod to that lineage.</p>
     <p>Source: <a href="https://github.com/khawkins98/PDF-A-go-actionable" target="_blank" rel="noopener noreferrer">github.com/khawkins98/PDF-A-go-actionable</a> (MIT)</p>
     <p><a href="https://github.com/khawkins98/PDF-A-go-actionable/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">Changelog</a></p>
   `;
@@ -47,7 +56,7 @@ export function showAboutDialog(root, WinBox, onClose) {
     x: 'center',
     y: 'center',
     width: 420,
-    height: 460,
+    height: 580,
     top: MENUBAR_HEIGHT,
     overflow: true,
     class: ['white', 'no-full', 'no-max', 'no-min', 'no-resize'],
