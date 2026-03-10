@@ -19,34 +19,50 @@ import { COMPLEMENTARY_TOOLS } from './undrr-checklist.js';
  */
 export function showAboutDialog(root, WinBox, onClose) {
   const content = document.createElement('div');
-  content.className = 'dialog-content';
+  content.className = 'about-dialog';
   content.setAttribute('tabindex', '-1');
   content.innerHTML = `
-    <h2>PDF-A-go-actionable</h2>
-    <p style="color:var(--color-text);font-size:var(--font-size-base);">Version 1.3.0</p>
-    <p>Free, browser-based PDF accessibility checker. Everything runs
-    in your browser. No uploads, no accounts.</p>
-    <p>Checks the ~13 things that most affect whether people can use
-    your PDF with a screen reader. Not a PDF/UA conformance validator;
-    for full standard compliance, use PAC or veraPDF.</p>
-    <h3>Built With</h3>
-    <ul>
-      <li><a href="https://github.com/Hopding/pdf-lib" target="_blank" rel="noopener noreferrer"><strong>pdf-lib</strong></a> -- PDF object access (MIT)</li>
-      <li><a href="https://github.com/101arrowz/fflate" target="_blank" rel="noopener noreferrer"><strong>fflate</strong></a> -- stream decompression (MIT)</li>
-      <li><a href="https://github.com/nextapps-de/winbox" target="_blank" rel="noopener noreferrer"><strong>WinBox</strong></a> -- window management (Apache-2.0)</li>
-      <li><a href="https://mozilla.github.io/pdf.js/" target="_blank" rel="noopener noreferrer"><strong>PDF.js</strong></a> -- PDF rendering (Apache-2.0)</li>
-    </ul>
-    <h3>Why NeXTSTEP?</h3>
-    <p>PDF has <a href="https://en.wikipedia.org/wiki/NeXTSTEP" target="_blank" rel="noopener noreferrer">NeXTSTEP</a>
-    in its DNA. NeXT's display engine was built on Adobe's
-    <a href="https://en.wikipedia.org/wiki/Display_PostScript" target="_blank" rel="noopener noreferrer">Display PostScript</a>,
-    and <a href="https://en.wikipedia.org/wiki/PDF#History" target="_blank" rel="noopener noreferrer">PDF itself</a>
-    grew out of PostScript. When Apple acquired NeXT in 1997, that technology became
-    <a href="https://en.wikipedia.org/wiki/Quartz_(graphics_layer)" target="_blank" rel="noopener noreferrer">Quartz</a>,
-    the macOS graphics layer that renders PDF natively. A PDF accessibility tool in
-    a NeXTSTEP-inspired interface is a small nod to that lineage.</p>
-    <p>Source: <a href="https://github.com/khawkins98/PDF-A-go-actionable" target="_blank" rel="noopener noreferrer">github.com/khawkins98/PDF-A-go-actionable</a> (MIT)</p>
-    <p><a href="https://github.com/khawkins98/PDF-A-go-actionable/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">Changelog</a></p>
+    <div class="about-hero">
+      <svg class="about-hero__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="4" fill="#333"/>
+        <text x="16" y="22" font-family="system-ui,sans-serif" font-size="16" font-weight="700" fill="#fff" text-anchor="middle">A</text>
+        <circle cx="26" cy="6" r="4" fill="#22c55e"/>
+      </svg>
+      <div class="about-hero__name">PDF-A-go-actionable</div>
+      <div class="about-hero__version">Version 1.3.0</div>
+      <div class="about-hero__tagline">PDF Accessibility Checker</div>
+    </div>
+    <div class="about-info-panel">
+      <dl class="about-info-grid">
+        <dt>Purpose</dt>
+        <dd>Checks ~13 things that most affect screen reader usability</dd>
+        <dt>Privacy</dt>
+        <dd>Everything runs in the browser -- no uploads, no server</dd>
+        <dt>License</dt>
+        <dd><a href="https://github.com/khawkins98/PDF-A-go-actionable" target="_blank" rel="noopener noreferrer">MIT</a></dd>
+        <dt>Changelog</dt>
+        <dd><a href="https://github.com/khawkins98/PDF-A-go-actionable/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">v1.3.0</a></dd>
+      </dl>
+      <details class="about-details">
+        <summary>Built With</summary>
+        <ul class="about-credits">
+          <li><a href="https://github.com/Hopding/pdf-lib" target="_blank" rel="noopener noreferrer">pdf-lib</a> -- PDF object access</li>
+          <li><a href="https://github.com/101arrowz/fflate" target="_blank" rel="noopener noreferrer">fflate</a> -- stream decompression</li>
+          <li><a href="https://github.com/nextapps-de/winbox" target="_blank" rel="noopener noreferrer">WinBox</a> -- window management</li>
+          <li><a href="https://mozilla.github.io/pdf.js/" target="_blank" rel="noopener noreferrer">PDF.js</a> -- PDF rendering</li>
+        </ul>
+      </details>
+      <details class="about-details">
+        <summary>Why NeXTSTEP?</summary>
+        <p>PDF has <a href="https://en.wikipedia.org/wiki/NeXTSTEP" target="_blank" rel="noopener noreferrer">NeXTSTEP</a>
+        in its DNA. NeXT's display engine was built on Adobe's
+        <a href="https://en.wikipedia.org/wiki/Display_PostScript" target="_blank" rel="noopener noreferrer">Display PostScript</a>,
+        and <a href="https://en.wikipedia.org/wiki/PDF#History" target="_blank" rel="noopener noreferrer">PDF itself</a>
+        grew out of PostScript. When Apple acquired NeXT in 1997, that technology became
+        <a href="https://en.wikipedia.org/wiki/Quartz_(graphics_layer)" target="_blank" rel="noopener noreferrer">Quartz</a>,
+        the macOS graphics layer that renders PDF natively to this day.</p>
+      </details>
+    </div>
   `;
 
   const win = new WinBox({
@@ -55,8 +71,8 @@ export function showAboutDialog(root, WinBox, onClose) {
     root,
     x: 'center',
     y: 'center',
-    width: 420,
-    height: 580,
+    width: 380,
+    height: 480,
     top: MENUBAR_HEIGHT,
     overflow: true,
     class: ['white', 'no-full', 'no-max', 'no-min', 'no-resize'],

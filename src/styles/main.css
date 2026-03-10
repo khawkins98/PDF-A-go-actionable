@@ -635,6 +635,134 @@ body {
   font-size: var(--font-size-sm);
 }
 
+/* About dialog — NeXTSTEP Info panel style */
+.about-dialog {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: var(--font-family);
+  background: var(--color-surface);
+  overflow-y: auto;
+}
+
+.about-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-xl) var(--space-lg) var(--space-lg);
+  text-align: center;
+}
+
+.about-hero__icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: var(--space-sm);
+}
+
+.about-hero__name {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.about-hero__version {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.about-hero__tagline {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-top: var(--space-xs);
+}
+
+.about-info-panel {
+  margin: 0 var(--space-md) var(--space-md);
+  padding: var(--space-md);
+  background: var(--color-surface-alt);
+  box-shadow: var(--bevel-sunken);
+  border: 1px solid var(--color-border-dark);
+}
+
+.about-info-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-xs) var(--space-md);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.about-info-grid dt {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.about-info-grid dd {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.about-info-grid a {
+  color: var(--color-primary);
+}
+
+.about-details {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-sm);
+  margin-top: var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.about-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-text);
+  list-style: none;
+  padding: 2px 0;
+}
+
+.about-details summary::before {
+  content: '\25B6\00a0';
+  font-size: 0.6em;
+  vertical-align: middle;
+}
+
+.about-details[open] summary::before {
+  content: '\25BC\00a0';
+}
+
+.about-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.about-details p {
+  margin: var(--space-xs) 0 0;
+}
+
+.about-details a {
+  color: var(--color-primary);
+}
+
+.about-credits {
+  margin: var(--space-xs) 0 0;
+  padding-left: var(--space-lg);
+  list-style: none;
+}
+
+.about-credits li {
+  margin-bottom: 2px;
+}
+
+.about-credits li::before {
+  content: '\00B7\00a0';
+  color: var(--color-text-muted);
+}
+
 /* === WinBox Chrome — NeXTSTEP window chrome === */
 .winbox.white {
   background: var(--color-surface) !important;
