@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.1 2026-03-10
+
+### PDF export branding and design
+- Branded header on first page: logo mark, tool name, and tagline with clickable link to the web app
+- Page footer on every page: mini logo, tool name, "View on GitHub" link, and page numbers
+- Section headings with colored accent bars for visual hierarchy
+- Bold metadata labels in the document properties grid
+- Metadata values truncated with ellipsis when they exceed column width (fixes long filename overflow)
+- Removed horizontal divider lines between sections for cleaner layout
+- Timestamped filenames on all exports (JSON, CSV, PDF) to avoid numbered duplicates
+
 ## 1.3.0 2026-03-10
 
 ### Audit accuracy

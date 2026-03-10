@@ -120,7 +120,7 @@ export const TOOL_URL = 'https://khawkins98.github.io/PDF-A-go-actionable/';
 export const REPO_URL = 'https://github.com/khawkins98/PDF-A-go-actionable';
 
 async function downloadPDF(data) {
-  const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+  const { PDFDocument, StandardFonts, rgb, PDFName } = await import('pdf-lib');
   const pdfDoc = await PDFDocument.create();
 
   // Set PDF metadata on the exported report
@@ -208,18 +208,6 @@ async function downloadPDF(data) {
     }
   }
 
-  // Helper: draw a horizontal rule
-  function drawRule() {
-    ensureSpace(8);
-    page.drawLine({
-      start: { x: margin, y },
-      end: { x: pageWidth - margin, y },
-      thickness: 0.5,
-      color: rgb(0.78, 0.80, 0.82),
-    });
-    y -= 8;
-  }
-
   // Helper: draw the logo mark (favicon replica) at given position
   function drawLogoMark(targetPage, lx, ly, size) {
     const s = size;
@@ -245,6 +233,37 @@ async function downloadPDF(data) {
       size: s * 0.14,
       color: rgb(0.13, 0.77, 0.37),
     });
+  }
+
+  // Helper: add a clickable URI link annotation to a page region
+  function addLinkAnnotation(targetPage, x, bottomY, width, height, url) {
+    const linkAnnot = pdfDoc.context.register(
+      pdfDoc.context.obj({
+        Type: 'Annot',
+        Subtype: 'Link',
+        Rect: [x, bottomY, x + width, bottomY + height],
+        Border: [0, 0, 0],
+        A: { Type: 'Action', S: 'URI', URI: url },
+      }),
+    );
+    const existing = targetPage.node.get(PDFName.of('Annots'));
+    if (existing) {
+      pdfDoc.context.lookup(existing).push(linkAnnot);
+    } else {
+      targetPage.node.set(PDFName.of('Annots'), pdfDoc.context.obj([linkAnnot]));
+    }
+  }
+
+  // Helper: truncate text with ellipsis to fit within maxWidth
+  function truncateToFit(text, selectedFont, size, maxWidth) {
+    if (selectedFont.widthOfTextAtSize(text, size) <= maxWidth) return text;
+    const ellipsis = '...';
+    const ellipsisW = selectedFont.widthOfTextAtSize(ellipsis, size);
+    let truncated = text;
+    while (truncated.length > 1 && selectedFont.widthOfTextAtSize(truncated, size) + ellipsisW > maxWidth) {
+      truncated = truncated.slice(0, -1);
+    }
+    return truncated + ellipsis;
   }
 
   // Helper: draw a section heading with colored accent bar
@@ -292,7 +311,7 @@ async function downloadPDF(data) {
   const groups = groupFindings(data.findings);
   const { overallStatus, label: verdictLabel, description: verdictDesc } = computeVerdict(groups);
 
-  // === Branded header ===
+  // === Branded header (linked to tool URL) ===
   const logoSize = 22;
   const headerY = y;
   drawLogoMark(page, margin, headerY - logoSize + 4, logoSize);
@@ -315,6 +334,10 @@ async function downloadPDF(data) {
     font: fontOblique,
     color: rgb(0.45, 0.47, 0.50),
   });
+
+  // Clickable link over entire header area
+  const headerLinkW = fontBold.widthOfTextAtSize('PDF-A-go-actionable', 14) + logoSize + 8;
+  addLinkAnnotation(page, margin, headerY - logoSize + 4, headerLinkW, logoSize, TOOL_URL);
 
   y = headerY - logoSize - 12;
 
@@ -409,43 +432,38 @@ async function downloadPDF(data) {
   if (data.meta.creator) metaItems.push({ label: 'Creator', value: data.meta.creator });
   if (data.meta.producer) metaItems.push({ label: 'Producer', value: data.meta.producer });
 
-  // Render as two-column grid with bold labels
+  // Render as two-column grid with bold labels (values truncated to column)
+  const colWidth = (contentWidth - 12) / 2; // gap between columns
+  const col1X = margin + 4;
+  const col2X = margin + 4 + colWidth + 12;
+
   for (let i = 0; i < metaItems.length; i += 2) {
     ensureSpace(fontSize * 1.4);
+
+    // Column 1
     const item1 = metaItems[i];
     const display1 = item1.value || 'Not set';
     const label1Width = fontBold.widthOfTextAtSize(`${item1.label}: `, fontSize);
     page.drawText(`${item1.label}: `, {
-      x: margin + 4,
-      y,
-      size: fontSize,
-      font: fontBold,
-      color: labelColor,
+      x: col1X, y, size: fontSize, font: fontBold, color: labelColor,
     });
-    page.drawText(display1, {
-      x: margin + 4 + label1Width,
-      y,
-      size: fontSize,
-      font,
+    const val1 = truncateToFit(display1, font, fontSize, colWidth - label1Width);
+    page.drawText(val1, {
+      x: col1X + label1Width, y, size: fontSize, font,
       color: item1.warn ? warnColor : normalColor,
     });
 
+    // Column 2
     if (i + 1 < metaItems.length) {
       const item2 = metaItems[i + 1];
       const display2 = item2.value || 'Not set';
       const label2Width = fontBold.widthOfTextAtSize(`${item2.label}: `, fontSize);
       page.drawText(`${item2.label}: `, {
-        x: margin + contentWidth / 2,
-        y,
-        size: fontSize,
-        font: fontBold,
-        color: labelColor,
+        x: col2X, y, size: fontSize, font: fontBold, color: labelColor,
       });
-      page.drawText(display2, {
-        x: margin + contentWidth / 2 + label2Width,
-        y,
-        size: fontSize,
-        font,
+      const val2 = truncateToFit(display2, font, fontSize, colWidth - label2Width);
+      page.drawText(val2, {
+        x: col2X + label2Width, y, size: fontSize, font,
         color: item2.warn ? warnColor : normalColor,
       });
     }
@@ -453,8 +471,7 @@ async function downloadPDF(data) {
     y -= fontSize * 1.4;
   }
 
-  y -= 12;
-  drawRule();
+  y -= 16;
 
   // === Findings grouped by status ===
   for (const group of STATUS_GROUPS) {
@@ -542,7 +559,7 @@ async function downloadPDF(data) {
       y -= 4;
     }
 
-    drawRule();
+    y -= 4;
   }
 
   // === Page footers ===
@@ -550,6 +567,9 @@ async function downloadPDF(data) {
   const footerLineY = margin + footerHeight - 4;
   const footerTextY = margin + 8;
   const footerColor = rgb(0.5, 0.52, 0.55);
+  const linkColor = rgb(0.09, 0.39, 0.67);
+  const footerLinkText = 'View on GitHub';
+  const footerLinkWidth = font.widthOfTextAtSize(footerLinkText, tinyFontSize);
 
   for (let i = 0; i < totalPages; i++) {
     const p = pages[i];
@@ -565,14 +585,37 @@ async function downloadPDF(data) {
     // Mini logo in footer
     drawLogoMark(p, margin, footerTextY - 2, 10);
 
-    // Tool URL
-    p.drawText(TOOL_URL, {
+    // Tool name
+    const footerNameText = 'PDF-A-go-actionable';
+    p.drawText(footerNameText, {
       x: margin + 14,
+      y: footerTextY,
+      size: tinyFontSize,
+      font: fontBold,
+      color: footerColor,
+    });
+
+    // "View on GitHub" link
+    const footerNameW = fontBold.widthOfTextAtSize(footerNameText, tinyFontSize);
+    const separatorText = '  |  ';
+    const separatorW = font.widthOfTextAtSize(separatorText, tinyFontSize);
+    const linkX = margin + 14 + footerNameW + separatorW;
+
+    p.drawText(separatorText, {
+      x: margin + 14 + footerNameW,
       y: footerTextY,
       size: tinyFontSize,
       font,
       color: footerColor,
     });
+    p.drawText(footerLinkText, {
+      x: linkX,
+      y: footerTextY,
+      size: tinyFontSize,
+      font,
+      color: linkColor,
+    });
+    addLinkAnnotation(p, linkX, footerTextY - 2, footerLinkWidth, tinyFontSize + 4, REPO_URL);
 
     // Page number right-aligned
     const pageLabel = `Page ${i + 1} of ${totalPages}`;
@@ -619,7 +662,9 @@ export function buildFilename(meta, extension) {
   const baseName = meta.fileName
     ? meta.fileName.replace(/\.pdf$/i, '')
     : 'accessibility-report';
-  return `${baseName}-accessibility-report.${extension}`;
+  const now = new Date();
+  const stamp = now.toISOString().replace(/[:T]/g, '-').replace(/\.\d+Z$/, '');
+  return `${baseName}-report-${stamp}.${extension}`;
 }
 
 /**

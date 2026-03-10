@@ -48,28 +48,34 @@ describe('escapeCsvField', () => {
 });
 
 describe('buildFilename', () => {
-  it('should strip .pdf extension and append report suffix', () => {
-    expect(buildFilename({ fileName: 'report.pdf' }, 'json')).toBe(
-      'report-accessibility-report.json'
-    );
+  // Timestamp pattern: YYYY-MM-DD-HH-MM-SS
+  const stampPattern = /\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}/;
+
+  it('should strip .pdf extension and include timestamp', () => {
+    const name = buildFilename({ fileName: 'report.pdf' }, 'json');
+    expect(name).toMatch(/^report-report-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}\.json$/);
+    expect(name).toMatch(stampPattern);
   });
 
   it('should strip .PDF extension case-insensitively', () => {
-    expect(buildFilename({ fileName: 'REPORT.PDF' }, 'csv')).toBe(
-      'REPORT-accessibility-report.csv'
-    );
+    const name = buildFilename({ fileName: 'REPORT.PDF' }, 'csv');
+    expect(name).toMatch(/^REPORT-report-/);
+    expect(name).toMatch(stampPattern);
+    expect(name.endsWith('.csv')).toBe(true);
   });
 
   it('should use default name when fileName is missing', () => {
-    expect(buildFilename({}, 'json')).toBe(
-      'accessibility-report-accessibility-report.json'
-    );
+    const name = buildFilename({}, 'json');
+    expect(name).toMatch(/^accessibility-report-report-/);
+    expect(name).toMatch(stampPattern);
+    expect(name.endsWith('.json')).toBe(true);
   });
 
   it('should handle filenames without .pdf extension', () => {
-    expect(buildFilename({ fileName: 'my-document' }, 'pdf')).toBe(
-      'my-document-accessibility-report.pdf'
-    );
+    const name = buildFilename({ fileName: 'my-document' }, 'pdf');
+    expect(name).toMatch(/^my-document-report-/);
+    expect(name).toMatch(stampPattern);
+    expect(name.endsWith('.pdf')).toBe(true);
   });
 });
 
