@@ -24,12 +24,11 @@ export function showAboutDialog(root, WinBox, onClose) {
   content.innerHTML = `
     <h2>PDF-A-go-actionable</h2>
     <p style="color:var(--color-text);font-size:var(--font-size-base);">Version 1.3.0</p>
-    <p>Free, browser-based PDF accessibility checker focused on practical
-    impact. Everything runs in your browser. No uploads, no accounts.</p>
-    <p>Checks the ~13 things that most affect real-world PDF accessibility
-    — the sweet spot of effort and impact. Not a PDF/UA conformance
-    validator; for full standard compliance, use PAC or veraPDF alongside
-    this tool.</p>
+    <p>Free, browser-based PDF accessibility checker. Everything runs
+    in your browser. No uploads, no accounts.</p>
+    <p>Checks the ~13 things that most affect whether people can use
+    your PDF with a screen reader. Not a PDF/UA conformance validator;
+    for full standard compliance, use PAC or veraPDF.</p>
     <h3>Built With</h3>
     <ul>
       <li><a href="https://github.com/Hopding/pdf-lib" target="_blank" rel="noopener noreferrer"><strong>pdf-lib</strong></a> -- PDF object access (MIT)</li>
@@ -102,8 +101,8 @@ export function showHelpDialog(root, WinBox, onClose) {
       <li><strong>Home / End</strong> -- jump to first or last menu item</li>
     </ul>
     <h3>Complementary Tools</h3>
-    <p>This tool focuses on practical, high-impact checks. For full PDF/UA
-    conformance or additional depth, use these tools alongside it:</p>
+    <p>This tool covers the most common checks. For full PDF/UA
+    conformance or additional depth, use these alongside it:</p>
     <ul class="help-tools-list">
       ${Object.values(COMPLEMENTARY_TOOLS).map((tool) =>
         `<li><strong>${tool.url ? `<a href="${tool.url}" target="_blank" rel="noopener noreferrer">${tool.name}</a>` : tool.name}</strong> -- ${tool.role} (${tool.platform})</li>`

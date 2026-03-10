@@ -124,7 +124,7 @@ async function downloadPDF(data) {
   // Set PDF metadata on the exported report
   pdfDoc.setTitle(`Accessibility Report: ${data.meta.fileName || 'Unknown'}`);
   pdfDoc.setAuthor('PDF-A-go-actionable');
-  pdfDoc.setSubject('Practical PDF accessibility audit report');
+  pdfDoc.setSubject('PDF accessibility audit report');
   pdfDoc.setProducer('PDF-A-go-actionable');
   pdfDoc.setCreator('PDF-A-go-actionable');
   pdfDoc.setCreationDate(new Date());

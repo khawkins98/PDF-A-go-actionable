@@ -1,27 +1,25 @@
 # PDF-A-go-actionable
 
-A free, client-side PDF accessibility checker focused on practical impact. Drop a PDF, get an actionable report with fix-it guidance. No uploads, no accounts, no cost.
+A free, client-side PDF accessibility checker. Drop a PDF, get a report that tells you what's wrong and how to fix it. No uploads, no accounts, no cost.
 
-> **Note:** This is a practical accessibility checker, not a PDF/UA conformance validator. It focuses on the checks that deliver the most real-world accessibility value — the subset that makes PDFs genuinely usable by people and assistive technology. For full PDF/UA-1 validation (300+ rules), use [PAC](https://pac.pdf-accessibility.org/) or [veraPDF](https://verapdf.org/). See [LICENSE](LICENSE) for warranty terms.
+> **Not a PDF/UA conformance validator.** PDF/UA has 300+ rules. This tool covers the ~13 checks that affect whether someone can use your PDF with a screen reader. For full conformance testing, use [PAC](https://pac.pdf-accessibility.org/) or [veraPDF](https://verapdf.org/). See [LICENSE](LICENSE) for warranty terms.
 
-## Why This Approach
+## Background
 
-Full PDF/UA conformance has over 300 rules, many of which are technical metadata requirements that don't directly affect whether a person can actually use the document. For most publishers — government agencies, NGOs, universities — trying to pass every rule is unrealistic and can distract from the changes that actually matter.
-
-This tool focuses on the sweet spot: the ~13 checks that accessibility professionals consistently identify as highest-impact. These are the things that determine whether a screen reader user can navigate your document, whether text can be searched and copied, whether images have descriptions, and whether the reading order makes sense. Getting these right covers the vast majority of real-world accessibility needs.
-
-Existing tools have tradeoffs:
+Checking PDF accessibility shouldn't require a $240/year Adobe subscription or a Windows-only desktop tool. Most organizations producing PDFs -- government agencies, NGOs, universities -- need to check accessibility before publication, but the options have tradeoffs:
 
 - **Adobe Acrobat Pro** -- thorough but expensive ($240/year) and proprietary
-- **PAC (PDF Accessibility Checker)** -- free and comprehensive, but Windows-only
+- **PAC (PDF Accessibility Checker)** -- free and thorough, but Windows-only
 - **axesCheck** -- web-based, but uploads files to a third party
 - **PDFcheck** -- client-side, but limited to basic metadata checks
 
-PDF-A-go-actionable is a browser-based audit that processes everything locally. Your PDFs never leave your machine.
+PDF-A-go-actionable runs in the browser and processes everything locally. Your PDFs never leave your machine.
+
+Full PDF/UA has 300+ rules. A lot of them are technical metadata requirements that don't change whether someone can read your document. This tool covers the ~13 checks that accessibility professionals rely on most: Is it tagged? Do images have alt text? Are headings in order? Can a screen reader follow the reading sequence? Do fonts support text extraction? Getting these right goes a long way.
 
 ## What It Checks
 
-The tool covers the practical validation workflow used by accessibility professionals — the checks with the highest effort-to-impact ratio:
+The tool covers the checks that accessibility professionals rely on most:
 
 **Automated checks:**
 - Document title, language, and security permissions
@@ -89,15 +87,11 @@ Test PDFs are sourced from:
 
 All files are fetched via `cdn.jsdelivr.net` at runtime (CORS-friendly, no local fixtures needed).
 
-## Approach
+## Scope
 
-This tool is deliberately **practical over exhaustive**:
+This tool checks about 13 things -- the ones that determine whether a PDF works with assistive technology. Every finding includes what's wrong and how to fix it, with steps for specific authoring tools (InDesign, Word, Acrobat).
 
-- **Impact-focused** -- checks the ~13 things that most affect real-world usability, not 300+ conformance rules
-- **Actionable** -- every finding tells you what's wrong and how to fix it, with tool-specific remediation steps
-- **Validation only** -- identifies issues but doesn't edit PDFs (use your authoring tool or Acrobat for fixes)
-- **Client-side only** -- no server, no uploads, no accounts
-- **Not a PDF/UA conformance validator** -- for full standard compliance, use PAC or veraPDF alongside this tool
+It runs entirely in the browser. No server, no uploads, no accounts. It does not edit or repair PDFs -- use your authoring tool or Acrobat for fixes. It does not attempt full PDF/UA conformance (300+ rules); for that, use PAC or veraPDF.
 
 ## Status
 

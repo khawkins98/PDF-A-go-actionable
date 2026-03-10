@@ -57,9 +57,9 @@
 - Corrupt PDF detection with clearer messaging
 
 ### Messaging
-- Clarify positioning: practical impact-focused checker, not a PDF/UA conformance validator
-- Updated README, About dialog, welcome screen, meta tags, and PDF export to reflect practical approach
-- Reframed "Non-Goals" as "Approach" section in README
+- Clarify that this is not a PDF/UA conformance validator; it covers the checks that most affect whether a PDF works with assistive technology
+- Updated README, About dialog, welcome screen, meta tags, and PDF export
+- Replaced "Non-Goals" with "Scope" section in README
 
 ### Test infrastructure
 - New shared assertion helpers: `findFindingById()`, `expectFindingStatus()`
