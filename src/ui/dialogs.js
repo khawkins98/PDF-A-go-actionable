@@ -6,6 +6,7 @@
  */
 
 import { MENUBAR_HEIGHT } from './menu-bar.js';
+import { setWinBoxAriaRole } from './window-manager.js';
 import { COMPLEMENTARY_TOOLS } from './undrr-checklist.js';
 
 /**
@@ -54,11 +55,7 @@ export function showAboutDialog(root, WinBox, onClose) {
     onclose: onClose || undefined,
   });
 
-  // Set ARIA role
-  if (win.dom) {
-    win.dom.setAttribute('role', 'dialog');
-    win.dom.setAttribute('aria-label', 'About');
-  }
+  setWinBoxAriaRole(win, 'About');
 
   // Move focus into the dialog content
   requestAnimationFrame(() => content.focus());
@@ -127,11 +124,7 @@ export function showHelpDialog(root, WinBox, onClose) {
     onclose: onClose || undefined,
   });
 
-  // Set ARIA role
-  if (win.dom) {
-    win.dom.setAttribute('role', 'dialog');
-    win.dom.setAttribute('aria-label', 'Help');
-  }
+  setWinBoxAriaRole(win, 'Help');
 
   // Move focus into the dialog content
   requestAnimationFrame(() => content.focus());
@@ -174,9 +167,5 @@ export function showBookmarkPlaceholder(root, WinBox) {
     border: 1,
   });
 
-  // Set ARIA role
-  if (win.dom) {
-    win.dom.setAttribute('role', 'dialog');
-    win.dom.setAttribute('aria-label', 'Bookmarks');
-  }
+  setWinBoxAriaRole(win, 'Bookmarks');
 }

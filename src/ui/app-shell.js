@@ -41,6 +41,7 @@ import {
   closeAllWindows,
   focusWindow,
   getFloatingLayout,
+  setWinBoxAriaRole,
 } from './window-manager.js';
 import { showAboutDialog, showHelpDialog, showBookmarkPlaceholder } from './dialogs.js';
 
@@ -91,16 +92,6 @@ export function createPanelElement(name, data, session) {
   }
 
   return el;
-}
-
-/**
- * Set ARIA role and label on a WinBox instance's dom element.
- */
-function setWinBoxAriaRole(win, label, role = 'dialog') {
-  if (win && win.dom) {
-    win.dom.setAttribute('role', role);
-    win.dom.setAttribute('aria-label', label);
-  }
 }
 
 /** Generate a unique session ID. */
@@ -202,17 +193,21 @@ export function initAppShell(container, worker) {
   container.appendChild(liveRegion);
 
   // === Document-level drag-and-drop ===
+  // Use AbortController so listeners are cleaned up if initAppShell is called again
+  if (container._dragAbort) container._dragAbort.abort();
+  const dragAbort = new AbortController();
+  container._dragAbort = dragAbort;
   document.body.addEventListener('dragover', (e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
-  });
+  }, { signal: dragAbort.signal });
   document.body.addEventListener('drop', (e) => {
     // Guard: don't double-process drops on the upload zone
     if (e.target.closest && e.target.closest('.drop-zone')) return;
     e.preventDefault();
     const files = filterPdfs(e.dataTransfer.files);
     if (files.length > 0) handleFiles(files);
-  });
+  }, { signal: dragAbort.signal });
 
   // Show welcome on init
   showWelcome();

@@ -15,6 +15,57 @@
 
 const BATCH_SIZE = 200;
 
+/**
+ * Icons and tooltips for common PDF structure tag types.
+ * Keys are lowercase resolved role names.
+ */
+const TAG_META = {
+  // Headings
+  h:  { icon: 'H', color: '#2563eb', tip: 'Heading (generic level)' },
+  h1: { icon: 'H1', color: '#2563eb', tip: 'Heading level 1 — top-level heading' },
+  h2: { icon: 'H2', color: '#2563eb', tip: 'Heading level 2' },
+  h3: { icon: 'H3', color: '#2563eb', tip: 'Heading level 3' },
+  h4: { icon: 'H4', color: '#2563eb', tip: 'Heading level 4' },
+  h5: { icon: 'H5', color: '#2563eb', tip: 'Heading level 5' },
+  h6: { icon: 'H6', color: '#2563eb', tip: 'Heading level 6' },
+  // Figures / images
+  figure:  { icon: 'Fig', color: '#059669', tip: 'Figure — image or illustration (should have alt text)' },
+  formula: { icon: 'Fx', color: '#059669', tip: 'Formula — mathematical expression (should have alt text)' },
+  // Tables
+  table: { icon: 'Tbl', color: '#d97706', tip: 'Table — data table container' },
+  tr:    { icon: 'TR', color: '#d97706', tip: 'Table Row' },
+  th:    { icon: 'TH', color: '#d97706', tip: 'Table Header — announces context when navigating cells' },
+  td:    { icon: 'TD', color: '#d97706', tip: 'Table Data — a data cell' },
+  thead: { icon: 'THd', color: '#d97706', tip: 'Table Head — group of header rows' },
+  tbody: { icon: 'TBy', color: '#d97706', tip: 'Table Body — group of data rows' },
+  tfoot: { icon: 'TFt', color: '#d97706', tip: 'Table Footer — group of footer rows' },
+  // Lists
+  l:     { icon: 'L', color: '#7c3aed', tip: 'List container' },
+  li:    { icon: 'LI', color: '#7c3aed', tip: 'List Item' },
+  lbl:   { icon: 'Lbl', color: '#7c3aed', tip: 'Label — bullet or number for a list item' },
+  lbody: { icon: 'LBy', color: '#7c3aed', tip: 'List Body — content of a list item' },
+  // Links
+  link:  { icon: 'Lnk', color: '#dc2626', tip: 'Link — hyperlink (should have descriptive text)' },
+  // Document structure
+  document: { icon: 'Doc', color: '#64748b', tip: 'Document — root of the structure tree' },
+  part:     { icon: 'Prt', color: '#64748b', tip: 'Part — large division of a document' },
+  sect:     { icon: 'Sec', color: '#64748b', tip: 'Section — a logical grouping of content' },
+  div:      { icon: 'Div', color: '#64748b', tip: 'Division — generic block container' },
+  art:      { icon: 'Art', color: '#64748b', tip: 'Article — self-contained content block' },
+  // Inline / text
+  p:    { icon: 'P', color: '#64748b', tip: 'Paragraph' },
+  span: { icon: 'Spn', color: '#64748b', tip: 'Span — inline text container' },
+  // Forms
+  form:   { icon: 'Frm', color: '#be185d', tip: 'Form element' },
+  // Other
+  toc:    { icon: 'TOC', color: '#64748b', tip: 'Table of Contents' },
+  toci:   { icon: 'TOCI', color: '#64748b', tip: 'Table of Contents Item' },
+  note:   { icon: 'Note', color: '#64748b', tip: 'Note — footnote or endnote' },
+  blockquote: { icon: 'BQ', color: '#64748b', tip: 'Block Quote' },
+  caption: { icon: 'Cap', color: '#64748b', tip: 'Caption — description for a figure or table' },
+  annot:  { icon: 'Ann', color: '#64748b', tip: 'Annotation' },
+};
+
 /** Counter for generating unique IDs across multiple panel instances. */
 let treeFilterIdCounter = 0;
 
@@ -187,10 +238,21 @@ function createTreeItem(node, expanded) {
   toggle.setAttribute('aria-hidden', 'true');
   row.appendChild(toggle);
 
-  // Type badge
+  // Type icon + badge
+  const meta = TAG_META[node.role.toLowerCase()];
+  if (meta) {
+    const icon = document.createElement('span');
+    icon.className = 'tree-node__icon';
+    icon.textContent = meta.icon;
+    icon.style.color = meta.color;
+    icon.setAttribute('aria-hidden', 'true');
+    row.appendChild(icon);
+  }
+
   const typeBadge = document.createElement('code');
   typeBadge.className = 'tree-node__type';
   typeBadge.textContent = node.role;
+  if (meta) typeBadge.title = meta.tip;
   row.appendChild(typeBadge);
 
   // RoleMap annotation (show original if different)

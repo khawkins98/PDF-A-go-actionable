@@ -10,6 +10,49 @@ import { formatFileSize } from './report.js';
 import { STATUS_GROUPS, groupFindings, computeVerdict } from './constants.js';
 import { resolveChecklistStatus, UNDRR_CHECKLIST } from './undrr-checklist.js';
 
+/**
+ * Known creator/producer hints keyed by tool name.
+ * Shown as a contextual banner when the authoring tool is detected.
+ */
+const CREATOR_HINTS = {
+  indesign: {
+    tool: 'Adobe InDesign',
+    hint: 'InDesign PDFs commonly have reading order issues because InDesign uses z-order for tag sequence. Use the Articles panel to set explicit reading order before exporting.',
+  },
+  word: {
+    tool: 'Microsoft Word',
+    hint: 'Word PDFs often have good heading structure but may have text boxes that break reading order, and tables without repeated headers on multi-page spans.',
+  },
+  powerpoint: {
+    tool: 'Microsoft PowerPoint',
+    hint: 'PowerPoint PDFs commonly have decorative elements that are not marked as artifacts and slide layouts with incorrect reading order. Check each slide\'s reading order pane.',
+  },
+  acrobat: {
+    tool: 'Adobe Acrobat',
+    hint: 'This PDF was produced or modified in Acrobat. Use the Accessibility tools in Acrobat Pro to review and fix tags, reading order, and alt text.',
+  },
+  libreoffice: {
+    tool: 'LibreOffice',
+    hint: 'LibreOffice PDFs may be missing ToUnicode CMaps for some fonts and often have weak table structure. Verify heading hierarchy matches document styles.',
+  },
+};
+
+/**
+ * Detect the primary authoring tool from creator/producer metadata.
+ * @param {object} meta - Document metadata with creator/producer fields
+ * @returns {string|null} Tool key or null
+ */
+function detectCreatorTool(meta) {
+  if (!meta) return null;
+  const str = `${meta.creator || ''} ${meta.producer || ''}`.toLowerCase();
+  if (str.includes('powerpoint')) return 'powerpoint';
+  if (str.includes('word')) return 'word';
+  if (str.includes('indesign')) return 'indesign';
+  if (str.includes('libreoffice') || str.includes('writer')) return 'libreoffice';
+  if (str.includes('acrobat')) return 'acrobat';
+  return null;
+}
+
 /** Module-level lookup for UNDRR checklist data by number. */
 const undrrLookup = new Map();
 for (const entry of UNDRR_CHECKLIST) {
@@ -156,6 +199,23 @@ export function renderDashboard(el, data, callbacks) {
 
   header.appendChild(actions);
   el.appendChild(header);
+
+  // === Creator-specific hint ===
+  const toolKey = detectCreatorTool(meta);
+  if (toolKey && CREATOR_HINTS[toolKey]) {
+    const hintData = CREATOR_HINTS[toolKey];
+    const hintBanner = document.createElement('div');
+    hintBanner.className = 'dashboard__creator-hint';
+    hintBanner.setAttribute('role', 'note');
+
+    const hintLabel = document.createElement('strong');
+    hintLabel.textContent = `Created with ${hintData.tool}: `;
+    hintBanner.appendChild(hintLabel);
+
+    const hintText = document.createTextNode(hintData.hint);
+    hintBanner.appendChild(hintText);
+    el.appendChild(hintBanner);
+  }
 
   // === UNDRR Validation Checklist ===
   const checklistItems = resolveChecklistStatus(findings);

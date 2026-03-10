@@ -520,6 +520,53 @@ describe('renderDashboard', () => {
     expect(labels).not.toContain('Producer');
   });
 
+  // --- Creator-specific hints ---
+
+  it('should show creator hint banner for InDesign PDFs', () => {
+    const data = makeData([], { creator: 'Adobe InDesign 2025', producer: 'Adobe PDF Library 17.0' });
+    renderDashboard(el, data, callbacks);
+
+    const hint = el.querySelector('.dashboard__creator-hint');
+    expect(hint).not.toBeNull();
+    expect(hint.textContent).toContain('Created with Adobe InDesign');
+    expect(hint.textContent).toContain('reading order');
+    expect(hint.getAttribute('role')).toBe('note');
+  });
+
+  it('should show creator hint banner for Word PDFs', () => {
+    const data = makeData([], { creator: 'Microsoft Word 365' });
+    renderDashboard(el, data, callbacks);
+
+    const hint = el.querySelector('.dashboard__creator-hint');
+    expect(hint).not.toBeNull();
+    expect(hint.textContent).toContain('Created with Microsoft Word');
+  });
+
+  it('should show creator hint banner for PowerPoint PDFs', () => {
+    const data = makeData([], { producer: 'Microsoft PowerPoint 2021' });
+    renderDashboard(el, data, callbacks);
+
+    const hint = el.querySelector('.dashboard__creator-hint');
+    expect(hint).not.toBeNull();
+    expect(hint.textContent).toContain('Created with Microsoft PowerPoint');
+  });
+
+  it('should not show creator hint for unknown tools', () => {
+    const data = makeData([], { creator: 'PptxGenJS', producer: 'some-lib' });
+    renderDashboard(el, data, callbacks);
+
+    const hint = el.querySelector('.dashboard__creator-hint');
+    expect(hint).toBeNull();
+  });
+
+  it('should not show creator hint when no creator/producer metadata', () => {
+    const data = makeData([], {});
+    renderDashboard(el, data, callbacks);
+
+    const hint = el.querySelector('.dashboard__creator-hint');
+    expect(hint).toBeNull();
+  });
+
   // --- File facts edge cases ---
 
   it('should show singular "page" for single-page documents', () => {
