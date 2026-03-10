@@ -115,20 +115,35 @@ function downloadCSV(data) {
  *
  * @param {object} data
  */
+/** Tool branding URLs used in the PDF export header and footer. */
+export const TOOL_URL = 'https://khawkins98.github.io/PDF-A-go-actionable/';
+export const REPO_URL = 'https://github.com/khawkins98/PDF-A-go-actionable';
+
 async function downloadPDF(data) {
-  const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+  const { PDFDocument, StandardFonts, rgb, PDFName, PDFString, PDFHexString, PDFOperator } = await import('pdf-lib');
   const pdfDoc = await PDFDocument.create();
 
+  const reportTitle = `Accessibility Report: ${data.meta.fileName || 'Unknown'}`;
+
   // Set PDF metadata on the exported report
-  pdfDoc.setTitle(`Accessibility Report: ${data.meta.fileName || 'Unknown'}`);
+  pdfDoc.setTitle(reportTitle);
   pdfDoc.setAuthor('PDF-A-go-actionable');
   pdfDoc.setSubject('PDF accessibility audit report');
   pdfDoc.setProducer('PDF-A-go-actionable');
   pdfDoc.setCreator('PDF-A-go-actionable');
+  pdfDoc.setKeywords(['PDF accessibility', 'WCAG', 'audit report', 'PDF/UA', 'assistive technology']);
   pdfDoc.setCreationDate(new Date());
+
+  // Document language (fixes "Document Language" fail)
+  pdfDoc.catalog.set(PDFName.of('Lang'), PDFString.of('en'));
+
+  // Display document title in viewer title bar (fixes "Display Document Title" warning)
+  const viewerPrefs = pdfDoc.context.obj({ DisplayDocTitle: true });
+  pdfDoc.catalog.set(PDFName.of('ViewerPreferences'), viewerPrefs);
 
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const fontOblique = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
 
   const fontSize = 10;
   const titleFontSize = 18;
@@ -136,32 +151,71 @@ async function downloadPDF(data) {
   const headingFontSize = 13;
   const subheadingFontSize = 11;
   const smallFontSize = 9;
+  const tinyFontSize = 7.5;
   const margin = 50;
+  const footerHeight = 28;
   const pageWidth = 595.28; // A4
   const pageHeight = 841.89;
   const contentWidth = pageWidth - margin * 2;
+  const bottomMargin = margin + footerHeight;
 
-  let page = pdfDoc.addPage([pageWidth, pageHeight]);
+  const pages = [];
+
+  // Helper: create a page with tab order set to structure (fixes "Tab Order" warning)
+  function addNewPage() {
+    const p = pdfDoc.addPage([pageWidth, pageHeight]);
+    p.node.set(PDFName.of('Tabs'), PDFName.of('S'));
+    pages.push(p);
+    nextMcid = 0; // MCIDs are per-page per PDF spec
+    return p;
+  }
+
+  let page = addNewPage();
   let y = pageHeight - margin;
+
+  // Bookmark positions collected during rendering
+  const bookmarks = [];
+
+  // === Marked content tracking for structure tree ===
+  let nextMcid = 0;
+  // Each entry: { role, mcid, pageRef (page.ref), altText? }
+  const mcidEntries = [];
+
+  // Begin a marked content sequence on the current page
+  function beginMark(role) {
+    const mcid = nextMcid++;
+    page.pushOperators(
+      PDFOperator.of('BDC', [PDFName.of(role), pdfDoc.context.obj({ MCID: mcid })]),
+    );
+    mcidEntries.push({ role, mcid, pageRef: page.ref });
+    return mcid;
+  }
+
+  // End the current marked content sequence
+  function endMark() {
+    page.pushOperators(PDFOperator.of('EMC'));
+  }
 
   // Helper: add a new page if needed
   function ensureSpace(needed) {
-    if (y - needed < margin) {
-      page = pdfDoc.addPage([pageWidth, pageHeight]);
+    if (y - needed < bottomMargin) {
+      page = addNewPage();
       y = pageHeight - margin;
     }
   }
 
-  // Helper: draw text and advance y
+  // Helper: draw text and advance y, optionally wrapped in marked content
   function drawText(text, options = {}) {
     const {
       size = fontSize,
       useBold = false,
+      useOblique = false,
       color = rgb(0.13, 0.15, 0.16),
       indent = 0,
       maxWidth = contentWidth,
+      role,
     } = options;
-    const selectedFont = useBold ? fontBold : font;
+    const selectedFont = useBold ? fontBold : useOblique ? fontOblique : font;
 
     // Simple word-wrap
     const words = text.split(' ');
@@ -184,6 +238,8 @@ async function downloadPDF(data) {
     const totalHeight = lines.length * (size * 1.4);
     ensureSpace(totalHeight);
 
+    if (role) beginMark(role);
+
     for (const l of lines) {
       page.drawText(l, {
         x: margin + indent,
@@ -194,18 +250,104 @@ async function downloadPDF(data) {
       });
       y -= size * 1.4;
     }
+
+    if (role) endMark();
   }
 
-  // Helper: draw a horizontal rule
-  function drawRule() {
-    ensureSpace(8);
-    page.drawLine({
-      start: { x: margin, y },
-      end: { x: pageWidth - margin, y },
-      thickness: 0.5,
-      color: rgb(0.7, 0.7, 0.7),
+  // Helper: draw the logo mark (favicon replica) at given position
+  function drawLogoMark(targetPage, lx, ly, size) {
+    const s = size;
+    // Dark square background
+    targetPage.drawRectangle({
+      x: lx, y: ly, width: s, height: s,
+      color: rgb(0.2, 0.2, 0.2),
     });
-    y -= 8;
+    // White "A" centered
+    const aSize = s * 0.55;
+    const aWidth = fontBold.widthOfTextAtSize('A', aSize);
+    targetPage.drawText('A', {
+      x: lx + (s - aWidth) / 2,
+      y: ly + s * 0.25,
+      size: aSize,
+      font: fontBold,
+      color: rgb(1, 1, 1),
+    });
+    // Green dot upper-right
+    targetPage.drawCircle({
+      x: lx + s * 0.82,
+      y: ly + s * 0.82,
+      size: s * 0.14,
+      color: rgb(0.13, 0.77, 0.37),
+    });
+  }
+
+  // Helper: add a clickable URI link annotation to a page region
+  function addLinkAnnotation(targetPage, x, bottomY, width, height, url) {
+    const linkAnnot = pdfDoc.context.register(
+      pdfDoc.context.obj({
+        Type: 'Annot',
+        Subtype: 'Link',
+        Rect: [x, bottomY, x + width, bottomY + height],
+        Border: [0, 0, 0],
+        A: { Type: 'Action', S: 'URI', URI: url },
+      }),
+    );
+    const existing = targetPage.node.get(PDFName.of('Annots'));
+    if (existing) {
+      // Handle both direct PDFArray and indirect PDFRef
+      const annots = typeof existing.push === 'function'
+        ? existing
+        : pdfDoc.context.lookup(existing);
+      annots.push(linkAnnot);
+    } else {
+      targetPage.node.set(PDFName.of('Annots'), pdfDoc.context.obj([linkAnnot]));
+    }
+  }
+
+  // Helper: truncate text with ellipsis to fit within maxWidth
+  function truncateToFit(text, selectedFont, size, maxWidth) {
+    if (selectedFont.widthOfTextAtSize(text, size) <= maxWidth) return text;
+    const ellipsis = '...';
+    const ellipsisW = selectedFont.widthOfTextAtSize(ellipsis, size);
+    let truncated = text;
+    while (truncated.length > 1 && selectedFont.widthOfTextAtSize(truncated, size) + ellipsisW > maxWidth) {
+      truncated = truncated.slice(0, -1);
+    }
+    return truncated + ellipsis;
+  }
+
+  // Helper: draw a section heading with colored accent bar (also records bookmark)
+  function drawSectionHeading(text, accentColor, { bookmark = true } = {}) {
+    const headingH = headingFontSize * 1.4 + 10;
+    ensureSpace(headingH + 8);
+
+    if (bookmark) {
+      bookmarks.push({ title: text, page, y: y + headingFontSize });
+    }
+
+    beginMark('H2');
+
+    // Accent bar (thin vertical stripe)
+    page.drawRectangle({
+      x: margin,
+      y: y - headingFontSize * 0.35,
+      width: 3,
+      height: headingFontSize,
+      color: accentColor,
+    });
+
+    page.drawText(text, {
+      x: margin + 10,
+      y,
+      size: headingFontSize,
+      font: fontBold,
+      color: rgb(0.13, 0.15, 0.16),
+    });
+
+    endMark();
+
+    y -= headingFontSize * 1.4;
+    y -= 4;
   }
 
   // Status color mapping
@@ -228,14 +370,67 @@ async function downloadPDF(data) {
   const groups = groupFindings(data.findings);
   const { overallStatus, label: verdictLabel, description: verdictDesc } = computeVerdict(groups);
 
-  // === Title ===
-  drawText('PDF Accessibility Report', { size: titleFontSize, useBold: true });
-  y -= 4;
+  // === Branded header (linked to tool URL) ===
+  const logoSize = 22;
+  const headerY = y;
+
+  beginMark('Artifact');
+  drawLogoMark(page, margin, headerY - logoSize + 4, logoSize);
+  endMark();
+
+  // Tool name next to logo
+  const nameX = margin + logoSize + 8;
+  beginMark('P');
+  page.drawText('PDF-A-go-actionable', {
+    x: nameX,
+    y: headerY - 3,
+    size: 14,
+    font: fontBold,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+
+  // Tagline below tool name
+  page.drawText('Free PDF Accessibility Checker', {
+    x: nameX,
+    y: headerY - 16,
+    size: smallFontSize,
+    font: fontOblique,
+    color: rgb(0.45, 0.47, 0.50),
+  });
+  endMark();
+
+  // Clickable link over entire header area
+  const headerLinkW = fontBold.widthOfTextAtSize('PDF-A-go-actionable', 14) + logoSize + 8;
+  addLinkAnnotation(page, margin, headerY - logoSize + 4, headerLinkW, logoSize, TOOL_URL);
+
+  y = headerY - logoSize - 12;
+
+  // Thin separator after header
+  page.drawLine({
+    start: { x: margin, y },
+    end: { x: pageWidth - margin, y },
+    thickness: 1,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+  y -= 16;
+
+  // === Report title + file info ===
+  drawText('PDF Accessibility Report', { size: titleFontSize, useBold: true, role: 'H1' });
+  y -= 2;
+  const fileName = data.meta.fileName || 'Unknown';
+  const now = new Date();
+  const dateStr = `${now.toISOString().split('T')[0]} ${now.toTimeString().slice(0, 5)}`;
+  drawText(`${fileName}  |  ${dateStr}`, {
+    size: smallFontSize,
+    color: rgb(0.45, 0.47, 0.50),
+    role: 'P',
+  });
+  y -= 10;
 
   // === Verdict banner ===
   const bannerPad = 14;
   const bannerGap = 6;
-  // Font ascent ≈ 75% of size — baseline must sit below the ascender line
+  // Font ascent ~ 75% of size — baseline must sit below the ascender line
   const verdictAscent = Math.ceil(verdictFontSize * 0.75);
   const bannerHeight = bannerPad + verdictAscent + verdictFontSize + bannerGap + smallFontSize + bannerPad;
   ensureSpace(bannerHeight + 16);
@@ -245,6 +440,8 @@ async function downloadPDF(data) {
 
   // Rectangle bottom-left corner; top edge aligns with current y
   const rectBottom = y - bannerHeight;
+
+  beginMark('Sect');
   page.drawRectangle({
     x: margin,
     y: rectBottom,
@@ -274,15 +471,16 @@ async function downloadPDF(data) {
     font,
     color: rgb(0.25, 0.25, 0.25),
   });
+  endMark();
 
   y = rectBottom - 16;
 
   // === Document Properties ===
-  drawText('Document Properties', { size: headingFontSize, useBold: true });
-  y -= 2;
+  drawSectionHeading('Document Properties', rgb(0.2, 0.2, 0.2));
 
   const warnColor = rgb(0.64, 0.30, 0.04);
-  const normalColor = rgb(0.2, 0.2, 0.2);
+  const normalColor = rgb(0.3, 0.3, 0.3);
+  const labelColor = rgb(0.13, 0.15, 0.16);
 
   const metaItems = [
     { label: 'File', value: data.meta.fileName || 'Unknown' },
@@ -303,42 +501,50 @@ async function downloadPDF(data) {
   if (data.meta.creator) metaItems.push({ label: 'Creator', value: data.meta.creator });
   if (data.meta.producer) metaItems.push({ label: 'Producer', value: data.meta.producer });
 
-  // Render as two-column pairs for compactness
+  // Render as two-column grid with bold labels (values truncated to column)
+  const colWidth = (contentWidth - 12) / 2; // gap between columns
+  const col1X = margin + 4;
+  const col2X = margin + 4 + colWidth + 12;
+
   for (let i = 0; i < metaItems.length; i += 2) {
     ensureSpace(fontSize * 1.4);
+
+    beginMark('P');
+
+    // Column 1
     const item1 = metaItems[i];
     const display1 = item1.value || 'Not set';
-    page.drawText(`${item1.label}: ${display1}`, {
-      x: margin,
-      y,
-      size: fontSize,
-      font,
+    const label1Width = fontBold.widthOfTextAtSize(`${item1.label}: `, fontSize);
+    page.drawText(`${item1.label}: `, {
+      x: col1X, y, size: fontSize, font: fontBold, color: labelColor,
+    });
+    const val1 = truncateToFit(display1, font, fontSize, colWidth - label1Width);
+    page.drawText(val1, {
+      x: col1X + label1Width, y, size: fontSize, font,
       color: item1.warn ? warnColor : normalColor,
     });
 
+    // Column 2
     if (i + 1 < metaItems.length) {
       const item2 = metaItems[i + 1];
       const display2 = item2.value || 'Not set';
-      page.drawText(`${item2.label}: ${display2}`, {
-        x: margin + contentWidth / 2,
-        y,
-        size: fontSize,
-        font,
+      const label2Width = fontBold.widthOfTextAtSize(`${item2.label}: `, fontSize);
+      page.drawText(`${item2.label}: `, {
+        x: col2X, y, size: fontSize, font: fontBold, color: labelColor,
+      });
+      const val2 = truncateToFit(display2, font, fontSize, colWidth - label2Width);
+      page.drawText(val2, {
+        x: col2X + label2Width, y, size: fontSize, font,
         color: item2.warn ? warnColor : normalColor,
       });
     }
 
+    endMark();
+
     y -= fontSize * 1.4;
   }
 
-  y -= 4;
-  drawText(`Generated: ${new Date().toISOString().split('T')[0]}  |  Tool: PDF-A-go-actionable`, {
-    size: smallFontSize,
-    color: rgb(0.5, 0.5, 0.5),
-  });
-  y -= 8;
-
-  drawRule();
+  y -= 16;
 
   // === Findings grouped by status ===
   for (const group of STATUS_GROUPS) {
@@ -346,14 +552,12 @@ async function downloadPDF(data) {
     if (items.length === 0) continue;
 
     y -= 4;
-    ensureSpace(headingFontSize * 1.4 + fontSize * 1.4 + 8);
 
-    drawText(`${group.heading.toUpperCase()} - ${items.length} check${items.length !== 1 ? 's' : ''}`, {
-      size: headingFontSize,
-      useBold: true,
-      color: statusColors[group.key] || rgb(0.2, 0.2, 0.2),
-    });
-    y -= 4;
+    const accentColor = statusColors[group.key] || rgb(0.4, 0.4, 0.4);
+    drawSectionHeading(
+      `${group.heading.toUpperCase()} - ${items.length} check${items.length !== 1 ? 's' : ''}`,
+      accentColor,
+    );
 
     if (group.density === 'full') {
       // Fail and warning — full detail: title, summary, remediation, refs
@@ -365,9 +569,10 @@ async function downloadPDF(data) {
           size: subheadingFontSize,
           useBold: true,
           color: statusColors[finding.status] || rgb(0, 0, 0),
+          role: 'H3',
         });
 
-        drawText(finding.summary, { size: fontSize, indent: 10 });
+        drawText(finding.summary, { size: fontSize, indent: 10, role: 'P' });
 
         if (finding.details && finding.details.length > 0) {
           for (const detail of finding.details) {
@@ -375,6 +580,7 @@ async function downloadPDF(data) {
               size: smallFontSize,
               indent: 20,
               color: rgb(0.35, 0.35, 0.35),
+              role: 'P',
             });
           }
         }
@@ -384,6 +590,7 @@ async function downloadPDF(data) {
             size: fontSize,
             indent: 10,
             color: rgb(0.3, 0.3, 0.3),
+            role: 'P',
           });
         }
 
@@ -395,6 +602,7 @@ async function downloadPDF(data) {
             size: smallFontSize,
             indent: 10,
             color: rgb(0.5, 0.5, 0.5),
+            role: 'P',
           });
         }
 
@@ -409,9 +617,10 @@ async function downloadPDF(data) {
           size: subheadingFontSize,
           useBold: true,
           color: statusColors[finding.status] || rgb(0, 0, 0),
+          role: 'H3',
         });
 
-        drawText(finding.summary, { size: fontSize, indent: 10 });
+        drawText(finding.summary, { size: fontSize, indent: 10, role: 'P' });
         y -= 4;
       }
     } else {
@@ -423,13 +632,197 @@ async function downloadPDF(data) {
         drawText(`${prefix}  ${finding.title}`, {
           size: fontSize,
           color: statusColors[group.key] || rgb(0.3, 0.3, 0.3),
+          role: 'P',
         });
       }
       y -= 4;
     }
 
-    drawRule();
+    y -= 4;
   }
+
+  // === Page footers ===
+  const totalPages = pages.length;
+  const footerLineY = margin + footerHeight - 4;
+  const footerTextY = margin + 8;
+  const footerColor = rgb(0.5, 0.52, 0.55);
+  const linkColor = rgb(0.09, 0.39, 0.67);
+  const footerLinkText = 'View on GitHub';
+  const footerLinkWidth = font.widthOfTextAtSize(footerLinkText, tinyFontSize);
+
+  for (let i = 0; i < totalPages; i++) {
+    const p = pages[i];
+
+    // Mark entire footer as Artifact (decorative/running content, not structural)
+    p.pushOperators(
+      PDFOperator.of('BDC', [PDFName.of('Artifact'), pdfDoc.context.obj({ Type: 'Pagination', Subtype: 'Footer' })]),
+    );
+
+    // Thin line above footer
+    p.drawLine({
+      start: { x: margin, y: footerLineY },
+      end: { x: pageWidth - margin, y: footerLineY },
+      thickness: 0.5,
+      color: rgb(0.78, 0.80, 0.82),
+    });
+
+    // Mini logo in footer
+    drawLogoMark(p, margin, footerTextY - 2, 10);
+
+    // Tool name
+    const footerNameText = 'PDF-A-go-actionable';
+    p.drawText(footerNameText, {
+      x: margin + 14,
+      y: footerTextY,
+      size: tinyFontSize,
+      font: fontBold,
+      color: footerColor,
+    });
+
+    // "View on GitHub" link
+    const footerNameW = fontBold.widthOfTextAtSize(footerNameText, tinyFontSize);
+    const separatorText = '  |  ';
+    const separatorW = font.widthOfTextAtSize(separatorText, tinyFontSize);
+    const linkX = margin + 14 + footerNameW + separatorW;
+
+    p.drawText(separatorText, {
+      x: margin + 14 + footerNameW,
+      y: footerTextY,
+      size: tinyFontSize,
+      font,
+      color: footerColor,
+    });
+    p.drawText(footerLinkText, {
+      x: linkX,
+      y: footerTextY,
+      size: tinyFontSize,
+      font,
+      color: linkColor,
+    });
+    addLinkAnnotation(p, linkX, footerTextY - 2, footerLinkWidth, tinyFontSize + 4, REPO_URL);
+
+    // Page number right-aligned
+    const pageLabel = `Page ${i + 1} of ${totalPages}`;
+    const pageLabelWidth = font.widthOfTextAtSize(pageLabel, tinyFontSize);
+    p.drawText(pageLabel, {
+      x: pageWidth - margin - pageLabelWidth,
+      y: footerTextY,
+      size: tinyFontSize,
+      font,
+      color: footerColor,
+    });
+
+    p.pushOperators(PDFOperator.of('EMC'));
+  }
+
+  // === Structure Tree (Tagged PDF) ===
+  if (mcidEntries.length > 0) {
+    // Mark the document as tagged
+    pdfDoc.catalog.set(PDFName.of('MarkInfo'), pdfDoc.context.obj({ Marked: true }));
+
+    // Create Document root StructElem
+    const structTreeRoot = pdfDoc.context.register(pdfDoc.context.obj({
+      Type: 'StructTreeRoot',
+    }));
+    const docElem = pdfDoc.context.register(pdfDoc.context.obj({
+      Type: 'StructElem',
+      S: 'Document',
+      P: structTreeRoot,
+      Lang: 'en',
+    }));
+
+    // Build a StructElem for each marked content entry
+    const childRefs = [];
+    // Group MCIDs by page for ParentTree
+    const pageToMcids = new Map();
+
+    for (const entry of mcidEntries) {
+      const childRef = pdfDoc.context.register(pdfDoc.context.obj({
+        Type: 'StructElem',
+        S: entry.role,
+        P: docElem,
+        K: entry.mcid,
+        Pg: entry.pageRef,
+      }));
+      childRefs.push(childRef);
+
+      if (!pageToMcids.has(entry.pageRef)) pageToMcids.set(entry.pageRef, []);
+      pageToMcids.get(entry.pageRef).push({ mcid: entry.mcid, elemRef: childRef });
+    }
+
+    // Set children on Document elem
+    const docDict = pdfDoc.context.lookup(docElem);
+    docDict.set(PDFName.of('K'), pdfDoc.context.obj(childRefs));
+
+    // Build ParentTree (maps MCID → StructElem for each page)
+    const parentTreeNums = [];
+    let pageIdx = 0;
+    for (const p of pages) {
+      const entries = pageToMcids.get(p.ref);
+      if (entries) {
+        // Build array mapping MCID index → StructElem ref (MCIDs are per-page, starting at 0)
+        const arr = new Array(entries.length);
+        for (const e of entries) arr[e.mcid] = e.elemRef;
+        parentTreeNums.push(pageIdx, pdfDoc.context.obj(arr));
+      }
+      // Set StructParents on the page
+      p.node.set(PDFName.of('StructParents'), pdfDoc.context.obj(pageIdx));
+      pageIdx++;
+    }
+
+    const parentTree = pdfDoc.context.register(pdfDoc.context.obj({
+      Type: 'NumberTree',
+      Nums: parentTreeNums,
+    }));
+
+    // Wire up StructTreeRoot
+    const rootDict = pdfDoc.context.lookup(structTreeRoot);
+    rootDict.set(PDFName.of('K'), docElem);
+    rootDict.set(PDFName.of('ParentTree'), parentTree);
+    rootDict.set(PDFName.of('ParentTreeNextKey'), pdfDoc.context.obj(pageIdx));
+    pdfDoc.catalog.set(PDFName.of('StructTreeRoot'), structTreeRoot);
+  }
+
+  // === Bookmarks (Outlines) ===
+  // Build outline entries from bookmark positions collected during rendering
+  if (bookmarks.length > 0) {
+    const outlineItems = bookmarks.map((bm, idx) => {
+      const ref = pdfDoc.context.register(pdfDoc.context.obj({}));
+      return { ref, bm, idx };
+    });
+
+    const outlineRoot = pdfDoc.context.register(pdfDoc.context.obj({
+      Type: 'Outlines',
+      Count: outlineItems.length,
+    }));
+
+    for (let i = 0; i < outlineItems.length; i++) {
+      const { ref, bm } = outlineItems[i];
+      const prev = i > 0 ? outlineItems[i - 1].ref : undefined;
+      const next = i < outlineItems.length - 1 ? outlineItems[i + 1].ref : undefined;
+      const dict = pdfDoc.context.lookup(ref);
+      dict.set(PDFName.of('Title'), PDFHexString.fromText(bm.title));
+      dict.set(PDFName.of('Parent'), outlineRoot);
+      dict.set(PDFName.of('Dest'), pdfDoc.context.obj([bm.page.ref, 'XYZ', null, bm.y, null]));
+      if (prev) dict.set(PDFName.of('Prev'), prev);
+      if (next) dict.set(PDFName.of('Next'), next);
+    }
+
+    const rootDict = pdfDoc.context.lookup(outlineRoot);
+    rootDict.set(PDFName.of('First'), outlineItems[0].ref);
+    rootDict.set(PDFName.of('Last'), outlineItems[outlineItems.length - 1].ref);
+    pdfDoc.catalog.set(PDFName.of('Outlines'), outlineRoot);
+  }
+
+  // === XMP Metadata (fixes "Document Title" warning about missing XMP) ===
+  const xmpXml = buildXmpMetadata(reportTitle);
+  const xmpStream = pdfDoc.context.stream(new TextEncoder().encode(xmpXml), {
+    Type: 'Metadata',
+    Subtype: 'XML',
+    Length: new TextEncoder().encode(xmpXml).length,
+  });
+  const xmpRef = pdfDoc.context.register(xmpStream);
+  pdfDoc.catalog.set(PDFName.of('Metadata'), xmpRef);
 
   // Save and download
   const pdfBytes = await pdfDoc.save();
@@ -464,7 +857,9 @@ export function buildFilename(meta, extension) {
   const baseName = meta.fileName
     ? meta.fileName.replace(/\.pdf$/i, '')
     : 'accessibility-report';
-  return `${baseName}-accessibility-report.${extension}`;
+  const now = new Date();
+  const stamp = now.toISOString().replace(/[:T]/g, '-').replace(/\.\d+Z$/, '');
+  return `${baseName}-report-${stamp}.${extension}`;
 }
 
 /**
@@ -487,6 +882,40 @@ function triggerDownload(blob, filename) {
     URL.revokeObjectURL(url);
     document.body.removeChild(a);
   }, 100);
+}
+
+/**
+ * Build XMP metadata XML for the PDF export.
+ * Sets dc:title so the title appears in XMP (not just Info dict).
+ *
+ * @param {string} title - Document title
+ * @returns {string} XMP XML string
+ */
+export function buildXmpMetadata(title) {
+  // Escape XML special characters in the title
+  const esc = title
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  return [
+    '<?xpacket begin="\uFEFF" id="W5M0MpCehiHzreSzNTczkc9d"?>',
+    '<x:xmpmeta xmlns:x="adobe:ns:meta/">',
+    '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">',
+    '<rdf:Description rdf:about=""',
+    '  xmlns:dc="http://purl.org/dc/elements/1.1/"',
+    '  xmlns:xmp="http://ns.adobe.com/xap/1.0/"',
+    '  xmlns:pdf="http://ns.adobe.com/pdf/1.3/">',
+    '<dc:title><rdf:Alt><rdf:li xml:lang="x-default">' + esc + '</rdf:li></rdf:Alt></dc:title>',
+    '<dc:creator><rdf:Seq><rdf:li>PDF-A-go-actionable</rdf:li></rdf:Seq></dc:creator>',
+    '<dc:description><rdf:Alt><rdf:li xml:lang="x-default">PDF accessibility audit report</rdf:li></rdf:Alt></dc:description>',
+    '<xmp:CreatorTool>PDF-A-go-actionable</xmp:CreatorTool>',
+    '<pdf:Producer>PDF-A-go-actionable</pdf:Producer>',
+    '</rdf:Description>',
+    '</rdf:RDF>',
+    '</x:xmpmeta>',
+    '<?xpacket end="w"?>',
+  ].join('\n');
 }
 
 /**

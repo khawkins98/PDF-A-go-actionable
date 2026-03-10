@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.3.1 2026-03-10
+
+### PDF export branding
+- Logo mark + tool name header on first page, linked to the web app
+- Page footer on every page: mini logo, "View on GitHub" link, page numbers
+- Section headings with colored accent bars
+- Metadata values truncated with ellipsis to fit column width (long filenames no longer bleed over)
+- Removed divider lines between sections
+- Timestamped filenames on all exports (JSON, CSV, PDF) so re-exports don't collide
+- Report subtitle now shows date and time, not just date
+
+### PDF export accessibility
+The exported report is now a tagged PDF. It passes all of our own checks except PDF/UA conformance (which we intentionally don't claim).
+
+- Tagged structure tree: content wrapped in `BDC`/`EMC` marked content with roles (H1, H2, H3, P, Sect, Artifact), StructTreeRoot > Document > StructElem hierarchy, and ParentTree
+- Document language `en` on the catalog
+- `DisplayDocTitle` viewer preference enabled
+- Tab order set to structure (`/Tabs /S`) on all pages
+- Bookmarks for each report section
+- XMP metadata (`dc:title`, `dc:creator`, `xmp:CreatorTool`)
+- Keywords: "PDF accessibility, WCAG, audit report, PDF/UA, assistive technology"
+- Per-element language (`Lang='en'`) on the Document StructElem
+- Footer content marked as Artifact (Pagination/Footer type) so screen readers skip it
+- Fix: MCID counter resets per page — the old global counter broke ParentTree indexing on multi-page reports
+- Fix: link annotation handler now works when a page already has annotations (direct PDFArray vs indirect PDFRef)
+
+### Audit changes
+- PDF/UA Conformance is now `manual` instead of `warning` — we're not pushing people toward full PDF/UA
+- PAC Validation finding removed — the PDF/UA Conformance finding already mentions PAC and veraPDF
+
 ## 1.3.0 2026-03-10
 
 ### Audit accuracy

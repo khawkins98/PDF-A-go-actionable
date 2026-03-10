@@ -29,7 +29,7 @@ export function showAboutDialog(root, WinBox, onClose) {
         <circle cx="26" cy="6" r="4" fill="#22c55e"/>
       </svg>
       <div class="about-hero__name">PDF-A-go-actionable</div>
-      <div class="about-hero__version">Version 1.3.0</div>
+      <div class="about-hero__version">Version ${typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev'}</div>
       <div class="about-hero__tagline">PDF Accessibility Checker</div>
     </div>
     <div class="about-info-panel">
@@ -41,7 +41,7 @@ export function showAboutDialog(root, WinBox, onClose) {
         <dt>License</dt>
         <dd><a href="https://github.com/khawkins98/PDF-A-go-actionable" target="_blank" rel="noopener noreferrer">MIT</a></dd>
         <dt>Changelog</dt>
-        <dd><a href="https://github.com/khawkins98/PDF-A-go-actionable/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">v1.3.0</a></dd>
+        <dd><a href="https://github.com/khawkins98/PDF-A-go-actionable/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">v${typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev'}</a></dd>
       </dl>
       <details class="about-details">
         <summary>Built With</summary>
@@ -60,7 +60,8 @@ export function showAboutDialog(root, WinBox, onClose) {
         and <a href="https://en.wikipedia.org/wiki/PDF#History" target="_blank" rel="noopener noreferrer">PDF itself</a>
         grew out of PostScript. When Apple acquired NeXT in 1997, that technology became
         <a href="https://en.wikipedia.org/wiki/Quartz_(graphics_layer)" target="_blank" rel="noopener noreferrer">Quartz</a>,
-        the macOS graphics layer that renders PDF natively to this day.</p>
+        the macOS graphics layer that renders PDF natively to this day.
+        <a href="https://www.nutrient.io/blog/apple-and-pdf-history/" target="_blank" rel="noopener noreferrer">Read more about this history</a>.</p>
       </details>
     </div>
   `;

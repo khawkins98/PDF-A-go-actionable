@@ -80,7 +80,7 @@ describe('showAboutDialog', () => {
 
     const mountedContent = WinBox._instances[0].opts.mount;
     expect(mountedContent.innerHTML).toContain('PDF-A-go-actionable');
-    expect(mountedContent.innerHTML).toContain('Version 1.3.0');
+    expect(mountedContent.innerHTML).toContain('Version ');
     expect(mountedContent.innerHTML).toContain('pdf-lib');
   });
 
@@ -118,6 +118,9 @@ describe('showAboutDialog', () => {
 
     const wikiLinks = mountedContent.querySelectorAll('a[href*="wikipedia.org"]');
     expect(wikiLinks.length).toBe(4);
+
+    const nutrientLink = mountedContent.querySelector('a[href*="nutrient.io"]');
+    expect(nutrientLink).not.toBeNull();
   });
 });
 

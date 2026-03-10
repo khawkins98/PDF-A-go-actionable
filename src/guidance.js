@@ -105,10 +105,6 @@ export const FINDINGS = {
     why: 'Screen readers follow the tag order, not the visual layout. If tags are in the wrong order, a user might hear the page footer before the main content, or a table caption after the table data.',
     remediation: 'If reading order is wrong, fix it in the authoring tool by adjusting the tag order. In InDesign: use the Articles panel (Window > Articles) to define reading order explicitly — drag frames in the desired sequence. In Acrobat: View > Navigation Panels > Order, then drag items to reorder. In Word: make sure content is in order in the document (text boxes can break flow).',
   },
-  'pac-validation': {
-    why: 'PAC (PDF Accessibility Checker) performs comprehensive PDF/UA validation with hundreds of machine checks. It catches issues that simpler tools miss, particularly in tag structure and role mapping.',
-    remediation: 'Download and install PAC, then open your PDF in it. Fix any errors PAC reports.',
-  },
   'screen-reader-test': {
     why: 'Automated checkers cannot verify that the document actually makes sense when read aloud. A screen reader test reveals issues like incorrect reading order, missing context, and confusing navigation that only a human listener can catch.',
     remediation: 'If the screen reader reads content in the wrong order or misses elements, fix the tag structure and reading order in your authoring tool.',
@@ -118,8 +114,8 @@ export const FINDINGS = {
     remediation: null,
   },
   'pdfua-conformance': {
-    why: 'PDF/UA conformance declares that the document meets the universal accessibility standard for PDFs. Tools and workflows can use this flag to verify compliance.',
-    remediation: 'PDF/UA conformance is declared via XMP metadata. Tools like Acrobat Pro and axesPDF can add this declaration after validation.',
+    why: 'A PDF/UA conformance flag tells tools and workflows the document meets the ISO 14289 accessibility standard. Not required to be accessible, but useful for compliance pipelines.',
+    remediation: 'PDF/UA conformance is set via XMP metadata. Acrobat Pro and axesPDF can add the declaration after you validate the document.',
   },
   'display-doc-title': {
     why: 'When the viewer shows the filename instead of the document title, screen reader users hear a cryptic label rather than a meaningful description.',
@@ -464,8 +460,8 @@ export const UNDRR_CHECKLIST = [
   {
     undrrNumber: 12,
     title: 'PAC reports no errors',
-    findingIds: ['pac-validation'],
-    whyItMatters: FINDINGS['pac-validation'].why,
+    findingIds: ['pdfua-conformance'],
+    whyItMatters: FINDINGS['pdfua-conformance'].why,
     authoringTips: {
       general: 'Download and run PAC on your PDF. Address all errors first, then warnings. PAC provides detailed explanations for each issue.',
       word: 'Export your PDF and open it in PAC. Common Word-export issues: missing table headers, text box ordering, missing alt text.',

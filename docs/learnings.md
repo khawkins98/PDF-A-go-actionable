@@ -442,6 +442,24 @@ Setting `MarkInfo/Marked = true` tells viewers "this PDF claims to be tagged" bu
 
 Forgetting step 2-4 produces a PDF that looks tagged to the `tagged-pdf` check but has no structure for heading, image, table, or list checks to work with.
 
+### Creating Tagged PDFs with pdf-lib (Export Use Case)
+
+When generating PDFs programmatically with pdf-lib (e.g., the report export), you can create a properly tagged PDF by:
+
+1. **Marked content in content streams:** Use `page.pushOperators(PDFOperator.of('BDC', [PDFName.of('P'), context.obj({ MCID: n })]))` before drawing and `PDFOperator.of('EMC')` after. Each `drawText()` call appends to the same content stream, so BDC/EMC operators interleave correctly.
+
+2. **Structure tree:** Build a StructTreeRoot > Document > StructElem hierarchy. Each StructElem references its role (`/S`), parent (`/P`), MCID (`/K`), and page (`/Pg`).
+
+3. **ParentTree:** A NumberTree mapping page indices to arrays of StructElem refs (one per MCID on that page). Required for viewers to look up structure from content.
+
+4. **Page-level flags:** Set `/StructParents N` on each page (index into ParentTree) and `/Tabs /S` for tab order following structure.
+
+**Key gotcha — MCIDs are per-page:** MCIDs are scoped to individual pages in the PDF spec. The MCID counter must reset to 0 when creating a new page. The ParentTree maps each page's StructParents index to an array where `arr[mcid]` → StructElem ref. If MCIDs are global (not reset per page), multi-page documents will have sparse arrays with wrong index-to-element mappings.
+
+**Key gotcha — page breaks:** If `ensureSpace()` triggers a page break mid-section, any open BDC must be closed on the old page and reopened with a new MCID on the new page. The simpler approach (used in the export) is to mark each `drawText` call individually — since `ensureSpace` runs before drawing, the entire text block is guaranteed to be on one page.
+
+**Key gotcha — link annotations:** When adding multiple link annotations to the same page, the `/Annots` array may be stored as a direct PDFArray (not behind a PDFRef). After the first `targetPage.node.set('Annots', ...)`, subsequent calls must check whether `existing` is a direct array (has `.push()`) or a PDFRef (needs `context.lookup()`).
+
 ### pdf-lib Lazy Object Creation
 
 pdf-lib creates font dict objects lazily --after `embedFont()` + `drawText()`, the actual PDF objects don't exist in `context` until `save()` is called. Tests that examine font objects require a save/reload cycle.

@@ -7,7 +7,7 @@
  * - initExport: returns three export functions
  */
 import { describe, it, expect } from 'vitest';
-import { escapeCsvField, buildFilename, initExport, buildJsonOutput, buildCsvContent } from './export.js';
+import { escapeCsvField, buildFilename, initExport, buildJsonOutput, buildCsvContent, TOOL_URL, REPO_URL, buildXmpMetadata } from './export.js';
 
 describe('escapeCsvField', () => {
   it('should return a plain string unchanged', () => {
@@ -48,28 +48,34 @@ describe('escapeCsvField', () => {
 });
 
 describe('buildFilename', () => {
-  it('should strip .pdf extension and append report suffix', () => {
-    expect(buildFilename({ fileName: 'report.pdf' }, 'json')).toBe(
-      'report-accessibility-report.json'
-    );
+  // Timestamp pattern: YYYY-MM-DD-HH-MM-SS
+  const stampPattern = /\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}/;
+
+  it('should strip .pdf extension and include timestamp', () => {
+    const name = buildFilename({ fileName: 'report.pdf' }, 'json');
+    expect(name).toMatch(/^report-report-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}\.json$/);
+    expect(name).toMatch(stampPattern);
   });
 
   it('should strip .PDF extension case-insensitively', () => {
-    expect(buildFilename({ fileName: 'REPORT.PDF' }, 'csv')).toBe(
-      'REPORT-accessibility-report.csv'
-    );
+    const name = buildFilename({ fileName: 'REPORT.PDF' }, 'csv');
+    expect(name).toMatch(/^REPORT-report-/);
+    expect(name).toMatch(stampPattern);
+    expect(name.endsWith('.csv')).toBe(true);
   });
 
   it('should use default name when fileName is missing', () => {
-    expect(buildFilename({}, 'json')).toBe(
-      'accessibility-report-accessibility-report.json'
-    );
+    const name = buildFilename({}, 'json');
+    expect(name).toMatch(/^accessibility-report-report-/);
+    expect(name).toMatch(stampPattern);
+    expect(name.endsWith('.json')).toBe(true);
   });
 
   it('should handle filenames without .pdf extension', () => {
-    expect(buildFilename({ fileName: 'my-document' }, 'pdf')).toBe(
-      'my-document-accessibility-report.pdf'
-    );
+    const name = buildFilename({ fileName: 'my-document' }, 'pdf');
+    expect(name).toMatch(/^my-document-report-/);
+    expect(name).toMatch(stampPattern);
+    expect(name.endsWith('.pdf')).toBe(true);
   });
 });
 
@@ -105,6 +111,51 @@ describe('buildJsonOutput', () => {
     const output = buildJsonOutput(data);
     expect(output.meta.fileName).toBe('x.pdf');
     expect(output.findings).toHaveLength(1);
+  });
+});
+
+// --- Branding constants ---
+
+describe('branding constants', () => {
+  it('should export the GitHub Pages tool URL', () => {
+    expect(TOOL_URL).toBe('https://khawkins98.github.io/PDF-A-go-actionable/');
+  });
+
+  it('should export the GitHub repo URL', () => {
+    expect(REPO_URL).toBe('https://github.com/khawkins98/PDF-A-go-actionable');
+  });
+});
+
+// --- buildXmpMetadata ---
+
+describe('buildXmpMetadata', () => {
+  it('should include dc:title with the provided title', () => {
+    const xmp = buildXmpMetadata('My Report');
+    expect(xmp).toContain('<dc:title>');
+    expect(xmp).toContain('My Report');
+  });
+
+  it('should escape XML special characters in the title', () => {
+    const xmp = buildXmpMetadata('Test <>&');
+    expect(xmp).toContain('Test &lt;&gt;&amp;');
+    expect(xmp).not.toContain('Test <>&');
+  });
+
+  it('should include xpacket processing instructions', () => {
+    const xmp = buildXmpMetadata('Title');
+    expect(xmp).toMatch(/^<\?xpacket begin=/);
+    expect(xmp).toMatch(/<\?xpacket end="w"\?>$/);
+  });
+
+  it('should include dc:creator with tool name', () => {
+    const xmp = buildXmpMetadata('Title');
+    expect(xmp).toContain('<dc:creator>');
+    expect(xmp).toContain('PDF-A-go-actionable');
+  });
+
+  it('should include xmp:CreatorTool', () => {
+    const xmp = buildXmpMetadata('Title');
+    expect(xmp).toContain('<xmp:CreatorTool>PDF-A-go-actionable</xmp:CreatorTool>');
   });
 });
 

@@ -2,7 +2,7 @@
  * Tests for the reading-order audit module.
  *
  * Covers:
- * - Returns exactly 3 findings
+ * - Returns exactly 3 findings (color-contrast, reading-order, screen-reader-test)
  * - All findings have status 'manual'
  * - Expected finding IDs
  * - Each finding has required fields
@@ -24,8 +24,8 @@ describe('checkReadingOrder', () => {
     findings = checkReadingOrder(ctx.pdfDoc, ctx);
   });
 
-  it('should return exactly 4 findings', () => {
-    expect(findings).toHaveLength(4);
+  it('should return exactly 3 findings', () => {
+    expect(findings).toHaveLength(3);
   });
 
   it('should return all findings with status "manual"', () => {
@@ -40,13 +40,6 @@ describe('checkReadingOrder', () => {
     expect(f.category).toBe('reading-order');
     expect(f.title).toContain('Reading Order');
     expect(f.wcagRef).toBe('1.3.2');
-  });
-
-  it('should include pac-validation finding', () => {
-    const f = findings.find(f => f.id === 'pac-validation');
-    expect(f).toBeDefined();
-    expect(f.category).toBe('reading-order');
-    expect(f.title).toContain('PAC');
   });
 
   it('should include screen-reader-test finding', () => {

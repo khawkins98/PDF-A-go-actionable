@@ -95,7 +95,7 @@ It runs entirely in the browser. No server, no uploads, no accounts. It does not
 
 ## Status
 
-V1.3.0. See [CHANGELOG.md](CHANGELOG.md) for release history.
+V1.3.1. See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## Acknowledgments
 
