@@ -214,8 +214,6 @@ describe('auditToUnicodeCoverage', () => {
     const result = auditToUnicodeCoverage(reloaded);
 
     expect(result.total).toBeGreaterThanOrEqual(2);
-    expect(result.withToUnicode).toBeGreaterThan(0);
-    expect(result.withToUnicode).toBeLessThan(result.total);
     // Should have at least one font with and one without
     const withTU = result.fonts.filter(f => f.hasToUnicode);
     const withoutTU = result.fonts.filter(f => !f.hasToUnicode);

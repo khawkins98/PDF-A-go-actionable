@@ -89,7 +89,7 @@ export function checkImages(pdfDoc, ctx) {
     const isGeneric = trimmedAlt.length > 0 && GENERIC_ALT_TEXT.includes(trimmedAlt.toLowerCase());
     const isShort = trimmedAlt.length > 0 && trimmedAlt.length <= 2 && !isGeneric;
 
-    const pageIdx = pageRefMap ? resolvePageIndex(obj, pageRefMap) : null;
+    const pageIdx = resolvePageIndex(obj, pageRefMap);
 
     figures.push({
       type: typeName,

@@ -217,7 +217,6 @@ export function auditToUnicodeCoverage(pdfDoc) {
 
   return {
     total: fonts.length,
-    withToUnicode: fonts.filter(f => f.hasToUnicode || f.isStandard14).length,
     fonts,
   };
 }

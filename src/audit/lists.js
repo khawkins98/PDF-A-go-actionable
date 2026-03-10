@@ -43,7 +43,7 @@ export function checkLists(pdfDoc, ctx) {
     const resolved = resolveRole(typeName, roleMap);
 
     if (resolved !== 'L') return;
-    const pageIdx = ctx.pageRefMap ? resolvePageIndex(obj, ctx.pageRefMap) : null;
+    const pageIdx = resolvePageIndex(obj, ctx.pageRefMap);
     lists.push({ element: obj, typeName, pageIndex: pageIdx });
   });
 

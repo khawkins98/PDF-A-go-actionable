@@ -39,8 +39,11 @@ function extractLinkText(obj, context) {
 
 /**
  * Recursively collect ActualText/Alt from child StructElems.
+ * Depth-capped to prevent stack overflow on malformed PDFs.
  */
-function collectChildText(elem, context) {
+function collectChildText(elem, context, depth = 0) {
+  if (depth > 10) return null;
+
   const k = elem.get(PDFName.of('K'));
   if (!k) return null;
 
@@ -51,12 +54,12 @@ function collectChildText(elem, context) {
     for (let i = 0; i < kResolved.size(); i++) {
       const child = resolve(kResolved.get(i), context);
       if (child instanceof PDFDict) {
-        const text = getTextFromElem(child, context);
+        const text = getTextFromElem(child, context, depth + 1);
         if (text) parts.push(text);
       }
     }
   } else if (kResolved instanceof PDFDict) {
-    const text = getTextFromElem(kResolved, context);
+    const text = getTextFromElem(kResolved, context, depth + 1);
     if (text) parts.push(text);
   }
 
@@ -66,7 +69,7 @@ function collectChildText(elem, context) {
 /**
  * Get text from a single StructElem: ActualText, Alt, or recurse into children.
  */
-function getTextFromElem(elem, context) {
+function getTextFromElem(elem, context, depth = 0) {
   const actualText = elem.get(PDFName.of('ActualText'));
   if (actualText) return actualText.decodeText();
 
@@ -74,7 +77,7 @@ function getTextFromElem(elem, context) {
   if (alt) return alt.decodeText();
 
   // Recurse into children
-  return collectChildText(elem, context);
+  return collectChildText(elem, context, depth);
 }
 
 /**
@@ -117,7 +120,7 @@ export function checkLinks(pdfDoc, ctx) {
     // Get text: prefer ActualText/Alt on the Link itself, then collect from children
     const text = extractLinkText(obj, context);
 
-    const pageIdx = ctx.pageRefMap ? resolvePageIndex(obj, ctx.pageRefMap) : null;
+    const pageIdx = resolvePageIndex(obj, ctx.pageRefMap);
     links.push({ typeName, text, pageIndex: pageIdx });
   });
 

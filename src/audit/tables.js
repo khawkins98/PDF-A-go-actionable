@@ -44,7 +44,7 @@ export function checkTables(pdfDoc, ctx) {
 
     if (resolved !== 'Table') return;
 
-    const pageIdx = ctx.pageRefMap ? resolvePageIndex(obj, ctx.pageRefMap) : null;
+    const pageIdx = resolvePageIndex(obj, ctx.pageRefMap);
     tables.push({ element: obj, typeName, pageIndex: pageIdx });
   });
 

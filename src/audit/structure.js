@@ -121,7 +121,7 @@ function checkHeadingHierarchy(ctx) {
   const headings = elements
     .filter(el => HEADING_TYPES.has(el.resolvedType))
     .map(el => {
-      const pageIdx = ctx.pageRefMap ? resolvePageIndex(el.element, ctx.pageRefMap) : null;
+      const pageIdx = resolvePageIndex(el.element, ctx.pageRefMap);
       return {
         type: el.type,
         resolvedType: el.resolvedType,

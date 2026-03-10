@@ -20,6 +20,11 @@
 - Password-protected PDF detection with specific remediation guidance
 - Corrupt PDF detection with clearer messaging
 
+### Remediation guidance
+- InDesign-specific remediation tips added to all finding remediations
+- Link text remediation includes bare URL workaround
+- Tab order guidance includes Adobe Acrobat steps
+
 ### Dashboard UX
 - Checklist progress indicator: "N of M automated checks pass" above the checklist grid
 - Expandable checklist items: `<details>/<summary>` elements with "Why This Matters" narrative and authoring tips
@@ -32,7 +37,7 @@
 ### Test infrastructure
 - New shared assertion helpers: `findFindingById()`, `expectFindingStatus()`
 - 6 new PDF fixture factories: composite font, nested form fields, table without TR, invalid language tags, multi-page figures, large PDF
-- 752 tests across 42 test files (up from 718 across 40)
+- 771 tests across 44 test files (up from 718 across 40)
 
 ## 1.3.0 2026-03-09
 
