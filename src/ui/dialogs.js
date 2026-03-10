@@ -35,7 +35,7 @@ export function showAboutDialog(root, WinBox, onClose) {
     <div class="about-info-panel">
       <dl class="about-info-grid">
         <dt>Purpose</dt>
-        <dd>Checks ~13 things that most affect screen reader usability</dd>
+        <dd>Checks the things that most affect screen reader usability</dd>
         <dt>Privacy</dt>
         <dd>Everything runs in the browser -- no uploads, no server</dd>
         <dt>License</dt>
