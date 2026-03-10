@@ -7,7 +7,7 @@
  * - initExport: returns three export functions
  */
 import { describe, it, expect } from 'vitest';
-import { escapeCsvField, buildFilename, initExport, buildJsonOutput, buildCsvContent, TOOL_URL, REPO_URL } from './export.js';
+import { escapeCsvField, buildFilename, initExport, buildJsonOutput, buildCsvContent, TOOL_URL, REPO_URL, buildXmpMetadata } from './export.js';
 
 describe('escapeCsvField', () => {
   it('should return a plain string unchanged', () => {
@@ -123,6 +123,39 @@ describe('branding constants', () => {
 
   it('should export the GitHub repo URL', () => {
     expect(REPO_URL).toBe('https://github.com/khawkins98/PDF-A-go-actionable');
+  });
+});
+
+// --- buildXmpMetadata ---
+
+describe('buildXmpMetadata', () => {
+  it('should include dc:title with the provided title', () => {
+    const xmp = buildXmpMetadata('My Report');
+    expect(xmp).toContain('<dc:title>');
+    expect(xmp).toContain('My Report');
+  });
+
+  it('should escape XML special characters in the title', () => {
+    const xmp = buildXmpMetadata('Test <>&');
+    expect(xmp).toContain('Test &lt;&gt;&amp;');
+    expect(xmp).not.toContain('Test <>&');
+  });
+
+  it('should include xpacket processing instructions', () => {
+    const xmp = buildXmpMetadata('Title');
+    expect(xmp).toMatch(/^<\?xpacket begin=/);
+    expect(xmp).toMatch(/<\?xpacket end="w"\?>$/);
+  });
+
+  it('should include dc:creator with tool name', () => {
+    const xmp = buildXmpMetadata('Title');
+    expect(xmp).toContain('<dc:creator>');
+    expect(xmp).toContain('PDF-A-go-actionable');
+  });
+
+  it('should include xmp:CreatorTool', () => {
+    const xmp = buildXmpMetadata('Title');
+    expect(xmp).toContain('<xmp:CreatorTool>PDF-A-go-actionable</xmp:CreatorTool>');
   });
 });
 

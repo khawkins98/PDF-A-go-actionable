@@ -120,16 +120,25 @@ export const TOOL_URL = 'https://khawkins98.github.io/PDF-A-go-actionable/';
 export const REPO_URL = 'https://github.com/khawkins98/PDF-A-go-actionable';
 
 async function downloadPDF(data) {
-  const { PDFDocument, StandardFonts, rgb, PDFName } = await import('pdf-lib');
+  const { PDFDocument, StandardFonts, rgb, PDFName, PDFString, PDFHexString, PDFStream } = await import('pdf-lib');
   const pdfDoc = await PDFDocument.create();
 
+  const reportTitle = `Accessibility Report: ${data.meta.fileName || 'Unknown'}`;
+
   // Set PDF metadata on the exported report
-  pdfDoc.setTitle(`Accessibility Report: ${data.meta.fileName || 'Unknown'}`);
+  pdfDoc.setTitle(reportTitle);
   pdfDoc.setAuthor('PDF-A-go-actionable');
   pdfDoc.setSubject('PDF accessibility audit report');
   pdfDoc.setProducer('PDF-A-go-actionable');
   pdfDoc.setCreator('PDF-A-go-actionable');
   pdfDoc.setCreationDate(new Date());
+
+  // Document language (fixes "Document Language" fail)
+  pdfDoc.catalog.set(PDFName.of('Lang'), PDFString.of('en'));
+
+  // Display document title in viewer title bar (fixes "Display Document Title" warning)
+  const viewerPrefs = pdfDoc.context.obj({ DisplayDocTitle: true });
+  pdfDoc.catalog.set(PDFName.of('ViewerPreferences'), viewerPrefs);
 
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -150,15 +159,25 @@ async function downloadPDF(data) {
   const bottomMargin = margin + footerHeight;
 
   const pages = [];
-  let page = pdfDoc.addPage([pageWidth, pageHeight]);
-  pages.push(page);
+
+  // Helper: create a page with tab order set to structure (fixes "Tab Order" warning)
+  function addNewPage() {
+    const p = pdfDoc.addPage([pageWidth, pageHeight]);
+    p.node.set(PDFName.of('Tabs'), PDFName.of('S'));
+    pages.push(p);
+    return p;
+  }
+
+  let page = addNewPage();
   let y = pageHeight - margin;
+
+  // Bookmark positions collected during rendering
+  const bookmarks = [];
 
   // Helper: add a new page if needed
   function ensureSpace(needed) {
     if (y - needed < bottomMargin) {
-      page = pdfDoc.addPage([pageWidth, pageHeight]);
-      pages.push(page);
+      page = addNewPage();
       y = pageHeight - margin;
     }
   }
@@ -266,10 +285,14 @@ async function downloadPDF(data) {
     return truncated + ellipsis;
   }
 
-  // Helper: draw a section heading with colored accent bar
-  function drawSectionHeading(text, accentColor) {
+  // Helper: draw a section heading with colored accent bar (also records bookmark)
+  function drawSectionHeading(text, accentColor, { bookmark = true } = {}) {
     const headingH = headingFontSize * 1.4 + 10;
     ensureSpace(headingH + 8);
+
+    if (bookmark) {
+      bookmarks.push({ title: text, page, y: y + headingFontSize });
+    }
 
     // Accent bar (thin vertical stripe)
     page.drawRectangle({
@@ -630,6 +653,47 @@ async function downloadPDF(data) {
     });
   }
 
+  // === Bookmarks (Outlines) ===
+  // Build outline entries from bookmark positions collected during rendering
+  if (bookmarks.length > 0) {
+    const outlineItems = bookmarks.map((bm, idx) => {
+      const ref = pdfDoc.context.register(pdfDoc.context.obj({}));
+      return { ref, bm, idx };
+    });
+
+    const outlineRoot = pdfDoc.context.register(pdfDoc.context.obj({
+      Type: 'Outlines',
+      Count: outlineItems.length,
+    }));
+
+    for (let i = 0; i < outlineItems.length; i++) {
+      const { ref, bm } = outlineItems[i];
+      const prev = i > 0 ? outlineItems[i - 1].ref : undefined;
+      const next = i < outlineItems.length - 1 ? outlineItems[i + 1].ref : undefined;
+      const dict = pdfDoc.context.lookup(ref);
+      dict.set(PDFName.of('Title'), PDFHexString.fromText(bm.title));
+      dict.set(PDFName.of('Parent'), outlineRoot);
+      dict.set(PDFName.of('Dest'), pdfDoc.context.obj([bm.page.ref, 'XYZ', null, bm.y, null]));
+      if (prev) dict.set(PDFName.of('Prev'), prev);
+      if (next) dict.set(PDFName.of('Next'), next);
+    }
+
+    const rootDict = pdfDoc.context.lookup(outlineRoot);
+    rootDict.set(PDFName.of('First'), outlineItems[0].ref);
+    rootDict.set(PDFName.of('Last'), outlineItems[outlineItems.length - 1].ref);
+    pdfDoc.catalog.set(PDFName.of('Outlines'), outlineRoot);
+  }
+
+  // === XMP Metadata (fixes "Document Title" warning about missing XMP) ===
+  const xmpXml = buildXmpMetadata(reportTitle);
+  const xmpStream = pdfDoc.context.stream(new TextEncoder().encode(xmpXml), {
+    Type: 'Metadata',
+    Subtype: 'XML',
+    Length: new TextEncoder().encode(xmpXml).length,
+  });
+  const xmpRef = pdfDoc.context.register(xmpStream);
+  pdfDoc.catalog.set(PDFName.of('Metadata'), xmpRef);
+
   // Save and download
   const pdfBytes = await pdfDoc.save();
   const blob = new Blob([pdfBytes], { type: 'application/pdf' });
@@ -688,6 +752,40 @@ function triggerDownload(blob, filename) {
     URL.revokeObjectURL(url);
     document.body.removeChild(a);
   }, 100);
+}
+
+/**
+ * Build XMP metadata XML for the PDF export.
+ * Sets dc:title so the title appears in XMP (not just Info dict).
+ *
+ * @param {string} title - Document title
+ * @returns {string} XMP XML string
+ */
+export function buildXmpMetadata(title) {
+  // Escape XML special characters in the title
+  const esc = title
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  return [
+    '<?xpacket begin="\uFEFF" id="W5M0MpCehiHzreSzNTczkc9d"?>',
+    '<x:xmpmeta xmlns:x="adobe:ns:meta/">',
+    '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">',
+    '<rdf:Description rdf:about=""',
+    '  xmlns:dc="http://purl.org/dc/elements/1.1/"',
+    '  xmlns:xmp="http://ns.adobe.com/xap/1.0/"',
+    '  xmlns:pdf="http://ns.adobe.com/pdf/1.3/">',
+    '<dc:title><rdf:Alt><rdf:li xml:lang="x-default">' + esc + '</rdf:li></rdf:Alt></dc:title>',
+    '<dc:creator><rdf:Seq><rdf:li>PDF-A-go-actionable</rdf:li></rdf:Seq></dc:creator>',
+    '<dc:description><rdf:Alt><rdf:li xml:lang="x-default">PDF accessibility audit report</rdf:li></rdf:Alt></dc:description>',
+    '<xmp:CreatorTool>PDF-A-go-actionable</xmp:CreatorTool>',
+    '<pdf:Producer>PDF-A-go-actionable</pdf:Producer>',
+    '</rdf:Description>',
+    '</rdf:RDF>',
+    '</x:xmpmeta>',
+    '<?xpacket end="w"?>',
+  ].join('\n');
 }
 
 /**

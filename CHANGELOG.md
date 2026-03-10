@@ -10,6 +10,14 @@
 - Metadata values truncated with ellipsis when they exceed column width (fixes long filename overflow)
 - Removed horizontal divider lines between sections for cleaner layout
 - Timestamped filenames on all exports (JSON, CSV, PDF) to avoid numbered duplicates
+- Date and time shown in report subtitle (not just date) for distinguishing reruns
+
+### PDF export accessibility
+- Document language set to `en` on the catalog (fixes "Document Language" fail)
+- Viewer preference `DisplayDocTitle` enabled (fixes "Display Document Title" warning)
+- Tab order set to structure (`/Tabs /S`) on all pages (fixes "Tab Order" warning)
+- Bookmarks (outlines) added for each report section for keyboard/AT navigation (fixes "Bookmarks" warning)
+- XMP metadata with `dc:title`, `dc:creator`, `xmp:CreatorTool` (fixes "Document Title" XMP warning)
 
 ## 1.3.0 2026-03-10
 
