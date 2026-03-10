@@ -115,6 +115,10 @@ function downloadCSV(data) {
  *
  * @param {object} data
  */
+/** Tool branding URLs used in the PDF export header and footer. */
+export const TOOL_URL = 'https://khawkins98.github.io/PDF-A-go-actionable/';
+export const REPO_URL = 'https://github.com/khawkins98/PDF-A-go-actionable';
+
 async function downloadPDF(data) {
   const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
   const pdfDoc = await PDFDocument.create();
@@ -129,6 +133,7 @@ async function downloadPDF(data) {
 
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const fontOblique = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
 
   const fontSize = 10;
   const titleFontSize = 18;
@@ -136,18 +141,24 @@ async function downloadPDF(data) {
   const headingFontSize = 13;
   const subheadingFontSize = 11;
   const smallFontSize = 9;
+  const tinyFontSize = 7.5;
   const margin = 50;
+  const footerHeight = 28;
   const pageWidth = 595.28; // A4
   const pageHeight = 841.89;
   const contentWidth = pageWidth - margin * 2;
+  const bottomMargin = margin + footerHeight;
 
+  const pages = [];
   let page = pdfDoc.addPage([pageWidth, pageHeight]);
+  pages.push(page);
   let y = pageHeight - margin;
 
   // Helper: add a new page if needed
   function ensureSpace(needed) {
-    if (y - needed < margin) {
+    if (y - needed < bottomMargin) {
       page = pdfDoc.addPage([pageWidth, pageHeight]);
+      pages.push(page);
       y = pageHeight - margin;
     }
   }
@@ -157,11 +168,12 @@ async function downloadPDF(data) {
     const {
       size = fontSize,
       useBold = false,
+      useOblique = false,
       color = rgb(0.13, 0.15, 0.16),
       indent = 0,
       maxWidth = contentWidth,
     } = options;
-    const selectedFont = useBold ? fontBold : font;
+    const selectedFont = useBold ? fontBold : useOblique ? fontOblique : font;
 
     // Simple word-wrap
     const words = text.split(' ');
@@ -203,9 +215,61 @@ async function downloadPDF(data) {
       start: { x: margin, y },
       end: { x: pageWidth - margin, y },
       thickness: 0.5,
-      color: rgb(0.7, 0.7, 0.7),
+      color: rgb(0.78, 0.80, 0.82),
     });
     y -= 8;
+  }
+
+  // Helper: draw the logo mark (favicon replica) at given position
+  function drawLogoMark(targetPage, lx, ly, size) {
+    const s = size;
+    // Dark square background
+    targetPage.drawRectangle({
+      x: lx, y: ly, width: s, height: s,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    // White "A" centered
+    const aSize = s * 0.55;
+    const aWidth = fontBold.widthOfTextAtSize('A', aSize);
+    targetPage.drawText('A', {
+      x: lx + (s - aWidth) / 2,
+      y: ly + s * 0.25,
+      size: aSize,
+      font: fontBold,
+      color: rgb(1, 1, 1),
+    });
+    // Green dot upper-right
+    targetPage.drawCircle({
+      x: lx + s * 0.82,
+      y: ly + s * 0.82,
+      size: s * 0.14,
+      color: rgb(0.13, 0.77, 0.37),
+    });
+  }
+
+  // Helper: draw a section heading with colored accent bar
+  function drawSectionHeading(text, accentColor) {
+    const headingH = headingFontSize * 1.4 + 10;
+    ensureSpace(headingH + 8);
+
+    // Accent bar (thin vertical stripe)
+    page.drawRectangle({
+      x: margin,
+      y: y - headingFontSize * 0.35,
+      width: 3,
+      height: headingFontSize,
+      color: accentColor,
+    });
+
+    page.drawText(text, {
+      x: margin + 10,
+      y,
+      size: headingFontSize,
+      font: fontBold,
+      color: rgb(0.13, 0.15, 0.16),
+    });
+    y -= headingFontSize * 1.4;
+    y -= 4;
   }
 
   // Status color mapping
@@ -228,14 +292,56 @@ async function downloadPDF(data) {
   const groups = groupFindings(data.findings);
   const { overallStatus, label: verdictLabel, description: verdictDesc } = computeVerdict(groups);
 
-  // === Title ===
+  // === Branded header ===
+  const logoSize = 22;
+  const headerY = y;
+  drawLogoMark(page, margin, headerY - logoSize + 4, logoSize);
+
+  // Tool name next to logo
+  const nameX = margin + logoSize + 8;
+  page.drawText('PDF-A-go-actionable', {
+    x: nameX,
+    y: headerY - 3,
+    size: 14,
+    font: fontBold,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+
+  // Tagline below tool name
+  page.drawText('Free PDF Accessibility Checker', {
+    x: nameX,
+    y: headerY - 16,
+    size: smallFontSize,
+    font: fontOblique,
+    color: rgb(0.45, 0.47, 0.50),
+  });
+
+  y = headerY - logoSize - 12;
+
+  // Thin separator after header
+  page.drawLine({
+    start: { x: margin, y },
+    end: { x: pageWidth - margin, y },
+    thickness: 1,
+    color: rgb(0.2, 0.2, 0.2),
+  });
+  y -= 16;
+
+  // === Report title + file info ===
   drawText('PDF Accessibility Report', { size: titleFontSize, useBold: true });
-  y -= 4;
+  y -= 2;
+  const fileName = data.meta.fileName || 'Unknown';
+  const dateStr = new Date().toISOString().split('T')[0];
+  drawText(`${fileName}  |  ${dateStr}`, {
+    size: smallFontSize,
+    color: rgb(0.45, 0.47, 0.50),
+  });
+  y -= 10;
 
   // === Verdict banner ===
   const bannerPad = 14;
   const bannerGap = 6;
-  // Font ascent ≈ 75% of size — baseline must sit below the ascender line
+  // Font ascent ~ 75% of size — baseline must sit below the ascender line
   const verdictAscent = Math.ceil(verdictFontSize * 0.75);
   const bannerHeight = bannerPad + verdictAscent + verdictFontSize + bannerGap + smallFontSize + bannerPad;
   ensureSpace(bannerHeight + 16);
@@ -278,11 +384,11 @@ async function downloadPDF(data) {
   y = rectBottom - 16;
 
   // === Document Properties ===
-  drawText('Document Properties', { size: headingFontSize, useBold: true });
-  y -= 2;
+  drawSectionHeading('Document Properties', rgb(0.2, 0.2, 0.2));
 
   const warnColor = rgb(0.64, 0.30, 0.04);
-  const normalColor = rgb(0.2, 0.2, 0.2);
+  const normalColor = rgb(0.3, 0.3, 0.3);
+  const labelColor = rgb(0.13, 0.15, 0.16);
 
   const metaItems = [
     { label: 'File', value: data.meta.fileName || 'Unknown' },
@@ -303,13 +409,21 @@ async function downloadPDF(data) {
   if (data.meta.creator) metaItems.push({ label: 'Creator', value: data.meta.creator });
   if (data.meta.producer) metaItems.push({ label: 'Producer', value: data.meta.producer });
 
-  // Render as two-column pairs for compactness
+  // Render as two-column grid with bold labels
   for (let i = 0; i < metaItems.length; i += 2) {
     ensureSpace(fontSize * 1.4);
     const item1 = metaItems[i];
     const display1 = item1.value || 'Not set';
-    page.drawText(`${item1.label}: ${display1}`, {
-      x: margin,
+    const label1Width = fontBold.widthOfTextAtSize(`${item1.label}: `, fontSize);
+    page.drawText(`${item1.label}: `, {
+      x: margin + 4,
+      y,
+      size: fontSize,
+      font: fontBold,
+      color: labelColor,
+    });
+    page.drawText(display1, {
+      x: margin + 4 + label1Width,
       y,
       size: fontSize,
       font,
@@ -319,8 +433,16 @@ async function downloadPDF(data) {
     if (i + 1 < metaItems.length) {
       const item2 = metaItems[i + 1];
       const display2 = item2.value || 'Not set';
-      page.drawText(`${item2.label}: ${display2}`, {
+      const label2Width = fontBold.widthOfTextAtSize(`${item2.label}: `, fontSize);
+      page.drawText(`${item2.label}: `, {
         x: margin + contentWidth / 2,
+        y,
+        size: fontSize,
+        font: fontBold,
+        color: labelColor,
+      });
+      page.drawText(display2, {
+        x: margin + contentWidth / 2 + label2Width,
         y,
         size: fontSize,
         font,
@@ -331,13 +453,7 @@ async function downloadPDF(data) {
     y -= fontSize * 1.4;
   }
 
-  y -= 4;
-  drawText(`Generated: ${new Date().toISOString().split('T')[0]}  |  Tool: PDF-A-go-actionable`, {
-    size: smallFontSize,
-    color: rgb(0.5, 0.5, 0.5),
-  });
-  y -= 8;
-
+  y -= 12;
   drawRule();
 
   // === Findings grouped by status ===
@@ -346,14 +462,12 @@ async function downloadPDF(data) {
     if (items.length === 0) continue;
 
     y -= 4;
-    ensureSpace(headingFontSize * 1.4 + fontSize * 1.4 + 8);
 
-    drawText(`${group.heading.toUpperCase()} - ${items.length} check${items.length !== 1 ? 's' : ''}`, {
-      size: headingFontSize,
-      useBold: true,
-      color: statusColors[group.key] || rgb(0.2, 0.2, 0.2),
-    });
-    y -= 4;
+    const accentColor = statusColors[group.key] || rgb(0.4, 0.4, 0.4);
+    drawSectionHeading(
+      `${group.heading.toUpperCase()} - ${items.length} check${items.length !== 1 ? 's' : ''}`,
+      accentColor,
+    );
 
     if (group.density === 'full') {
       // Fail and warning — full detail: title, summary, remediation, refs
@@ -429,6 +543,47 @@ async function downloadPDF(data) {
     }
 
     drawRule();
+  }
+
+  // === Page footers ===
+  const totalPages = pages.length;
+  const footerLineY = margin + footerHeight - 4;
+  const footerTextY = margin + 8;
+  const footerColor = rgb(0.5, 0.52, 0.55);
+
+  for (let i = 0; i < totalPages; i++) {
+    const p = pages[i];
+
+    // Thin line above footer
+    p.drawLine({
+      start: { x: margin, y: footerLineY },
+      end: { x: pageWidth - margin, y: footerLineY },
+      thickness: 0.5,
+      color: rgb(0.78, 0.80, 0.82),
+    });
+
+    // Mini logo in footer
+    drawLogoMark(p, margin, footerTextY - 2, 10);
+
+    // Tool URL
+    p.drawText(TOOL_URL, {
+      x: margin + 14,
+      y: footerTextY,
+      size: tinyFontSize,
+      font,
+      color: footerColor,
+    });
+
+    // Page number right-aligned
+    const pageLabel = `Page ${i + 1} of ${totalPages}`;
+    const pageLabelWidth = font.widthOfTextAtSize(pageLabel, tinyFontSize);
+    p.drawText(pageLabel, {
+      x: pageWidth - margin - pageLabelWidth,
+      y: footerTextY,
+      size: tinyFontSize,
+      font,
+      color: footerColor,
+    });
   }
 
   // Save and download

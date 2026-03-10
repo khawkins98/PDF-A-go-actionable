@@ -7,7 +7,7 @@
  * - initExport: returns three export functions
  */
 import { describe, it, expect } from 'vitest';
-import { escapeCsvField, buildFilename, initExport, buildJsonOutput, buildCsvContent } from './export.js';
+import { escapeCsvField, buildFilename, initExport, buildJsonOutput, buildCsvContent, TOOL_URL, REPO_URL } from './export.js';
 
 describe('escapeCsvField', () => {
   it('should return a plain string unchanged', () => {
@@ -105,6 +105,18 @@ describe('buildJsonOutput', () => {
     const output = buildJsonOutput(data);
     expect(output.meta.fileName).toBe('x.pdf');
     expect(output.findings).toHaveLength(1);
+  });
+});
+
+// --- Branding constants ---
+
+describe('branding constants', () => {
+  it('should export the GitHub Pages tool URL', () => {
+    expect(TOOL_URL).toBe('https://khawkins98.github.io/PDF-A-go-actionable/');
+  });
+
+  it('should export the GitHub repo URL', () => {
+    expect(REPO_URL).toBe('https://github.com/khawkins98/PDF-A-go-actionable');
   });
 });
 
