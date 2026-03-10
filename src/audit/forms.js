@@ -16,6 +16,7 @@ import { resolve } from '../engine/utils/resolve.js';
 export function checkForms(pdfDoc, ctx) {
   const { context } = ctx;
   const findings = [];
+  let hasFormFields = false;
 
   // Check AcroForm fields
   const catalog = pdfDoc.catalog;
@@ -28,6 +29,7 @@ export function checkForms(pdfDoc, ctx) {
       if (fields) {
         const fieldResults = checkFieldLabels(resolve(fields, context), context);
         findings.push(fieldResults);
+        hasFormFields = fieldResults.status !== 'not-applicable';
       } else {
         findings.push({
           id: 'form-labels',
@@ -56,8 +58,8 @@ export function checkForms(pdfDoc, ctx) {
     });
   }
 
-  // Check tab order on pages
-  const tabOrderResult = checkTabOrder(pdfDoc);
+  // Check tab order on pages — fail when form fields present, warn otherwise
+  const tabOrderResult = checkTabOrder(pdfDoc, hasFormFields);
   findings.push(tabOrderResult);
 
   return findings;
@@ -166,8 +168,16 @@ function checkFieldLabels(fieldsArray, context) {
 
 /**
  * Check if pages have /Tabs /S (tab order follows structure).
+ *
+ * Severity depends on whether the document has form fields:
+ * - With form fields: fail (PDF/UA requires /Tabs /S for keyboard form navigation)
+ * - Without form fields: warning (best practice — structure tree still governs
+ *   screen reader reading order, but tab key falls back to visual order)
+ *
+ * @param {import('pdf-lib').PDFDocument} pdfDoc
+ * @param {boolean} hasFormFields - Whether the document has interactive form fields
  */
-function checkTabOrder(pdfDoc) {
+function checkTabOrder(pdfDoc, hasFormFields) {
   const pages = pdfDoc.getPages();
   let withTabsS = 0;
   let total = pages.length;
@@ -194,11 +204,14 @@ function checkTabOrder(pdfDoc) {
   }
 
   const missing = total - withTabsS;
+  // Form fields + missing /Tabs /S = fail (keyboard users can't navigate forms in structure order)
+  // No form fields + missing /Tabs /S = warning (best practice; screen reader reading order unaffected)
+  const status = missing === 0 ? 'pass' : (hasFormFields ? 'fail' : 'warning');
   return {
     id: 'tab-order',
     category: 'forms',
     title: 'Tab Order',
-    status: missing === 0 ? 'pass' : 'fail',
+    status,
     summary: missing === 0
       ? `All ${total} page(s) have tab order set to structure order (/Tabs /S).`
       : `${missing} of ${total} page(s) missing /Tabs /S. Tab order may not follow reading order.`,

@@ -284,11 +284,11 @@ export function initAppShell(container, worker) {
       'beforeend',
       `
       <h1 class="welcome__title">PDF-A-go-actionable</h1>
-      <p class="welcome__tagline">Free, browser-based PDF accessibility checker</p>
+      <p class="welcome__tagline">Practical PDF accessibility checker — effort meets impact</p>
       <ul class="welcome__features">
         <li>Runs entirely in your browser, no file uploads</li>
         <li>Fix-it guidance for every finding</li>
-        <li>Covers the 13-point PDF accessibility checklist</li>
+        <li>Focuses on the checks that matter most for real-world accessibility</li>
       </ul>
     `
     );

@@ -1,23 +1,27 @@
 # PDF-A-go-actionable
 
-A free, client-side PDF accessibility checker. Drop a PDF, get an actionable report. No uploads, no accounts, no cost.
+A free, client-side PDF accessibility checker focused on practical impact. Drop a PDF, get an actionable report with fix-it guidance. No uploads, no accounts, no cost.
 
-> **Experimental.** This tool is provided as-is for informational purposes. It is not a substitute for professional accessibility auditing or full PDF/UA conformance validation. Results should be verified independently. See [LICENSE](LICENSE) for warranty terms.
+> **Note:** This is a practical accessibility checker, not a PDF/UA conformance validator. It focuses on the checks that deliver the most real-world accessibility value — the subset that makes PDFs genuinely usable by people and assistive technology. For full PDF/UA-1 validation (300+ rules), use [PAC](https://pac.pdf-accessibility.org/) or [veraPDF](https://verapdf.org/). See [LICENSE](LICENSE) for warranty terms.
 
-## Background
+## Why This Approach
 
-Checking PDF accessibility shouldn't require a $240/year Adobe subscription or a Windows-only desktop tool. Most organizations producing PDFs -- government agencies, NGOs, universities -- need to validate accessibility before publication, but the existing tools have tradeoffs:
+Full PDF/UA conformance has over 300 rules, many of which are technical metadata requirements that don't directly affect whether a person can actually use the document. For most publishers — government agencies, NGOs, universities — trying to pass every rule is unrealistic and can distract from the changes that actually matter.
 
-- **Adobe Acrobat Pro** -- thorough but expensive and proprietary
-- **PAC (PDF Accessibility Checker)** -- free and thorough, but Windows-only
+This tool focuses on the sweet spot: the ~13 checks that accessibility professionals consistently identify as highest-impact. These are the things that determine whether a screen reader user can navigate your document, whether text can be searched and copied, whether images have descriptions, and whether the reading order makes sense. Getting these right covers the vast majority of real-world accessibility needs.
+
+Existing tools have tradeoffs:
+
+- **Adobe Acrobat Pro** -- thorough but expensive ($240/year) and proprietary
+- **PAC (PDF Accessibility Checker)** -- free and comprehensive, but Windows-only
 - **axesCheck** -- web-based, but uploads files to a third party
 - **PDFcheck** -- client-side, but limited to basic metadata checks
 
-PDF-A-go-actionable is a browser-based accessibility audit that processes everything locally. Your PDFs never leave your machine.
+PDF-A-go-actionable is a browser-based audit that processes everything locally. Your PDFs never leave your machine.
 
 ## What It Checks
 
-The tool covers the practical validation workflow used by accessibility professionals (the "13-point checklist"):
+The tool covers the practical validation workflow used by accessibility professionals — the checks with the highest effort-to-impact ratio:
 
 **Automated checks:**
 - Document title, language, and security permissions
@@ -85,12 +89,15 @@ Test PDFs are sourced from:
 
 All files are fetched via `cdn.jsdelivr.net` at runtime (CORS-friendly, no local fixtures needed).
 
-## Non-Goals
+## Approach
 
-- PDF editing or remediation (this is a validation tool, not a fixer)
-- Full PDF/UA-1 or PDF/UA-2 conformance validation (300+ rules)
-- Server-side processing
-- User accounts or saved history
+This tool is deliberately **practical over exhaustive**:
+
+- **Impact-focused** -- checks the ~13 things that most affect real-world usability, not 300+ conformance rules
+- **Actionable** -- every finding tells you what's wrong and how to fix it, with tool-specific remediation steps
+- **Validation only** -- identifies issues but doesn't edit PDFs (use your authoring tool or Acrobat for fixes)
+- **Client-side only** -- no server, no uploads, no accounts
+- **Not a PDF/UA conformance validator** -- for full standard compliance, use PAC or veraPDF alongside this tool
 
 ## Status
 
@@ -111,7 +118,7 @@ This project builds on the work of many others:
 - **[PDF-A-go-go](https://github.com/khawkins98/PDF-A-go-go)** (MIT) -- the first project in this family; building it revealed the PDF accessibility problems this tool checks for
 
 **Reference tools and standards:**
-- **[PAC (PDF Accessibility Checker)](https://pac.pdf-accessibility.org/)** by the PDF/UA Foundation -- the most thorough free PDF/UA validator, and the main reference for this tool's check list
+- **[PAC (PDF Accessibility Checker)](https://pac.pdf-accessibility.org/)** by the PDF/UA Foundation -- the most thorough free PDF/UA conformance validator; use alongside this tool when full standard compliance is needed
 - **[veraPDF](https://verapdf.org/)** -- open-source PDF/A and PDF/UA validator. The [veraPDF PDF/UA-1 test corpus](https://github.com/veraPDF/veraPDF-corpus) (CC BY 4.0 / GPLv3+) provides atomic pass/fail test files used in the Advanced menu
 - **[PDF Association](https://pdfa.org/)** -- the ["Techniques for Accessible PDF"](https://github.com/pdf-association/techniques-for-accessible-pdf) repository (CC BY 4.0) provides real-world accessible/inaccessible PDF examples used in the Advanced menu
 - **[Open Preservation Foundation](https://openpreservation.org/)** -- the ["Cabinet of Horrors" format corpus](https://github.com/openpreserve/format-corpus) (CC0 1.0) provides edge-case test PDFs (encryption, corruption, font embedding) used in the Advanced menu

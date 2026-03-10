@@ -3,10 +3,11 @@
  *
  * Covers:
  * - Form fields with TU tooltips (pass)
- * - Form fields without TU tooltips (warning)
+ * - Form fields without TU tooltips (fail)
  * - No form fields (not-applicable)
  * - Tab order set to structure (pass)
- * - Tab order not set (warning)
+ * - Tab order not set, no forms (warning — best practice)
+ * - Tab order not set, with forms (fail — keyboard navigation broken)
  */
 import { describe, it, expect } from 'vitest';
 import { PDFDocument, PDFName, PDFString, PDFHexString } from 'pdf-lib';
@@ -65,9 +66,36 @@ describe('checkForms', () => {
     expect(tabFinding.summary).toContain('structure order');
   });
 
-  it('should warn when /Tabs /S is not set', async () => {
+  it('should warn when /Tabs /S is not set and no form fields (best practice)', async () => {
     const bytes = await createPdfWithTabOrder(false);
     const ctx = await buildTestContext(bytes);
+    const findings = checkForms(ctx.pdfDoc, ctx);
+
+    const tabFinding = findings.find(f => f.id === 'tab-order');
+    expect(tabFinding).toBeDefined();
+    expect(tabFinding.status).toBe('warning');
+    expect(tabFinding.summary).toContain('missing');
+  });
+
+  it('should fail when /Tabs /S is not set and document has form fields', async () => {
+    // Create a PDF with form fields but no /Tabs /S
+    const { PDFDocument: PDFDoc, PDFName: Name, PDFString: Str } = await import('pdf-lib');
+    const doc = await PDFDoc.create();
+    doc.addPage(); // no /Tabs /S
+    const field = doc.context.obj({
+      Type: 'Annot',
+      Subtype: Name.of('Widget'),
+      FT: Name.of('Tx'),
+      T: Str.of('name_field'),
+      TU: Str.of('Enter name'),
+      Rect: doc.context.obj([0, 0, 100, 20]),
+    });
+    const fieldRef = doc.context.register(field);
+    const acroForm = doc.context.obj({ Fields: doc.context.obj([fieldRef]) });
+    doc.catalog.set(Name.of('AcroForm'), doc.context.register(acroForm));
+    const saved = await doc.save();
+
+    const ctx = await buildTestContext(saved);
     const findings = checkForms(ctx.pdfDoc, ctx);
 
     const tabFinding = findings.find(f => f.id === 'tab-order');
@@ -166,7 +194,7 @@ describe('checkForms', () => {
     expect(formFinding.wcagRef).toBe('3.3.2');
   });
 
-  it('should warn when multi-page PDF has inconsistent tab order', async () => {
+  it('should warn when multi-page PDF has inconsistent tab order (no forms)', async () => {
     const doc = await PDFDocument.create();
     const page1 = doc.addPage();
     const page2 = doc.addPage();
@@ -177,7 +205,7 @@ describe('checkForms', () => {
     const findings = checkForms(ctx.pdfDoc, ctx);
     const f = findings.find(f => f.id === 'tab-order');
     expect(f).toBeDefined();
-    expect(f.status).toBe('fail');
+    expect(f.status).toBe('warning');
     expect(f.summary).toContain('1 of 2');
   });
 

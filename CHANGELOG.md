@@ -3,7 +3,8 @@
 ## 1.3.0 2026-03-10
 
 ### Audit accuracy
-- Severity corrections: `form-labels`, `tab-order`, `font-embedding`, and `font-tounicode` promoted from warning to fail (matching PDF/UA requirements)
+- Severity corrections: `form-labels`, `font-embedding`, and `font-tounicode` promoted from warning to fail
+- Tab order severity: `fail` when form fields present (keyboard navigation broken), `warning` otherwise (best practice — structure tree still governs screen reader reading order)
 - Standard 14 font exemption: base PDF fonts (Helvetica, Courier, Times-Roman, Symbol, ZapfDingbats and variants) exempt from ToUnicode requirement
 - CIDFont composite font embedding: Type0 fonts now check DescendantFonts for embedding status
 - BCP-47 language validation: invalid document-level and per-element language tags produce warnings
@@ -55,10 +56,15 @@
 - Password-protected PDF detection with specific remediation guidance
 - Corrupt PDF detection with clearer messaging
 
+### Messaging
+- Clarify positioning: practical impact-focused checker, not a PDF/UA conformance validator
+- Updated README, About dialog, welcome screen, meta tags, and PDF export to reflect practical approach
+- Reframed "Non-Goals" as "Approach" section in README
+
 ### Test infrastructure
 - New shared assertion helpers: `findFindingById()`, `expectFindingStatus()`
 - 6 new PDF fixture factories
-- 782 tests across 44 test files (up from 688 across 40)
+- 783 tests across 44 test files (up from 688 across 40)
 
 ## 1.2.0 2026-03-02
 
