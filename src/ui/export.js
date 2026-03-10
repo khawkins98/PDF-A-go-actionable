@@ -716,6 +716,7 @@ async function downloadPDF(data) {
       Type: 'StructElem',
       S: 'Document',
       P: structTreeRoot,
+      Lang: 'en',
     }));
 
     // Build a StructElem for each marked content entry
