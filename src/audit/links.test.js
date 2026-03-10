@@ -85,7 +85,7 @@ describe('checkLinks', () => {
 
   // --- Additional link text quality tests ---
 
-  it('should fail when link has no ActualText AND no Alt', async () => {
+  it('should warn when link has no ActualText AND no Alt', async () => {
     const bytes = await createPdfWithMixedLinks([
       { text: null },
       { text: 'Read the full report' },
@@ -95,7 +95,7 @@ describe('checkLinks', () => {
 
     const linkFinding = findings.find(f => f.id === 'link-text');
     expect(linkFinding).toBeDefined();
-    expect(linkFinding.status).toBe('fail');
+    expect(linkFinding.status).toBe('warning');
     expect(linkFinding.summary).toContain('missing text');
   });
 
@@ -148,7 +148,7 @@ describe('checkLinks', () => {
 
     const linkFinding = findings.find(f => f.id === 'link-text');
     expect(linkFinding).toBeDefined();
-    expect(linkFinding.status).toBe('fail'); // missing text makes it a fail
+    expect(linkFinding.status).toBe('warning');
     expect(linkFinding.summary).toContain('3 of 4');
   });
 
@@ -191,7 +191,7 @@ describe('checkLinks', () => {
     expect(linkFinding.status).toBe('warning');
   });
 
-  it('should report missing text when Link has no text and children have no text', async () => {
+  it('should warn when Link has no text and children have no text', async () => {
     const bytes = await createPdfWithLinksWithChildText([
       { text: null, childTexts: [] },
     ]);
@@ -200,7 +200,7 @@ describe('checkLinks', () => {
 
     const linkFinding = findings.find(f => f.id === 'link-text');
     expect(linkFinding).toBeDefined();
-    expect(linkFinding.status).toBe('fail');
+    expect(linkFinding.status).toBe('warning');
   });
 
   // --- Page numbers in link details ---
@@ -245,7 +245,7 @@ describe('checkLinks', () => {
     expect(detailWithPage).toBeDefined();
   });
 
-  it('should fail when link text is whitespace-only', async () => {
+  it('should warn when link text is whitespace-only', async () => {
     const bytes = await createPdfWithMixedLinks([
       { text: '   ' },
     ]);
@@ -255,6 +255,6 @@ describe('checkLinks', () => {
     const linkFinding = findings.find(f => f.id === 'link-text');
     expect(linkFinding).toBeDefined();
     // Whitespace-only text is effectively empty
-    expect(linkFinding.status).toBe('fail');
+    expect(linkFinding.status).toBe('warning');
   });
 });

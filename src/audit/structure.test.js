@@ -82,14 +82,14 @@ describe('checkStructure', () => {
     expect(headingFinding.summary).toContain('3 headings');
   });
 
-  it('should fail heading hierarchy when levels are skipped (H1 -> H3)', async () => {
+  it('should warn when heading levels are skipped (H1 -> H3)', async () => {
     const bytes = await createPdfWithHeadingSkip();
     const ctx = await buildTestContext(bytes);
     const findings = checkStructure(ctx.pdfDoc, ctx);
 
     const headingFinding = findings.find(f => f.id === 'heading-hierarchy');
     expect(headingFinding).toBeDefined();
-    expect(headingFinding.status).toBe('fail');
+    expect(headingFinding.status).toBe('warning');
     expect(headingFinding.summary).toContain('H2');
   });
 
@@ -172,14 +172,14 @@ describe('checkStructure', () => {
     expect(headingFinding.status).toBe('pass');
   });
 
-  it('should fail when heading skips after decrease (H1 → H2 → H1 → H3)', async () => {
+  it('should warn when heading skips after decrease (H1 -> H2 -> H1 -> H3)', async () => {
     const bytes = await createPdfWithHeadings(['H1', 'H2', 'H1', 'H3']);
     const ctx = await buildTestContext(bytes);
     const findings = checkStructure(ctx.pdfDoc, ctx);
 
     const headingFinding = findings.find(f => f.id === 'heading-hierarchy');
     expect(headingFinding).toBeDefined();
-    expect(headingFinding.status).toBe('fail');
+    expect(headingFinding.status).toBe('warning');
     expect(headingFinding.summary).toContain('H2');
   });
 
@@ -205,14 +205,14 @@ describe('checkStructure', () => {
     expect(headingFinding.status).toBe('pass');
   });
 
-  it('should still fail when real heading levels skip (H1 -> H3) regardless of H present', async () => {
+  it('should warn when real heading levels skip (H1 -> H3) regardless of H present', async () => {
     const bytes = await createPdfWithHeadings(['H1', 'H', 'H3', 'H5']);
     const ctx = await buildTestContext(bytes);
     const findings = checkStructure(ctx.pdfDoc, ctx);
 
     const headingFinding = findings.find(f => f.id === 'heading-hierarchy');
     expect(headingFinding).toBeDefined();
-    expect(headingFinding.status).toBe('fail');
+    expect(headingFinding.status).toBe('warning');
   });
 
   it('should use WCAG 2.4.6 reference for heading-hierarchy findings', async () => {

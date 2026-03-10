@@ -46,11 +46,11 @@ export function checkFonts(pdfDoc, ctx) {
       status: missingCount === 0 ? 'pass' : 'fail',
       summary: missingCount === 0
         ? `All ${coverage.total} font(s) have ToUnicode CMaps for text extraction.`
-        : `${missingCount} of ${coverage.total} font(s) missing ToUnicode CMap. Text extraction and search may not work correctly.`,
+        : `${missingCount} of ${coverage.total} font(s) missing ToUnicode CMap. Screen readers cannot read this text, and copy-paste produces garbage characters.`,
       details: toUnicodeDetails,
       remediation: missingCount === 0
         ? null
-        : 'Fonts without ToUnicode CMaps may prevent text copy/paste and search. Re-export the PDF with "embed fonts" enabled, or use fonts with built-in Unicode mapping.',
+        : 'Without a ToUnicode CMap, the PDF viewer cannot convert font glyph codes back to characters. Screen readers will skip or mispronounce the text, and copy-paste will produce symbols instead of words. Re-export the PDF with font embedding enabled, or use fonts that include Unicode mapping. In InDesign: File > Export > Adobe PDF > Advanced > check "Subset fonts below 100%". In Word: save as PDF (fonts are embedded by default). In Acrobat: Preflight > Embed missing fonts.',
       wcagRef: '4.1.1',
       pdfuaRef: '7.21.3',
     });

@@ -191,9 +191,9 @@ function checkHeadingHierarchy(ctx) {
     });
   }
 
-  // Severity split: skips → fail, non-H1 start only → warning
-  const hasSkips = skips.length > 0;
-  const status = hasSkips ? 'fail' : 'warning';
+  // Heading issues are warnings — headings still exist and provide structure,
+  // even if the hierarchy isn't perfect. Screen reader users can still navigate.
+  const status = 'warning';
 
   return {
     id: 'heading-hierarchy',
