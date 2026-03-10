@@ -6,6 +6,7 @@
 import { PDFName, PDFDict, PDFArray } from 'pdf-lib';
 import { auditToUnicodeCoverage } from '../engine/utils/accessibility-detect.js';
 import { resolve } from '../engine/utils/resolve.js';
+import { getRemediation } from '../guidance.js';
 
 /**
  * @param {import('pdf-lib').PDFDocument} pdfDoc
@@ -50,7 +51,7 @@ export function checkFonts(pdfDoc, ctx) {
       details: toUnicodeDetails,
       remediation: missingCount === 0
         ? null
-        : 'Without a ToUnicode CMap, the PDF viewer cannot convert font glyph codes back to characters. Screen readers will skip or mispronounce the text, and copy-paste will produce symbols instead of words. Re-export the PDF with font embedding enabled, or use fonts that include Unicode mapping. In InDesign: File > Export > Adobe PDF > Advanced > check "Subset fonts below 100%". In Word: save as PDF (fonts are embedded by default). In Acrobat: Preflight > Embed missing fonts.',
+        : getRemediation('font-tounicode'),
       wcagRef: '4.1.1',
       pdfuaRef: '7.21.3',
     });
@@ -81,7 +82,7 @@ export function checkFonts(pdfDoc, ctx) {
       details: embeddingInfo.details,
       remediation: embeddingInfo.notEmbedded === 0
         ? null
-        : 'Embed all fonts in the PDF. In Word: save as PDF with "embed fonts" option. In InDesign: export with "subset fonts below 100%". In Acrobat: Preflight > Embed missing fonts.',
+        : getRemediation('font-embedding'),
       wcagRef: null,
       pdfuaRef: '7.21.4',
     });

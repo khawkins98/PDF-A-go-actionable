@@ -10,6 +10,7 @@
  * - Structure tree summary (element count, types, max depth)
  */
 import { resolvePageIndex, formatPagePrefix } from '../engine/utils/resolve.js';
+import { getRemediation } from '../guidance.js';
 
 const HEADING_TYPES = new Set(['H', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
 
@@ -35,10 +36,10 @@ export function checkStructure(pdfDoc, ctx) {
     taggedSummary = traits.markedStatus === 'false'
       ? 'Document has MarkInfo but Marked is false. The PDF may have been partially tagged.'
       : 'Document is not tagged. Screen readers can\'t determine the document structure.';
-    taggedRemediation = 'Tag the document in your authoring tool. In Word/PowerPoint: use heading styles and export with accessibility. In InDesign: enable "Create Tagged PDF" on export. In Acrobat: Accessibility > Add Tags to Document.';
+    taggedRemediation = getRemediation('tagged-pdf', 'fail');
   } else if (traits.hasSuspects) {
     taggedSummary = 'Document is tagged but MarkInfo/Suspects is true. The tag structure may be unreliable and should be reviewed.';
-    taggedRemediation = 'Open the document in Acrobat Pro and run Accessibility > Full Check to identify suspect tags. Review and fix the tag tree, then clear the Suspects flag.';
+    taggedRemediation = getRemediation('tagged-pdf', 'fail-suspects');
   } else {
     taggedSummary = 'Document is tagged (MarkInfo/Marked is true).';
   }
@@ -67,7 +68,7 @@ export function checkStructure(pdfDoc, ctx) {
     details: [],
     remediation: traits.hasStructTree
       ? null
-      : 'Tag the document properly. The structure tree gets created automatically when you use heading styles and accessibility-aware export.',
+      : getRemediation('structure-tree'),
     wcagRef: '1.3.1',
     pdfuaRef: '7.1',
   });
@@ -138,7 +139,7 @@ function checkHeadingHierarchy(ctx) {
       status: 'warning',
       summary: 'No headings found in the structure tree. Use headings to organize content.',
       details: [],
-      remediation: 'Add headings using heading styles (H1, H2, H3, etc.) in your authoring tool. In InDesign: map paragraph styles to PDF heading tags via Edit > Export Tagging. They create the navigable outline.',
+      remediation: getRemediation('heading-hierarchy', 'warning-no-headings'),
       wcagRef: '2.4.6',
       pdfuaRef: '7.4.2',
     };
@@ -202,7 +203,7 @@ function checkHeadingHierarchy(ctx) {
     status,
     summary: `Heading hierarchy has ${issues.length} issue(s): ${issues.map(i => i.value).join('; ')}.`,
     details: issues,
-    remediation: 'Fix heading levels in your source document. Start with H1 and don\'t skip levels (H1 > H2 > H3, not H1 > H3). In InDesign: check your paragraph style export tags via Edit > Export Tagging to ensure styles map to the correct heading levels.',
+    remediation: getRemediation('heading-hierarchy', 'warning'),
     wcagRef: '2.4.6',
     pdfuaRef: '7.4.2',
   };

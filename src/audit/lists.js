@@ -6,6 +6,7 @@
 import { PDFName, PDFDict, PDFArray } from 'pdf-lib';
 import { resolve, resolvePageIndex, formatPagePrefix } from '../engine/utils/resolve.js';
 import { resolveRole } from '../engine/utils/role-map.js';
+import { getRemediation } from '../guidance.js';
 
 /**
  * @param {import('pdf-lib').PDFDocument} pdfDoc
@@ -100,7 +101,7 @@ export function checkLists(pdfDoc, ctx) {
     status,
     summary: `${allIssues.length} issue(s) found in list structure.`,
     details,
-    remediation: 'Use proper list formatting in your authoring tool. In Word: use bullet/numbered list styles. In InDesign: use List paragraph styles and map them to L > LI > Lbl + LBody in Edit > Export Tagging. Avoid manually typing bullets or numbers. In Acrobat: use the Tags panel to fix list structure.',
+    remediation: getRemediation('list-structure'),
     wcagRef: '1.3.1',
     pdfuaRef: '7.6',
   }];

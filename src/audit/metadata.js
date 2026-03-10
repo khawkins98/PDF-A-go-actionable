@@ -15,6 +15,7 @@
  */
 import { PDFName, PDFDict } from 'pdf-lib';
 import { resolve } from '../engine/utils/resolve.js';
+import { getRemediation } from '../guidance.js';
 // Structure tree walk accessed via ctx.getStructureElements() for cached single-pass
 
 /** BCP-47 language tag validation pattern. */
@@ -44,11 +45,11 @@ export function checkMetadata(pdfDoc, ctx) {
   } else if (traits.titleSource === 'info') {
     titleStatus = 'warning';
     titleSummary = `Document title is set in the Info dictionary: "${traits.title}". For full PDF/UA compliance, the title should also be in XMP metadata (dc:title).`;
-    titleRemediation = 'The document title is in the legacy Info dictionary but not in XMP metadata. PDF/UA requires dc:title in XMP. Re-export the PDF with your authoring tool, or use Acrobat\'s File > Properties to set the title (which updates both sources).';
+    titleRemediation = getRemediation('document-title', 'warning');
   } else {
     titleStatus = 'fail';
     titleSummary = 'No document title set. The title bar will show the filename instead.';
-    titleRemediation = 'Set the document title in your authoring tool (File > Properties in Word/InDesign, or Document Properties in Acrobat). Use something descriptive, not the filename.';
+    titleRemediation = getRemediation('document-title', 'fail');
   }
   findings.push({
     id: 'document-title',
@@ -67,7 +68,7 @@ export function checkMetadata(pdfDoc, ctx) {
   if (!traits.lang) {
     langStatus = 'fail';
     langSummary = 'No document language specified. Screen readers may use the wrong pronunciation rules.';
-    langRemediation = 'Set the document language in your authoring tool. In Word: File > Options > Language. In InDesign: not set directly — after export, set it in Acrobat: File > Properties > Advanced > Language.';
+    langRemediation = getRemediation('document-lang', 'fail');
   } else if (!isValidBcp47(traits.lang)) {
     langStatus = 'warning';
     langSummary = `Document language is set to "${traits.lang}" but this is not a valid BCP-47 tag. Use a format like "en", "en-US", or "zh-Hans-CN".`;
@@ -99,7 +100,7 @@ export function checkMetadata(pdfDoc, ctx) {
     summary: securityResult.summary,
     details: securityResult.details,
     remediation: securityResult.status === 'fail'
-      ? 'Remove the security restrictions blocking accessibility. In Acrobat: File > Properties > Security > Change Settings, then enable "Enable text access for screen reader devices."'
+      ? getRemediation('security-permissions')
       : null,
     wcagRef: null,
     pdfuaRef: '7.1',
@@ -132,7 +133,7 @@ export function checkMetadata(pdfDoc, ctx) {
     details: [],
     remediation: traits.isPdfUA
       ? null
-      : 'PDF/UA conformance is declared via XMP metadata. Tools like Acrobat Pro and axesPDF can add this declaration after validation.',
+      : getRemediation('pdfua-conformance'),
     wcagRef: null,
     pdfuaRef: null,
   });
@@ -149,7 +150,7 @@ export function checkMetadata(pdfDoc, ctx) {
     details: [],
     remediation: traits.displayDocTitle === true
       ? null
-      : 'In Acrobat: File > Properties > Initial View > Window Options > Show: Document Title.',
+      : getRemediation('display-doc-title'),
     wcagRef: '2.4.2',
     pdfuaRef: null,
   });
@@ -167,7 +168,7 @@ export function checkMetadata(pdfDoc, ctx) {
     details: [],
     remediation: hasBookmarks
       ? null
-      : 'Add bookmarks in your authoring tool. In Word, heading styles become bookmarks automatically on export. In Acrobat: View > Navigation Panels > Bookmarks.',
+      : getRemediation('bookmarks'),
     wcagRef: '2.4.5',
     pdfuaRef: null,
   });
@@ -275,7 +276,7 @@ function checkPerElementLanguage(pdfDoc, ctx) {
       status: 'warning',
       summary: 'No structure elements specify a language. This is fine for single-language documents, but multilingual content needs per-element language tags.',
       details: [],
-      remediation: 'If the document contains content in multiple languages, set the /Lang attribute on the relevant structure elements. In Acrobat: select the element in the Tags panel > Properties > Language.',
+      remediation: getRemediation('per-element-language'),
       wcagRef: '3.1.2',
       pdfuaRef: '7.2',
     };

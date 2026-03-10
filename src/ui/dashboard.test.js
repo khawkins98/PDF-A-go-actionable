@@ -4,6 +4,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderDashboard } from './dashboard.js';
+import { META_TOOLTIPS } from '../guidance.js';
 
 /** Minimal Finding factory. */
 function finding(overrides) {
@@ -695,6 +696,59 @@ describe('renderDashboard', () => {
     expect(reasons.length).toBeGreaterThan(0);
     const reasonTexts = [...reasons].map((r) => r.textContent);
     expect(reasonTexts).toContain('No tables found in the structure tree.');
+  });
+
+  // --- Metadata tooltips ---
+
+  it('should add data-tooltip and title attributes to metadata dt elements', () => {
+    const data = makeData([]);
+    renderDashboard(el, data, callbacks);
+
+    const grid = el.querySelector('.dashboard__meta-grid');
+    const dts = [...grid.querySelectorAll('dt')];
+    const titleDt = dts.find((d) => d.textContent === 'Title');
+    expect(titleDt.getAttribute('data-tooltip')).toBe(META_TOOLTIPS['Title']);
+    expect(titleDt.getAttribute('title')).toBe(META_TOOLTIPS['Title']);
+  });
+
+  it('should add tabindex="0" and has-tooltip class for keyboard access', () => {
+    const data = makeData([]);
+    renderDashboard(el, data, callbacks);
+
+    const grid = el.querySelector('.dashboard__meta-grid');
+    const dts = [...grid.querySelectorAll('dt')];
+    const langDt = dts.find((d) => d.textContent === 'Language');
+    expect(langDt.getAttribute('tabindex')).toBe('0');
+    expect(langDt.classList.contains('has-tooltip')).toBe(true);
+  });
+
+  it('should have tooltips on all standard metadata labels', () => {
+    const data = makeData([], { creator: 'Adobe InDesign', producer: 'Adobe PDF Library' });
+    renderDashboard(el, data, callbacks);
+
+    const grid = el.querySelector('.dashboard__meta-grid');
+    const dts = [...grid.querySelectorAll('dt')];
+    for (const dt of dts) {
+      const label = dt.textContent;
+      if (META_TOOLTIPS[label]) {
+        expect(dt.hasAttribute('data-tooltip'), `${label} should have data-tooltip`).toBe(true);
+      }
+    }
+  });
+
+  it('should not add tooltip attributes when label is not in META_TOOLTIPS', () => {
+    // All current labels are in META_TOOLTIPS, so this verifies the guard works
+    // by checking that no dt has a tooltip without a matching META_TOOLTIPS key
+    const data = makeData([]);
+    renderDashboard(el, data, callbacks);
+
+    const grid = el.querySelector('.dashboard__meta-grid');
+    const dts = [...grid.querySelectorAll('dt')];
+    for (const dt of dts) {
+      if (dt.hasAttribute('data-tooltip')) {
+        expect(META_TOOLTIPS[dt.textContent]).toBeDefined();
+      }
+    }
   });
 
   // --- displayDocTitle warning ---
