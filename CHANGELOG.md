@@ -63,6 +63,16 @@
 - 6 new PDF fixture factories
 - 782 tests across 44 test files (up from 688 across 40)
 
+## 1.2.0 2026-03-02
+
+- 13-point validation checklist alignment throughout the tool
+- Dashboard: validation checklist section with color-coded number badges and contextual N/A reasons
+- PDF export: checklist summary as page 1 with columnar status badges, numbered items, and additional checks
+- Details panel: "Why This Matters" narrative, authoring-tool tips (Word, InDesign, PowerPoint, Acrobat) with auto-detection from creator/producer metadata, and complementary tool links
+- Help dialog: complementary tools reference section (PAC, NVDA, VoiceOver, JAWS, veraPDF, Acrobat Pro, axesCheck)
+- Checklist item 11 (accessibility checker passes) derives status from overall verdict
+- Remove unused guidance module (superseded by undrr-checklist)
+
 ## 1.1.0 2026-02-28
 
 - Report Dashboard as initial results view with PASS/FAIL/PASS WITH WARNINGS verdict banner
