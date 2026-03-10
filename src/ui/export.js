@@ -354,7 +354,8 @@ async function downloadPDF(data) {
   drawText('PDF Accessibility Report', { size: titleFontSize, useBold: true });
   y -= 2;
   const fileName = data.meta.fileName || 'Unknown';
-  const dateStr = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const dateStr = `${now.toISOString().split('T')[0]} ${now.toTimeString().slice(0, 5)}`;
   drawText(`${fileName}  |  ${dateStr}`, {
     size: smallFontSize,
     color: rgb(0.45, 0.47, 0.50),
