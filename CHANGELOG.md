@@ -27,19 +27,16 @@
 - Creator-specific hint banner on dashboard (InDesign, Word, PowerPoint, Acrobat, LibreOffice)
 
 ### Dashboard UX
-- 13-point validation checklist with color-coded number badges and contextual N/A reasons
 - Checklist progress indicator: "N of M automated checks pass"
 - Expandable checklist items with "Why This Matters" narrative and authoring tips
 - Remediation hints: first sentence of remediation shown inline on fail/warning rows
 - Document title shown in dashboard header and window title bar when available
 - `display-doc-title` decoupled from checklist item #1
 - Checklist item #11 renamed "Accessibility checker is run" (pass or warning only)
-- Details panel: authoring-tool tips (Word, InDesign, PowerPoint, Acrobat) with auto-detection
-- Help dialog: complementary tools reference section
 
 ### Export quality
 - PDF export: set document metadata (title, author, subject, producer, creator, creation date)
-- PDF export: checklist summary as page 1, finding details in full-density sections
+- PDF export: render finding details in full-density sections
 - CSV export: add details column and UTF-8 BOM for Excel compatibility
 - JSON export: include UNDRR 13-point checklist status
 - Extract `buildJsonOutput()` and `buildCsvContent()` as testable pure functions
