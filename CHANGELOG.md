@@ -20,6 +20,7 @@
 - Bookmarks (outlines) added for each report section for keyboard/AT navigation (fixes "Bookmarks" warning)
 - XMP metadata with `dc:title`, `dc:creator`, `xmp:CreatorTool` (fixes "Document Title" XMP warning)
 - Keywords set on exported PDF: "PDF accessibility, WCAG, audit report, PDF/UA, assistive technology"
+- Per-element language (`Lang='en'`) set on Document StructElem (fixes "Per-Element Language" warning)
 
 ## 1.3.0 2026-03-10
 
