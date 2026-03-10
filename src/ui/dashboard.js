@@ -8,7 +8,7 @@
 
 import { formatFileSize } from './report.js';
 import { STATUS_GROUPS, groupFindings, computeVerdict } from './constants.js';
-import { resolveChecklistStatus } from './undrr-checklist.js';
+import { CREATOR_HINTS, detectCreatorTool, META_TOOLTIPS } from '../guidance.js';
 
 /**
  * Render the report dashboard into a container element.
@@ -65,6 +65,14 @@ export function renderDashboard(el, data, callbacks) {
   fileName.textContent = meta.fileName || 'Unknown file';
   fileInfo.appendChild(fileName);
 
+  // Show document title below filename when available and different
+  if (meta.title) {
+    const docTitle = document.createElement('p');
+    docTitle.className = 'dashboard__doc-title';
+    docTitle.textContent = meta.title;
+    fileInfo.appendChild(docTitle);
+  }
+
   const fileFacts = buildFileFacts(meta);
   fileInfo.appendChild(fileFacts);
 
@@ -86,7 +94,7 @@ export function renderDashboard(el, data, callbacks) {
     { label: 'Tagged', value: meta.isTagged ? 'Yes' : 'No', warn: !meta.isTagged },
     { label: 'PDF/UA', value: meta.isPdfUA ? 'Yes' : 'No' },
     { label: 'PDF/A', value: meta.isPdfA ? `Yes (${meta.pdfALevel || 'level unknown'})` : 'No' },
-    { label: 'Display Doc Title', value: meta.displayDocTitle ? 'Yes' : 'No', warn: !meta.displayDocTitle },
+    { label: 'Viewer Shows Title', value: meta.displayDocTitle ? 'Yes' : 'No' },
     { label: 'Structure Tree', value: meta.hasStructTree ? 'Yes' : 'No' },
   ];
 
@@ -97,6 +105,13 @@ export function renderDashboard(el, data, callbacks) {
   for (const item of metaItems) {
     const dt = document.createElement('dt');
     dt.textContent = item.label;
+    const tooltip = META_TOOLTIPS[item.label];
+    if (tooltip) {
+      dt.setAttribute('data-tooltip', tooltip);
+      dt.setAttribute('title', tooltip);
+      dt.setAttribute('tabindex', '0');
+      dt.classList.add('has-tooltip');
+    }
     const dd = document.createElement('dd');
     dd.textContent = item.value || 'Not set';
     if (item.warn) {
@@ -143,54 +158,22 @@ export function renderDashboard(el, data, callbacks) {
   header.appendChild(actions);
   el.appendChild(header);
 
-  // === UNDRR Validation Checklist ===
-  const checklistItems = resolveChecklistStatus(findings);
-  const checklistSection = document.createElement('section');
-  checklistSection.className = 'dashboard__checklist-section';
-  checklistSection.setAttribute('aria-label', 'Validation Checklist');
+  // === Creator-specific hint ===
+  const toolKey = detectCreatorTool(meta);
+  if (toolKey && CREATOR_HINTS[toolKey]) {
+    const hintData = CREATOR_HINTS[toolKey];
+    const hintBanner = document.createElement('div');
+    hintBanner.className = 'dashboard__creator-hint';
+    hintBanner.setAttribute('role', 'note');
 
-  const checklistHeading = document.createElement('h3');
-  checklistHeading.className = 'dashboard__section-heading';
-  checklistHeading.textContent = 'Validation Checklist';
-  checklistSection.appendChild(checklistHeading);
+    const hintLabel = document.createElement('strong');
+    hintLabel.textContent = `Created with ${hintData.tool}: `;
+    hintBanner.appendChild(hintLabel);
 
-  const checklistGrid = document.createElement('div');
-  checklistGrid.className = 'dashboard__checklist';
-
-  for (const item of checklistItems) {
-    const row = document.createElement('div');
-    row.className = 'dashboard__checklist-item';
-
-    const number = document.createElement('span');
-    number.className = `dashboard__checklist-number dashboard__checklist-number--${item.status}`;
-    number.textContent = String(item.undrrNumber);
-
-    const titleWrap = document.createElement('span');
-    titleWrap.className = 'dashboard__checklist-title';
-    titleWrap.textContent = item.title;
-
-    // Show contextual summary for N/A and not-checked items
-    if ((item.status === 'not-applicable' || item.status === 'not-checked') && item.summary) {
-      const reason = document.createElement('span');
-      reason.className = 'dashboard__checklist-reason';
-      reason.textContent = item.summary;
-      titleWrap.appendChild(document.createElement('br'));
-      titleWrap.appendChild(reason);
-    }
-
-    const statusIndicator = document.createElement('span');
-    statusIndicator.className = `dashboard__checklist-status dashboard__checklist-status--${item.status}`;
-    statusIndicator.textContent = checklistStatusLabel(item.status);
-    statusIndicator.setAttribute('aria-label', `${checklistStatusLabel(item.status)}`);
-
-    row.appendChild(number);
-    row.appendChild(titleWrap);
-    row.appendChild(statusIndicator);
-    checklistGrid.appendChild(row);
+    const hintText = document.createTextNode(hintData.hint);
+    hintBanner.appendChild(hintText);
+    el.appendChild(hintBanner);
   }
-
-  checklistSection.appendChild(checklistGrid);
-  el.appendChild(checklistSection);
 
   // === Status group sections ===
   for (const group of STATUS_GROUPS) {
@@ -228,10 +211,18 @@ export function renderDashboard(el, data, callbacks) {
         title.textContent = f.title;
         info.appendChild(title);
 
-        const summary = document.createElement('p');
-        summary.className = 'dashboard__finding-summary';
-        summary.textContent = f.summary;
-        info.appendChild(summary);
+        const summaryP = document.createElement('p');
+        summaryP.className = 'dashboard__finding-summary';
+        summaryP.textContent = f.summary;
+        info.appendChild(summaryP);
+
+        // Remediation hint — first sentence of remediation text
+        if (f.remediation) {
+          const hint = document.createElement('p');
+          hint.className = 'dashboard__finding-hint';
+          hint.textContent = firstSentence(f.remediation);
+          info.appendChild(hint);
+        }
 
         row.appendChild(info);
         content.appendChild(row);
@@ -281,17 +272,10 @@ function statusBadge(status, icon) {
   return badge;
 }
 
-/** Map a checklist item status to a short display label. */
-function checklistStatusLabel(status) {
-  switch (status) {
-    case 'pass': return 'Pass';
-    case 'fail': return 'Fail';
-    case 'warning': return 'Warn';
-    case 'manual': return 'Manual';
-    case 'not-applicable': return 'N/A';
-    case 'not-checked': return '--';
-    default: return status;
-  }
+/** Extract the first sentence from a string. */
+function firstSentence(text) {
+  const match = text.match(/^[^.!?]+[.!?]/);
+  return match ? match[0] : text;
 }
 
 /**

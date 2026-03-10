@@ -3,9 +3,10 @@
  *
  * Informational: ToUnicode CMap coverage and embedding status.
  */
-import { PDFName, PDFDict } from 'pdf-lib';
+import { PDFName, PDFDict, PDFArray } from 'pdf-lib';
 import { auditToUnicodeCoverage } from '../engine/utils/accessibility-detect.js';
 import { resolve } from '../engine/utils/resolve.js';
+import { getRemediation } from '../guidance.js';
 
 /**
  * @param {import('pdf-lib').PDFDocument} pdfDoc
@@ -27,29 +28,31 @@ export function checkFonts(pdfDoc, ctx) {
       summary: 'No fonts found in the document.',
       details: [],
       remediation: null,
-      wcagRef: null,
+      wcagRef: '4.1.1',
       pdfuaRef: '7.21.3',
     });
   } else {
-    const missingCount = coverage.total - coverage.withToUnicode;
+    const missingCount = coverage.fonts.filter(f => !f.hasToUnicode && !f.isStandard14).length;
     const toUnicodeDetails = coverage.fonts.map(f => ({
       label: f.name,
-      value: f.hasToUnicode ? 'Has ToUnicode' : 'Missing ToUnicode',
+      value: f.isStandard14
+        ? 'Standard font (ToUnicode not required)'
+        : f.hasToUnicode ? 'Has ToUnicode' : 'Missing ToUnicode',
     }));
 
     findings.push({
       id: 'font-tounicode',
       category: 'fonts',
       title: 'Font Unicode Mapping',
-      status: missingCount === 0 ? 'pass' : 'warning',
+      status: missingCount === 0 ? 'pass' : 'fail',
       summary: missingCount === 0
         ? `All ${coverage.total} font(s) have ToUnicode CMaps for text extraction.`
-        : `${missingCount} of ${coverage.total} font(s) missing ToUnicode CMap. Text extraction and search may not work correctly.`,
+        : `${missingCount} of ${coverage.total} font(s) missing ToUnicode CMap. Screen readers cannot read this text, and copy-paste produces garbage characters.`,
       details: toUnicodeDetails,
       remediation: missingCount === 0
         ? null
-        : 'Fonts without ToUnicode CMaps may prevent text copy/paste and search. Re-export the PDF with "embed fonts" enabled, or use fonts with built-in Unicode mapping.',
-      wcagRef: null,
+        : getRemediation('font-tounicode'),
+      wcagRef: '4.1.1',
       pdfuaRef: '7.21.3',
     });
   }
@@ -72,14 +75,14 @@ export function checkFonts(pdfDoc, ctx) {
       id: 'font-embedding',
       category: 'fonts',
       title: 'Font Embedding',
-      status: embeddingInfo.notEmbedded === 0 ? 'pass' : 'warning',
+      status: embeddingInfo.notEmbedded === 0 ? 'pass' : 'fail',
       summary: embeddingInfo.notEmbedded === 0
         ? `All ${embeddingInfo.totalChecked} font(s) with descriptors are embedded.`
         : `${embeddingInfo.notEmbedded} of ${embeddingInfo.totalChecked} font(s) not embedded. Text may not render correctly on systems without the font installed.`,
       details: embeddingInfo.details,
       remediation: embeddingInfo.notEmbedded === 0
         ? null
-        : 'Embed all fonts in the PDF. In Word: save as PDF with "embed fonts" option. In InDesign: export with "subset fonts below 100%". In Acrobat: Preflight > Embed missing fonts.',
+        : getRemediation('font-embedding'),
       wcagRef: null,
       pdfuaRef: '7.21.4',
     });
@@ -88,8 +91,17 @@ export function checkFonts(pdfDoc, ctx) {
   return findings;
 }
 
+/** Check if a FontDescriptor has an embedded font file. */
+function hasFontFile(descriptor) {
+  return !!(descriptor.get(PDFName.of('FontFile'))
+    || descriptor.get(PDFName.of('FontFile2'))
+    || descriptor.get(PDFName.of('FontFile3')));
+}
+
 /**
  * Check font embedding status via flat scan.
+ * Handles both simple fonts (with FontDescriptor) and composite Type0 fonts
+ * (checking DescendantFonts CIDFont entries).
  */
 function checkFontEmbedding(pdfDoc) {
   const context = pdfDoc.context;
@@ -109,15 +121,37 @@ function checkFontEmbedding(pdfDoc) {
     const baseFont = obj.get(PDFName.of('BaseFont'));
     const name = baseFont ? baseFont.toString().replace(/^\//, '') : 'Unknown';
 
-    // Check for font descriptor with font file
+    // For Type0 fonts, check DescendantFonts
+    if (subtypeStr === '/Type0') {
+      const descendants = obj.get(PDFName.of('DescendantFonts'));
+      if (descendants) {
+        const descArray = resolve(descendants, context);
+        if (descArray instanceof PDFArray) {
+          for (let i = 0; i < descArray.size(); i++) {
+            const cidFont = resolve(descArray.get(i), context);
+            if (!(cidFont instanceof PDFDict)) continue;
+            const cidDescRef = cidFont.get(PDFName.of('FontDescriptor'));
+            if (!cidDescRef) continue;
+            const cidDesc = resolve(cidDescRef, context);
+            if (!(cidDesc instanceof PDFDict)) continue;
+            if (hasFontFile(cidDesc)) {
+              embedded++;
+            } else {
+              notEmbedded++;
+              details.push({ label: name, value: 'Not embedded' });
+            }
+          }
+        }
+      }
+      return;
+    }
+
+    // Check for font descriptor with font file (simple fonts)
     const descriptorRef = obj.get(PDFName.of('FontDescriptor'));
     if (descriptorRef) {
       const descriptor = resolve(descriptorRef, context);
       if (descriptor instanceof PDFDict) {
-        const hasFile = descriptor.get(PDFName.of('FontFile'))
-          || descriptor.get(PDFName.of('FontFile2'))
-          || descriptor.get(PDFName.of('FontFile3'));
-        if (hasFile) {
+        if (hasFontFile(descriptor)) {
           embedded++;
         } else {
           notEmbedded++;

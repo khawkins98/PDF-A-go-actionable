@@ -172,13 +172,25 @@ function resolve(val, context) {
 }
 
 /**
+ * Standard 14 PDF fonts (base fonts guaranteed by every PDF viewer).
+ * These fonts have well-known encodings and do not require ToUnicode CMaps.
+ */
+export const STANDARD_14_FONTS = new Set([
+  'Courier', 'Courier-Bold', 'Courier-Oblique', 'Courier-BoldOblique',
+  'Helvetica', 'Helvetica-Bold', 'Helvetica-Oblique', 'Helvetica-BoldOblique',
+  'Times-Roman', 'Times-Bold', 'Times-Italic', 'Times-BoldItalic',
+  'Symbol', 'ZapfDingbats',
+]);
+
+/**
  * Audit ToUnicode CMap coverage across all fonts in the document.
  *
  * Enumerates indirect objects with Type: Font. Skips Type3 fonts and
  * CIDFont descendants (they're counted via their Type0 parent).
+ * Standard 14 fonts are flagged and counted as covered.
  *
  * @param {import('pdf-lib').PDFDocument} pdfDoc
- * @returns {{ total: number, withToUnicode: number, fonts: Array<{ name: string, hasToUnicode: boolean }> }}
+ * @returns {{ total: number, fonts: Array<{ name: string, hasToUnicode: boolean, isStandard14: boolean }> }}
  */
 export function auditToUnicodeCoverage(pdfDoc) {
   const fonts = [];
@@ -198,13 +210,13 @@ export function auditToUnicodeCoverage(pdfDoc) {
     const baseFont = obj.get(PDFName.of('BaseFont'));
     const name = baseFont ? baseFont.toString().replace(/^\//, '') : 'Unknown';
     const hasToUnicode = !!obj.get(PDFName.of('ToUnicode'));
+    const isStandard14 = STANDARD_14_FONTS.has(name);
 
-    fonts.push({ name, hasToUnicode });
+    fonts.push({ name, hasToUnicode, isStandard14 });
   });
 
   return {
     total: fonts.length,
-    withToUnicode: fonts.filter(f => f.hasToUnicode).length,
     fonts,
   };
 }

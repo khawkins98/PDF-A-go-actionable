@@ -6,8 +6,9 @@
  * #7 — Decorative images flagged for review
  */
 import { PDFName, PDFDict, PDFStream } from 'pdf-lib';
-import { resolve } from '../engine/utils/resolve.js';
+import { resolve, resolvePageIndex, formatPagePrefix } from '../engine/utils/resolve.js';
 import { resolveRole } from '../engine/utils/role-map.js';
+import { getRemediation } from '../guidance.js';
 
 /** Generic alt text patterns (case-insensitive match). */
 const GENERIC_ALT_TEXT = [
@@ -31,7 +32,7 @@ const GENERIC_ALT_TEXT = [
  * @returns {object[]} Array of Finding objects
  */
 export function checkImages(pdfDoc, ctx) {
-  const { traits, roleMap, context } = ctx;
+  const { traits, roleMap, context, pageRefMap } = ctx;
   const findings = [];
 
   if (!traits.hasStructTree) {
@@ -58,7 +59,7 @@ export function checkImages(pdfDoc, ctx) {
         status: 'warning',
         summary: `${imageCount} image(s) found but no structure tree to verify alt text. Cannot check accessibility.`,
         details: [{ label: 'Image XObjects', value: String(imageCount) }],
-        remediation: 'Tag the document first, then add alt text to each meaningful image.',
+        remediation: getRemediation('image-alt-text', 'warning-no-struct'),
         wcagRef: '1.1.1',
         pdfuaRef: '7.3',
       });
@@ -80,7 +81,7 @@ export function checkImages(pdfDoc, ctx) {
     const typeName = s instanceof PDFName ? s.decodeText() : s.toString().replace(/^\//, '');
     const resolved = resolveRole(typeName, roleMap);
 
-    if (resolved !== 'Figure') return;
+    if (resolved !== 'Figure' && resolved !== 'Formula') return;
 
     const altObj = obj.get(PDFName.of('Alt'));
     const alt = altObj ? altObj.decodeText() : null;
@@ -89,12 +90,15 @@ export function checkImages(pdfDoc, ctx) {
     const isGeneric = trimmedAlt.length > 0 && GENERIC_ALT_TEXT.includes(trimmedAlt.toLowerCase());
     const isShort = trimmedAlt.length > 0 && trimmedAlt.length <= 2 && !isGeneric;
 
+    const pageIdx = resolvePageIndex(obj, pageRefMap);
+
     figures.push({
       type: typeName,
       alt,
       hasAlt: !!alt && trimmedAlt.length > 0,
       isGeneric,
       isShort,
+      pageIndex: pageIdx,
     });
   });
 
@@ -118,10 +122,13 @@ export function checkImages(pdfDoc, ctx) {
       pdfuaRef: '7.3',
     });
   } else if (figuresWithoutAlt.length > 0) {
-    const details = figuresWithoutAlt.map((f) => ({
-      label: 'Figure without alt',
-      value: f.type === 'Figure' ? 'No /Alt attribute' : `Custom type "${f.type}" (maps to Figure), no /Alt attribute`,
-    }));
+    const details = figuresWithoutAlt.map((f) => {
+      const pagePrefix = formatPagePrefix(f.pageIndex);
+      return {
+        label: 'Figure without alt',
+        value: f.type === 'Figure' ? `${pagePrefix}No /Alt attribute` : `${pagePrefix}Custom type "${f.type}" (maps to Figure), no /Alt attribute`,
+      };
+    });
     if (figuresWithGenericAlt.length > 0) {
       details.push(...figuresWithGenericAlt.map((f) => ({
         label: 'Generic alt text',
@@ -141,7 +148,7 @@ export function checkImages(pdfDoc, ctx) {
       status: 'fail',
       summary: `${figuresWithoutAlt.length} of ${figures.length} Figure element(s) missing alt text.`,
       details,
-      remediation: 'Add alt text to each meaningful image. In Word: right-click the image > Edit Alt Text. In Acrobat: Reading Order panel > right-click Figure > Edit Alternate Text.',
+      remediation: getRemediation('image-alt-text', 'fail'),
       wcagRef: '1.1.1',
       pdfuaRef: '7.3',
     });
@@ -162,7 +169,7 @@ export function checkImages(pdfDoc, ctx) {
           value: `"${f.alt}" — too short to be descriptive`,
         })),
       ],
-      remediation: 'Replace generic alt text (e.g., "image", "photo") with a real description. Say what the image shows or what information it communicates.',
+      remediation: getRemediation('image-alt-text', 'warning'),
       wcagRef: '1.1.1',
       pdfuaRef: '7.3',
     });
@@ -197,7 +204,7 @@ export function checkImages(pdfDoc, ctx) {
         { label: 'Figure StructElems', value: String(figures.length) },
         { label: 'Unmatched', value: String(unmatchedImages) },
       ],
-      remediation: 'Review unmatched images. If decorative, mark them as artifacts in the tag structure. If meaningful, add them as tagged Figure elements with alt text.',
+      remediation: getRemediation('decorative-images'),
       wcagRef: '1.1.1',
       pdfuaRef: '7.3',
     });

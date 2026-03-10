@@ -7,7 +7,6 @@
  */
 
 import { STATUS_GROUPS, groupFindings, computeVerdict } from './constants.js';
-import { UNDRR_CHECKLIST, resolveChecklistStatus, getAdditionalFindings } from './undrr-checklist.js';
 
 /**
  * Initialize export functionality for the given audit data.
@@ -26,17 +25,27 @@ export function initExport(data) {
 }
 
 /**
- * Download audit data as a JSON file.
+ * Build the JSON export output object.
  *
  * @param {object} data
+ * @returns {object}
  */
-function downloadJSON(data) {
-  const output = {
+export function buildJsonOutput(data) {
+  return {
     meta: data.meta,
     findings: data.findings,
     exportedAt: new Date().toISOString(),
     tool: 'PDF-A-go-actionable',
   };
+}
+
+/**
+ * Download audit data as a JSON file.
+ *
+ * @param {object} data
+ */
+function downloadJSON(data) {
+  const output = buildJsonOutput(data);
 
   const blob = new Blob([JSON.stringify(output, null, 2)], {
     type: 'application/json',
@@ -45,17 +54,19 @@ function downloadJSON(data) {
 }
 
 /**
- * Download audit data as a CSV file.
+ * Build the CSV content string.
  *
  * @param {object} data
+ * @returns {string}
  */
-function downloadCSV(data) {
+export function buildCsvContent(data) {
   const headers = [
     'id',
     'category',
     'title',
     'status',
     'summary',
+    'details',
     'remediation',
     'wcagRef',
     'pdfuaRef',
@@ -64,12 +75,17 @@ function downloadCSV(data) {
   const rows = [headers.join(',')];
 
   for (const f of data.findings) {
+    const detailsStr = (f.details || [])
+      .map(d => `${d.label}: ${d.value}`)
+      .join('; ');
+
     const row = [
       escapeCsvField(f.id),
       escapeCsvField(f.category),
       escapeCsvField(f.title),
       escapeCsvField(f.status),
       escapeCsvField(f.summary),
+      escapeCsvField(detailsStr),
       escapeCsvField(f.remediation || ''),
       escapeCsvField(f.wcagRef || ''),
       escapeCsvField(f.pdfuaRef || ''),
@@ -77,7 +93,18 @@ function downloadCSV(data) {
     rows.push(row.join(','));
   }
 
-  const blob = new Blob([rows.join('\n')], {
+  return rows.join('\n');
+}
+
+/**
+ * Download audit data as a CSV file.
+ *
+ * @param {object} data
+ */
+function downloadCSV(data) {
+  const csvContent = buildCsvContent(data);
+
+  const blob = new Blob(['\uFEFF' + csvContent], {
     type: 'text/csv;charset=utf-8',
   });
   triggerDownload(blob, buildFilename(data.meta, 'csv'));
@@ -91,6 +118,15 @@ function downloadCSV(data) {
 async function downloadPDF(data) {
   const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
   const pdfDoc = await PDFDocument.create();
+
+  // Set PDF metadata on the exported report
+  pdfDoc.setTitle(`Accessibility Report: ${data.meta.fileName || 'Unknown'}`);
+  pdfDoc.setAuthor('PDF-A-go-actionable');
+  pdfDoc.setSubject('PDF accessibility audit report');
+  pdfDoc.setProducer('PDF-A-go-actionable');
+  pdfDoc.setCreator('PDF-A-go-actionable');
+  pdfDoc.setCreationDate(new Date());
+
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
@@ -192,13 +228,6 @@ async function downloadPDF(data) {
   const groups = groupFindings(data.findings);
   const { overallStatus, label: verdictLabel, description: verdictDesc } = computeVerdict(groups);
 
-  // === Page 1: UNDRR Checklist Summary ===
-  drawChecklistPage(data, { drawText, drawRule, ensureSpace, statusColors, margin, contentWidth, fontSize, headingFontSize, smallFontSize, titleFontSize, page: () => page, y: () => y, setY: (val) => { y = val; }, rgb, font, fontBold, addPage: () => { page = pdfDoc.addPage([pageWidth, pageHeight]); y = pageHeight - margin; } });
-
-  // Start a new page for the detailed report
-  page = pdfDoc.addPage([pageWidth, pageHeight]);
-  y = pageHeight - margin;
-
   // === Title ===
   drawText('PDF Accessibility Report', { size: titleFontSize, useBold: true });
   y -= 4;
@@ -266,7 +295,7 @@ async function downloadPDF(data) {
     { label: 'Tagged', value: data.meta.isTagged ? 'Yes' : 'No', warn: !data.meta.isTagged },
     { label: 'PDF/UA', value: data.meta.isPdfUA ? 'Yes' : 'No' },
     { label: 'PDF/A', value: data.meta.isPdfA ? `Yes (${data.meta.pdfALevel || 'level unknown'})` : 'No' },
-    { label: 'Display Doc Title', value: data.meta.displayDocTitle ? 'Yes' : 'No', warn: !data.meta.displayDocTitle },
+    { label: 'Viewer Shows Title', value: data.meta.displayDocTitle ? 'Yes' : 'No' },
     { label: 'Structure Tree', value: data.meta.hasStructTree ? 'Yes' : 'No' },
   ];
 
@@ -339,6 +368,16 @@ async function downloadPDF(data) {
         });
 
         drawText(finding.summary, { size: fontSize, indent: 10 });
+
+        if (finding.details && finding.details.length > 0) {
+          for (const detail of finding.details) {
+            drawText(`${detail.label}: ${detail.value}`, {
+              size: smallFontSize,
+              indent: 20,
+              color: rgb(0.35, 0.35, 0.35),
+            });
+          }
+        }
 
         if (finding.remediation) {
           drawText(`How to fix: ${finding.remediation}`, {
@@ -448,183 +487,6 @@ function triggerDownload(blob, filename) {
     URL.revokeObjectURL(url);
     document.body.removeChild(a);
   }, 100);
-}
-
-/**
- * Draw the UNDRR 13-point checklist summary page.
- * Uses columnar layout: status badge | number | title — all at fixed x positions.
- *
- * @param {object} data - Audit result data
- * @param {object} h - Drawing helper functions and state
- */
-function drawChecklistPage(data, h) {
-  const { drawText, drawRule, ensureSpace, statusColors, margin, contentWidth, fontSize, headingFontSize, smallFontSize, titleFontSize, rgb, font, fontBold } = h;
-
-  // Title
-  drawText('PDF Accessibility Checklist', { size: titleFontSize, useBold: true });
-
-  // File and date line
-  const fileName = data.meta.fileName || 'Unknown';
-  const date = new Date().toISOString().split('T')[0];
-  drawText(`File: ${fileName}  |  Date: ${date}`, {
-    size: smallFontSize,
-    color: rgb(0.4, 0.4, 0.4),
-  });
-
-  drawText('13-Point PDF Accessibility Validation Checklist', {
-    size: smallFontSize,
-    color: rgb(0.4, 0.4, 0.4),
-  });
-
-  drawRule();
-
-  // Resolve checklist statuses
-  const checklistItems = resolveChecklistStatus(data.findings);
-
-  // Status label mapping (WinAnsi-safe, fixed-width labels)
-  const statusLabels = {
-    pass: 'PASS',
-    fail: 'FAIL',
-    warning: 'WARN',
-    manual: 'MANUAL',
-    'not-applicable': 'N/A',
-    'not-checked': '--',
-  };
-
-  // Status background colors for badge rectangles
-  const badgeBgColors = {
-    pass: rgb(0.83, 0.93, 0.85),
-    fail: rgb(0.97, 0.84, 0.85),
-    warning: rgb(1.0, 0.95, 0.80),
-    manual: rgb(0.80, 0.90, 1.0),
-    'not-applicable': rgb(0.90, 0.90, 0.90),
-    'not-checked': rgb(0.92, 0.92, 0.92),
-  };
-
-  // Layout constants
-  const badgeWidth = 56;
-  const badgePad = 3;                 // Vertical padding inside badge
-  const badgeTextSize = fontSize - 1;
-  const badgeHeight = badgeTextSize + badgePad * 2;
-  const rowHeight = badgeHeight + 4;  // Row = badge + spacing
-  const colStatus = margin;
-  const colNumber = margin + badgeWidth + 8;
-  const numberWidth = 22;
-  const colTitle = colNumber + numberWidth;
-  // Additional checks: no number column, title starts after badge
-  const colTitleNoNum = colNumber;
-
-  /**
-   * Draw a single checklist row with aligned badge, optional number, and title.
-   *
-   * h.y() gives the current text baseline (same as drawText uses).
-   * PDF y-axis goes up, so we draw the badge rect below/around the baseline.
-   *
-   * For Helvetica at a given size:
-   *   ascent  ≈ 0.72 * size (above baseline)
-   *   descent ≈ 0.22 * size (below baseline)
-   */
-  function drawChecklistRow(label, statusKey, numberText, titleText, hasNumber = true) {
-    const page = h.page();
-    ensureSpace(rowHeight);
-
-    const baseline = h.y();
-    const color = statusColors[statusKey] || rgb(0.4, 0.4, 0.4);
-    const bgColor = badgeBgColors[statusKey] || rgb(0.92, 0.92, 0.92);
-
-    // Badge rectangle wraps around the text baseline
-    // Bottom of badge = baseline - descent - padding
-    const rectBottom = baseline - badgeTextSize * 0.22 - badgePad;
-
-    page.drawRectangle({
-      x: colStatus,
-      y: rectBottom,
-      width: badgeWidth,
-      height: badgeHeight,
-      color: bgColor,
-      borderColor: color,
-      borderWidth: 0.75,
-    });
-
-    // Status label centered horizontally in badge, on the same baseline
-    const labelWidth = fontBold.widthOfTextAtSize(label, badgeTextSize);
-    page.drawText(label, {
-      x: colStatus + (badgeWidth - labelWidth) / 2,
-      y: baseline,
-      size: badgeTextSize,
-      font: fontBold,
-      color,
-    });
-
-    // Number (if present)
-    if (numberText) {
-      page.drawText(numberText, {
-        x: colNumber,
-        y: baseline,
-        size: fontSize,
-        font: fontBold,
-        color: rgb(0.2, 0.2, 0.2),
-      });
-    }
-
-    // Title — positioned after number column, or directly after badge if no number
-    const titleX = hasNumber ? colTitle : colTitleNoNum;
-    page.drawText(titleText, {
-      x: titleX,
-      y: baseline,
-      size: fontSize,
-      font: font,
-      color: rgb(0.15, 0.15, 0.15),
-    });
-
-    h.setY(baseline - rowHeight);
-  }
-
-  // Draw each of the 13 checklist items
-  for (const item of checklistItems) {
-    const label = statusLabels[item.status] || '--';
-    drawChecklistRow(label, item.status, `${item.undrrNumber}.`, item.title);
-  }
-
-  h.setY(h.y() - 6); // gap before rule
-  drawRule();
-
-  // Additional checks section
-  const additional = getAdditionalFindings(data.findings);
-  if (additional.length > 0) {
-    drawText('Additional Checks', {
-      size: headingFontSize,
-      useBold: true,
-      color: rgb(0.3, 0.3, 0.3),
-    });
-
-    for (const f of additional) {
-      const label = statusLabels[f.status] || '--';
-      drawChecklistRow(label, f.status, '', f.title, false);
-    }
-
-    h.setY(h.y() - 6); // gap before rule
-    drawRule();
-  }
-
-  // Summary line
-  const autoChecked = checklistItems.filter((i) => i.status !== 'not-checked' && i.status !== 'manual');
-  const passed = autoChecked.filter((i) => i.status === 'pass' || i.status === 'not-applicable').length;
-  const needsAttention = autoChecked.filter((i) => i.status === 'fail' || i.status === 'warning').length;
-  const manualCount = checklistItems.filter((i) => i.status === 'manual').length;
-
-  const parts = [];
-  if (autoChecked.length > 0) parts.push(`${passed}/${autoChecked.length} automated checks passed`);
-  if (needsAttention > 0) parts.push(`${needsAttention} need attention`);
-  if (manualCount > 0) parts.push(`${manualCount} for manual review`);
-
-  if (parts.length > 0) {
-    drawText(`Summary: ${parts.join('  |  ')}`, {
-      size: fontSize,
-      useBold: true,
-      color: rgb(0.2, 0.2, 0.2),
-    });
-  }
 }
 
 /**

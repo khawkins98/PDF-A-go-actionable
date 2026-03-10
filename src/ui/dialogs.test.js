@@ -11,6 +11,7 @@ function mockWinBox() {
   const WinBox = vi.fn(function (opts) {
     this.opts = opts;
     this.title = opts.title || '';
+    this.dom = document.createElement('div');
     this.close = vi.fn();
     this.focus = vi.fn();
     this.onclose = opts.onclose || null;
@@ -64,14 +65,59 @@ describe('showAboutDialog', () => {
     expect(win).toBe(WinBox._instances[0]);
   });
 
+  it('should set role="dialog" and aria-label on the About dialog dom', () => {
+    const WinBox = mockWinBox();
+    showAboutDialog(mockRoot(), WinBox);
+
+    const instance = WinBox._instances[0];
+    expect(instance.dom.getAttribute('role')).toBe('dialog');
+    expect(instance.dom.getAttribute('aria-label')).toBe('About');
+  });
+
   it('should include about content with version info', () => {
     const WinBox = mockWinBox();
     showAboutDialog(mockRoot(), WinBox);
 
     const mountedContent = WinBox._instances[0].opts.mount;
     expect(mountedContent.innerHTML).toContain('PDF-A-go-actionable');
-    expect(mountedContent.innerHTML).toContain('Version 1.2.0');
+    expect(mountedContent.innerHTML).toContain('Version 1.3.0');
     expect(mountedContent.innerHTML).toContain('pdf-lib');
+  });
+
+  it('should have NeXTSTEP-style two-zone layout with hero and info panel', () => {
+    const WinBox = mockWinBox();
+    showAboutDialog(mockRoot(), WinBox);
+
+    const mountedContent = WinBox._instances[0].opts.mount;
+    expect(mountedContent.classList.contains('about-dialog')).toBe(true);
+
+    const hero = mountedContent.querySelector('.about-hero');
+    expect(hero).not.toBeNull();
+    expect(hero.querySelector('.about-hero__icon')).not.toBeNull();
+    expect(hero.querySelector('.about-hero__name').textContent).toBe('PDF-A-go-actionable');
+
+    const panel = mountedContent.querySelector('.about-info-panel');
+    expect(panel).not.toBeNull();
+    expect(panel.querySelector('.about-info-grid')).not.toBeNull();
+  });
+
+  it('should include NeXTSTEP design trivia in expandable details', () => {
+    const WinBox = mockWinBox();
+    showAboutDialog(mockRoot(), WinBox);
+
+    const mountedContent = WinBox._instances[0].opts.mount;
+    const details = mountedContent.querySelectorAll('.about-details');
+    expect(details.length).toBe(2);
+
+    const summaries = [...details].map(d => d.querySelector('summary').textContent);
+    expect(summaries).toContain('Built With');
+    expect(summaries).toContain('Why NeXTSTEP?');
+
+    expect(mountedContent.innerHTML).toContain('Display PostScript');
+    expect(mountedContent.innerHTML).toContain('Quartz');
+
+    const wikiLinks = mountedContent.querySelectorAll('a[href*="wikipedia.org"]');
+    expect(wikiLinks.length).toBe(4);
   });
 });
 
@@ -125,6 +171,15 @@ describe('showHelpDialog', () => {
     WinBox._instances[0].onclose();
     expect(onClose).toHaveBeenCalled();
   });
+
+  it('should set role="dialog" and aria-label on the Help dialog dom', () => {
+    const WinBox = mockWinBox();
+    showHelpDialog(mockRoot(), WinBox);
+
+    const instance = WinBox._instances[0];
+    expect(instance.dom.getAttribute('role')).toBe('dialog');
+    expect(instance.dom.getAttribute('aria-label')).toBe('Help');
+  });
 });
 
 describe('showBookmarkPlaceholder', () => {
@@ -136,5 +191,14 @@ describe('showBookmarkPlaceholder', () => {
     const content = WinBox._instances[0].opts.mount;
     expect(content.innerHTML).toContain('Bookmarks / Outlines');
     expect(content.innerHTML).toContain('CORS-friendly');
+  });
+
+  it('should set role="dialog" and aria-label on the Bookmark dialog dom', () => {
+    const WinBox = mockWinBox();
+    showBookmarkPlaceholder(mockRoot(), WinBox);
+
+    const instance = WinBox._instances[0];
+    expect(instance.dom.getAttribute('role')).toBe('dialog');
+    expect(instance.dom.getAttribute('aria-label')).toBe('Bookmarks');
   });
 });

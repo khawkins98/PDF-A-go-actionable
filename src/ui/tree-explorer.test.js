@@ -282,6 +282,59 @@ describe('renderTreeExplorer — interactive tree', () => {
     expect(texts).toContain('Figure');
   });
 
+  it('should render color-coded icons for known tag types', () => {
+    const el = document.createElement('div');
+    renderTreeExplorer(el, makeData([], makeSimpleTree()));
+
+    const icons = el.querySelectorAll('.tree-node__icon');
+    expect(icons.length).toBeGreaterThanOrEqual(4);
+
+    // H1 icon should be blue
+    const h1Row = el.querySelector('[data-role="h1"] .tree-node__row');
+    const h1Icon = h1Row.querySelector('.tree-node__icon');
+    expect(h1Icon.textContent).toBe('H1');
+    expect(h1Icon.style.color).toBe('#2563eb');
+    expect(h1Icon.getAttribute('aria-hidden')).toBe('true');
+
+    // Figure icon should be green
+    const figRow = el.querySelector('[data-role="figure"] .tree-node__row');
+    const figIcon = figRow.querySelector('.tree-node__icon');
+    expect(figIcon.textContent).toBe('Fig');
+    expect(figIcon.style.color).toBe('#059669');
+  });
+
+  it('should add tooltip to type badges for known tag types', () => {
+    const el = document.createElement('div');
+    renderTreeExplorer(el, makeData([], makeSimpleTree()));
+
+    const h1Badge = el.querySelector('[data-role="h1"] .tree-node__type');
+    expect(h1Badge.title).toContain('Heading level 1');
+
+    const figBadge = el.querySelector('[data-role="figure"] .tree-node__type');
+    expect(figBadge.title).toContain('image or illustration');
+
+    // Document badge
+    const docBadge = el.querySelector('[data-role="document"] .tree-node__type');
+    expect(docBadge.title).toContain('root of the structure tree');
+  });
+
+  it('should not render icon for unknown tag types', () => {
+    const tree = makeTree(
+      makeNode(0, 'Document', 'Document', [
+        makeNode(1, 'CustomTag', 'CustomTag', []),
+      ]),
+      2,
+    );
+    const el = document.createElement('div');
+    renderTreeExplorer(el, makeData([], tree));
+
+    const customRow = el.querySelector('[data-role="customtag"] .tree-node__row');
+    const icon = customRow.querySelector('.tree-node__icon');
+    expect(icon).toBeNull();
+    const badge = customRow.querySelector('.tree-node__type');
+    expect(badge.title).toBe('');
+  });
+
   it('should show RoleMap annotation when type differs from role', () => {
     const tree = makeTree(
       makeNode(0, 'Document', 'Document', [

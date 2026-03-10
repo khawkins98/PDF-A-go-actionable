@@ -11,6 +11,20 @@ import { MENUBAR_HEIGHT } from './menu-bar.js';
 export const CASCADE_OFFSET = 30;
 
 /**
+ * Set ARIA role and label on a WinBox instance's dom element.
+ *
+ * @param {object} win - WinBox instance
+ * @param {string} label - Accessible label
+ * @param {string} [role='dialog'] - ARIA role
+ */
+export function setWinBoxAriaRole(win, label, role = 'dialog') {
+  if (win && win.dom) {
+    win.dom.setAttribute('role', role);
+    win.dom.setAttribute('aria-label', label);
+  }
+}
+
+/**
  * Tile all active session windows in a grid layout.
  *
  * @param {Map<string, object>} sessions - Active sessions map

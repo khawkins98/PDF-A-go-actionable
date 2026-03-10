@@ -17,7 +17,8 @@ import { checkFonts } from './fonts.js';
 import { checkForms } from './forms.js';
 import { checkLinks } from './links.js';
 import { checkReadingOrder } from './reading-order.js';
-import { buildSerializableTree } from '../engine/utils/serialize-tree.js';
+import { buildSerializableTree, buildPageRefMap } from '../engine/utils/serialize-tree.js';
+import { walkStructureTree } from '../engine/utils/struct-tree-walker.js';
 
 /**
  * Run the full accessibility audit on a PDF buffer.
@@ -37,6 +38,20 @@ export async function runAudit(buffer, options = {}) {
 
   // Load PDF
   report('loading', 0);
+
+  // Check for PDF magic bytes (%PDF-)
+  const bytes = new Uint8Array(buffer instanceof ArrayBuffer ? buffer : buffer.buffer || buffer);
+  const magic = bytes.length >= 5
+    ? String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3], bytes[4])
+    : '';
+  if (magic !== '%PDF-') {
+    return buildLoadFailure(
+      'This file does not appear to be a PDF. Expected %PDF- header.',
+      'Make sure you are uploading a PDF file, not another format (e.g., Word, image, or text file).',
+      fileName, buffer.byteLength,
+    );
+  }
+
   let pdfDoc;
   try {
     pdfDoc = await PDFDocument.load(buffer, { updateMetadata: false });
@@ -47,39 +62,17 @@ export async function runAudit(buffer, options = {}) {
         updateMetadata: false,
       });
     } catch (secondError) {
-      return {
-        findings: [{
-          id: 'load-failure',
-          category: 'document',
-          title: 'PDF Load Failure',
-          status: 'fail',
-          summary: `Unable to parse PDF: ${firstError.message}`,
-          details: [],
-          remediation: 'The file may be corrupted or use unsupported encryption. Try re-exporting from the source application.',
-          wcagRef: null,
-          pdfuaRef: null,
-        }],
-        structureTree: null,
-        meta: {
-          fileName: fileName || 'Unknown',
-          fileSize: buffer.byteLength,
-          pageCount: 0,
-          title: null,
-          author: null,
-          subject: null,
-          keywords: null,
-          creator: null,
-          producer: null,
-          lang: null,
-          isPdfA: false,
-          pdfALevel: null,
-          isPdfUA: false,
-          isTagged: false,
-          hasSuspects: false,
-          hasStructTree: false,
-          displayDocTitle: false,
-        },
-      };
+      // Provide specific messages based on error type
+      const msg = firstError.message || '';
+      let summary, remediation;
+      if (/encrypt/i.test(msg) || /password/i.test(msg)) {
+        summary = 'This PDF is password-protected and cannot be analyzed.';
+        remediation = 'Remove the password protection before analyzing. In Acrobat: File > Properties > Security > No Security.';
+      } else {
+        summary = `Unable to parse PDF: ${msg}`;
+        remediation = 'The file may be corrupted. Try re-exporting from the source application.';
+      }
+      return buildLoadFailure(summary, remediation, fileName, buffer.byteLength);
     }
   }
 
@@ -101,12 +94,26 @@ export async function runAudit(buffer, options = {}) {
     }
   }
 
+  // Build page ref map for resolving /Pg refs to page indices
+  const pageRefMap = traits.hasStructTree ? buildPageRefMap(pdfDoc) : new Map();
+
+  // Lazy cached structure tree walk — computed once, shared across modules
+  let _structureElements = null;
+  const getStructureElements = () => {
+    if (_structureElements === null) {
+      _structureElements = traits.hasStructTree ? walkStructureTree(pdfDoc, roleMap) : [];
+    }
+    return _structureElements;
+  };
+
   const sharedContext = {
     pdfDoc,
     context,
     traits,
     roleMap,
     structTreeRoot,
+    pageRefMap,
+    getStructureElements,
   };
 
   // Run audit modules
@@ -175,6 +182,43 @@ export async function runAudit(buffer, options = {}) {
       hasSuspects: traits.hasSuspects,
       hasStructTree: traits.hasStructTree,
       displayDocTitle: traits.displayDocTitle,
+    },
+  };
+}
+
+/** Build a standardized load-failure result. */
+function buildLoadFailure(summary, remediation, fileName, fileSize) {
+  return {
+    findings: [{
+      id: 'load-failure',
+      category: 'document',
+      title: 'PDF Load Failure',
+      status: 'fail',
+      summary,
+      details: [],
+      remediation,
+      wcagRef: null,
+      pdfuaRef: null,
+    }],
+    structureTree: null,
+    meta: {
+      fileName: fileName || 'Unknown',
+      fileSize,
+      pageCount: 0,
+      title: null,
+      author: null,
+      subject: null,
+      keywords: null,
+      creator: null,
+      producer: null,
+      lang: null,
+      isPdfA: false,
+      pdfALevel: null,
+      isPdfUA: false,
+      isTagged: false,
+      hasSuspects: false,
+      hasStructTree: false,
+      displayDocTitle: false,
     },
   };
 }

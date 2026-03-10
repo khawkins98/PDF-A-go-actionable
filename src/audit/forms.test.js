@@ -3,10 +3,11 @@
  *
  * Covers:
  * - Form fields with TU tooltips (pass)
- * - Form fields without TU tooltips (warning)
+ * - Form fields without TU tooltips (fail)
  * - No form fields (not-applicable)
  * - Tab order set to structure (pass)
- * - Tab order not set (warning)
+ * - Tab order not set, no forms (warning — best practice)
+ * - Tab order not set, with forms (fail — keyboard navigation broken)
  */
 import { describe, it, expect } from 'vitest';
 import { PDFDocument, PDFName, PDFString, PDFHexString } from 'pdf-lib';
@@ -18,6 +19,7 @@ import {
   createPdfWithTabOrder,
   createPdfWithEmptyAcroForm,
   createPdfWithFormsNoFT,
+  createPdfWithNestedFormFields,
 } from '../../test/fixtures/create-test-pdfs.js';
 
 describe('checkForms', () => {
@@ -39,7 +41,7 @@ describe('checkForms', () => {
 
     const formFinding = findings.find(f => f.id === 'form-labels');
     expect(formFinding).toBeDefined();
-    expect(formFinding.status).toBe('warning');
+    expect(formFinding.status).toBe('fail');
     expect(formFinding.summary).toContain('missing');
   });
 
@@ -64,7 +66,7 @@ describe('checkForms', () => {
     expect(tabFinding.summary).toContain('structure order');
   });
 
-  it('should warn when /Tabs /S is not set', async () => {
+  it('should warn when /Tabs /S is not set and no form fields (best practice)', async () => {
     const bytes = await createPdfWithTabOrder(false);
     const ctx = await buildTestContext(bytes);
     const findings = checkForms(ctx.pdfDoc, ctx);
@@ -72,6 +74,33 @@ describe('checkForms', () => {
     const tabFinding = findings.find(f => f.id === 'tab-order');
     expect(tabFinding).toBeDefined();
     expect(tabFinding.status).toBe('warning');
+    expect(tabFinding.summary).toContain('missing');
+  });
+
+  it('should fail when /Tabs /S is not set and document has form fields', async () => {
+    // Create a PDF with form fields but no /Tabs /S
+    const { PDFDocument: PDFDoc, PDFName: Name, PDFString: Str } = await import('pdf-lib');
+    const doc = await PDFDoc.create();
+    doc.addPage(); // no /Tabs /S
+    const field = doc.context.obj({
+      Type: 'Annot',
+      Subtype: Name.of('Widget'),
+      FT: Name.of('Tx'),
+      T: Str.of('name_field'),
+      TU: Str.of('Enter name'),
+      Rect: doc.context.obj([0, 0, 100, 20]),
+    });
+    const fieldRef = doc.context.register(field);
+    const acroForm = doc.context.obj({ Fields: doc.context.obj([fieldRef]) });
+    doc.catalog.set(Name.of('AcroForm'), doc.context.register(acroForm));
+    const saved = await doc.save();
+
+    const ctx = await buildTestContext(saved);
+    const findings = checkForms(ctx.pdfDoc, ctx);
+
+    const tabFinding = findings.find(f => f.id === 'tab-order');
+    expect(tabFinding).toBeDefined();
+    expect(tabFinding.status).toBe('fail');
     expect(tabFinding.summary).toContain('missing');
   });
 
@@ -92,8 +121,8 @@ describe('checkForms', () => {
 
     const formFinding = findings.find(f => f.id === 'form-labels');
     expect(formFinding).toBeDefined();
-    // Fields without FT should still be counted and warned about missing TU
-    expect(formFinding.status).toBe('warning');
+    // Fields without FT should still be counted — missing TU is now fail
+    expect(formFinding.status).toBe('fail');
   });
 
   it('should decode HexString-encoded /TU values correctly', async () => {
@@ -150,13 +179,22 @@ describe('checkForms', () => {
     const f = findings.find(f => f.id === 'form-labels');
     expect(f).toBeDefined();
     // Both fields should be counted (read-only doesn't skip the field)
-    expect(f.status).toBe('warning'); // field2 missing TU
+    expect(f.status).toBe('fail'); // field2 missing TU
     expect(f.summary).toContain('1 of 2');
     // Field 1 should show its tooltip text
     expect(f.details.some(d => d.value && d.value.includes('This field is read-only'))).toBe(true);
   });
 
-  it('should warn when multi-page PDF has inconsistent tab order', async () => {
+  it('should use WCAG 3.3.2 reference for form-labels findings', async () => {
+    const bytes = await createPdfWithForms({ hasTU: true });
+    const ctx = await buildTestContext(bytes);
+    const findings = checkForms(ctx.pdfDoc, ctx);
+
+    const formFinding = findings.find(f => f.id === 'form-labels');
+    expect(formFinding.wcagRef).toBe('3.3.2');
+  });
+
+  it('should warn when multi-page PDF has inconsistent tab order (no forms)', async () => {
     const doc = await PDFDocument.create();
     const page1 = doc.addPage();
     const page2 = doc.addPage();
@@ -169,5 +207,64 @@ describe('checkForms', () => {
     expect(f).toBeDefined();
     expect(f.status).toBe('warning');
     expect(f.summary).toContain('1 of 2');
+  });
+
+  // --- Nested form fields ---
+
+  it('should find nested form fields via /Kids traversal', async () => {
+    const bytes = await createPdfWithNestedFormFields({ hasTU: true });
+    const ctx = await buildTestContext(bytes);
+    const findings = checkForms(ctx.pdfDoc, ctx);
+
+    const formFinding = findings.find(f => f.id === 'form-labels');
+    expect(formFinding).toBeDefined();
+    expect(formFinding.status).toBe('pass');
+    expect(formFinding.summary).toContain('2 form field(s)');
+  });
+
+  it('should check /TU on leaf fields inside nested /Kids', async () => {
+    const bytes = await createPdfWithNestedFormFields({ hasTU: false });
+    const ctx = await buildTestContext(bytes);
+    const findings = checkForms(ctx.pdfDoc, ctx);
+
+    const formFinding = findings.find(f => f.id === 'form-labels');
+    expect(formFinding).toBeDefined();
+    expect(formFinding.status).toBe('fail');
+    expect(formFinding.summary).toContain('2 of 2');
+  });
+
+  it('should respect depth cap for nested /Kids', async () => {
+    // Create deeply nested fields — should not crash
+    const doc = await PDFDocument.create();
+    doc.addPage();
+
+    // Build a chain 25 levels deep (beyond cap of 20)
+    let current = doc.context.obj({
+      Type: 'Annot',
+      Subtype: PDFName.of('Widget'),
+      FT: PDFName.of('Tx'),
+      T: PDFString.of('deep_field'),
+      Rect: doc.context.obj([0, 0, 100, 20]),
+    });
+    let currentRef = doc.context.register(current);
+
+    for (let i = 0; i < 25; i++) {
+      const parent = doc.context.obj({
+        T: PDFString.of(`level_${i}`),
+        Kids: doc.context.obj([currentRef]),
+      });
+      currentRef = doc.context.register(parent);
+    }
+
+    const acroForm = doc.context.obj({ Fields: doc.context.obj([currentRef]) });
+    doc.catalog.set(PDFName.of('AcroForm'), doc.context.register(acroForm));
+
+    const saved = await doc.save();
+    const ctx = await buildTestContext(saved);
+    const findings = checkForms(ctx.pdfDoc, ctx);
+
+    // Should not crash, but the deep field may not be found due to depth cap
+    const formFinding = findings.find(f => f.id === 'form-labels');
+    expect(formFinding).toBeDefined();
   });
 });

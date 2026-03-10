@@ -4,8 +4,10 @@
  * Informational: Link text quality analysis.
  * Flags generic text ("click here", "here", "read more", etc.) and bare URLs.
  */
-import { PDFName, PDFDict } from 'pdf-lib';
+import { PDFName, PDFDict, PDFArray } from 'pdf-lib';
+import { resolve, resolvePageIndex, formatPagePrefix } from '../engine/utils/resolve.js';
 import { resolveRole } from '../engine/utils/role-map.js';
+import { getRemediation } from '../guidance.js';
 
 /** Generic link text patterns (case-insensitive match). */
 const GENERIC_LINK_TEXT = [
@@ -22,6 +24,62 @@ const GENERIC_LINK_TEXT = [
 
 /** Bare URL pattern (http, https, ftp). */
 const URL_PATTERN = /^(?:https?|ftp):\/\//i;
+
+/**
+ * Extract accessible text from a Link StructElem.
+ * Prefers ActualText/Alt on the Link itself, then collects from children.
+ */
+function extractLinkText(obj, context) {
+  // Prefer direct ActualText/Alt on the Link element
+  const directText = obj.get(PDFName.of('ActualText')) || obj.get(PDFName.of('Alt'));
+  if (directText) return directText.decodeText();
+
+  // Recursively collect text from child StructElems
+  return collectChildText(obj, context);
+}
+
+/**
+ * Recursively collect ActualText/Alt from child StructElems.
+ * Depth-capped to prevent stack overflow on malformed PDFs.
+ */
+function collectChildText(elem, context, depth = 0) {
+  if (depth > 10) return null;
+
+  const k = elem.get(PDFName.of('K'));
+  if (!k) return null;
+
+  const kResolved = resolve(k, context);
+  const parts = [];
+
+  if (kResolved instanceof PDFArray) {
+    for (let i = 0; i < kResolved.size(); i++) {
+      const child = resolve(kResolved.get(i), context);
+      if (child instanceof PDFDict) {
+        const text = getTextFromElem(child, context, depth + 1);
+        if (text) parts.push(text);
+      }
+    }
+  } else if (kResolved instanceof PDFDict) {
+    const text = getTextFromElem(kResolved, context, depth + 1);
+    if (text) parts.push(text);
+  }
+
+  return parts.length > 0 ? parts.join(' ') : null;
+}
+
+/**
+ * Get text from a single StructElem: ActualText, Alt, or recurse into children.
+ */
+function getTextFromElem(elem, context, depth = 0) {
+  const actualText = elem.get(PDFName.of('ActualText'));
+  if (actualText) return actualText.decodeText();
+
+  const alt = elem.get(PDFName.of('Alt'));
+  if (alt) return alt.decodeText();
+
+  // Recurse into children
+  return collectChildText(elem, context, depth);
+}
 
 /**
  * @param {import('pdf-lib').PDFDocument} pdfDoc
@@ -60,11 +118,11 @@ export function checkLinks(pdfDoc, ctx) {
 
     if (resolved !== 'Link') return;
 
-    // Get actual text or alt text
-    const altObj = obj.get(PDFName.of('ActualText')) || obj.get(PDFName.of('Alt'));
-    const text = altObj ? altObj.decodeText() : null;
+    // Get text: prefer ActualText/Alt on the Link itself, then collect from children
+    const text = extractLinkText(obj, context);
 
-    links.push({ typeName, text });
+    const pageIdx = resolvePageIndex(obj, ctx.pageRefMap);
+    links.push({ typeName, text, pageIndex: pageIdx });
   });
 
   if (links.length === 0) {
@@ -88,11 +146,12 @@ export function checkLinks(pdfDoc, ctx) {
   const details = [];
 
   links.forEach((link, idx) => {
+    const pagePrefix = formatPagePrefix(link.pageIndex);
     if (!link.text || link.text.trim().length === 0) {
       missingTextLinks.push(link);
       details.push({
         label: `Link ${idx + 1}`,
-        value: 'No ActualText or Alt text. Link purpose unknown to assistive technology',
+        value: `${pagePrefix}No ActualText or Alt text. Link purpose unknown to assistive technology`,
       });
       return;
     }
@@ -103,13 +162,13 @@ export function checkLinks(pdfDoc, ctx) {
       genericLinks.push(link);
       details.push({
         label: `Link ${idx + 1}`,
-        value: `Generic text: "${link.text}"`,
+        value: `${pagePrefix}Generic text: "${link.text}"`,
       });
     } else if (URL_PATTERN.test(link.text.trim())) {
       urlLinks.push(link);
       details.push({
         label: `Link ${idx + 1}`,
-        value: `Bare URL: "${link.text}"`,
+        value: `${pagePrefix}Bare URL: "${link.text}"`,
       });
     }
   });
@@ -139,10 +198,10 @@ export function checkLinks(pdfDoc, ctx) {
     id: 'link-text',
     category: 'links',
     title: 'Link Text Quality',
-    status: missingTextLinks.length > 0 ? 'fail' : 'warning',
+    status: 'warning',
     summary: `${issueCount} of ${links.length} link(s) have issues (${parts.join(', ')}).`,
     details,
-    remediation: 'Use descriptive link text that makes sense out of context. Replace "click here" with a description of the destination (e.g., "download the annual report"). Avoid using bare URLs as link text. Ensure every link has accessible text.',
+    remediation: getRemediation('link-text'),
     wcagRef: '2.4.4',
     pdfuaRef: null,
   }];

@@ -62,15 +62,26 @@ describe('checkLists', () => {
     expect(listFinding.status).toBe('not-applicable');
   });
 
-  it('should fail when LI has LBody but no Lbl (PDF/UA 7.6)', async () => {
+  it('should warn (not fail) when LI has LBody but no Lbl (Lbl optional)', async () => {
     const bytes = await createPdfWithListNoLbl();
     const ctx = await buildTestContext(bytes);
     const findings = checkLists(ctx.pdfDoc, ctx);
 
     const listFinding = findings.find(f => f.id === 'list-structure');
     expect(listFinding).toBeDefined();
-    expect(listFinding.status).toBe('fail');
+    expect(listFinding.status).toBe('warning');
     expect(listFinding.summary).toContain('issue');
+  });
+
+  it('should fail when LBody is missing (structural issue), not just Lbl', async () => {
+    const bytes = await createPdfWithList({ hasLBody: false });
+    const ctx = await buildTestContext(bytes);
+    const findings = checkLists(ctx.pdfDoc, ctx);
+
+    const listFinding = findings.find(f => f.id === 'list-structure');
+    expect(listFinding).toBeDefined();
+    // Missing LBody is a structural issue → fail (not just warning)
+    expect(listFinding.status).toBe('fail');
   });
 
   it('should detect custom list type via RoleMap (e.g., "ItemList" → "L")', async () => {
@@ -257,6 +268,47 @@ describe('checkLists', () => {
     expect(f.details.some(d => d.value && d.value.includes('Unexpected child type'))).toBe(true);
   });
 
+  // --- Page numbers in list details ---
+
+  it('should include page numbers in list detail values when /Pg is present', async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage();
+    doc.addPage();
+    const page2Ref = doc.getPages()[1].ref;
+
+    const markInfo = doc.context.obj({ Marked: true });
+    doc.catalog.set(PDFName.of('MarkInfo'), markInfo);
+    const structTreeRoot = doc.context.obj({ Type: 'StructTreeRoot' });
+    const strRef = doc.context.register(structTreeRoot);
+    doc.catalog.set(PDFName.of('StructTreeRoot'), strRef);
+    const docElem = doc.context.obj({ Type: 'StructElem', S: PDFName.of('Document'), P: strRef });
+    const docElemRef = doc.context.register(docElem);
+
+    // List on page 2 with LI missing LBody (fail)
+    const listElem = doc.context.obj({ Type: 'StructElem', S: PDFName.of('L'), P: docElemRef, Pg: page2Ref });
+    const listElemRef = doc.context.register(listElem);
+    const liElem = doc.context.obj({ Type: 'StructElem', S: PDFName.of('LI'), P: listElemRef });
+    const liElemRef = doc.context.register(liElem);
+    const lblElem = doc.context.obj({ Type: 'StructElem', S: PDFName.of('Lbl'), P: liElemRef });
+    const lblElemRef = doc.context.register(lblElem);
+    // No LBody — structural fail
+    liElem.set(PDFName.of('K'), doc.context.obj([lblElemRef]));
+    listElem.set(PDFName.of('K'), doc.context.obj([liElemRef]));
+    docElem.set(PDFName.of('K'), doc.context.obj([listElemRef]));
+    structTreeRoot.set(PDFName.of('K'), doc.context.obj([docElemRef]));
+
+    const saved = await doc.save();
+    const ctx = await buildTestContext(saved);
+    const findings = checkLists(ctx.pdfDoc, ctx);
+
+    const f = findings.find(f => f.id === 'list-structure');
+    expect(f).toBeDefined();
+    expect(f.status).toBe('fail');
+    // Detail should show "Page 2:" prefix
+    const detailWithPage = f.details.find(d => d.value && d.value.includes('Page 2'));
+    expect(detailWithPage).toBeDefined();
+  });
+
   it('should report which LIs are broken in mixed valid/invalid list', async () => {
     const doc = await PDFDocument.create();
     doc.addPage();
@@ -288,8 +340,8 @@ describe('checkLists', () => {
     const findings = checkLists(ctx.pdfDoc, ctx);
     const f = findings.find(f => f.id === 'list-structure');
     expect(f).toBeDefined();
-    expect(f.status).toBe('fail');
-    // Should identify which LI is broken (LI 2)
+    expect(f.status).toBe('warning');
+    // Should identify which LI is missing Lbl (LI 2)
     expect(f.details.some(d => d.label && d.label.includes('LI 2') && d.value && d.value.includes('Missing Lbl'))).toBe(true);
   });
 });

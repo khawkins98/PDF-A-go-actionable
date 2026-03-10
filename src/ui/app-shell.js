@@ -20,6 +20,7 @@ import { renderFontTable } from './font-table.js';
 import { renderImageTable } from './image-table.js';
 import { renderPreviewPanel } from './pdf-preview.js';
 import { initExport } from './export.js';
+import { groupFindings, computeVerdict } from './constants.js';
 
 import { getTestPdfsByCategory, fetchTestPdf, testPdfs } from './dev-test-pdfs.js';
 
@@ -40,6 +41,7 @@ import {
   closeAllWindows,
   focusWindow,
   getFloatingLayout,
+  setWinBoxAriaRole,
 } from './window-manager.js';
 import { showAboutDialog, showHelpDialog, showBookmarkPlaceholder } from './dialogs.js';
 
@@ -190,6 +192,23 @@ export function initAppShell(container, worker) {
   liveRegion.className = 'visually-hidden';
   container.appendChild(liveRegion);
 
+  // === Document-level drag-and-drop ===
+  // Use AbortController so listeners are cleaned up if initAppShell is called again
+  if (container._dragAbort) container._dragAbort.abort();
+  const dragAbort = new AbortController();
+  container._dragAbort = dragAbort;
+  document.body.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }, { signal: dragAbort.signal });
+  document.body.addEventListener('drop', (e) => {
+    // Guard: don't double-process drops on the upload zone
+    if (e.target.closest && e.target.closest('.drop-zone')) return;
+    e.preventDefault();
+    const files = filterPdfs(e.dataTransfer.files);
+    if (files.length > 0) handleFiles(files);
+  }, { signal: dragAbort.signal });
+
   // Show welcome on init
   showWelcome();
 
@@ -265,11 +284,11 @@ export function initAppShell(container, worker) {
       'beforeend',
       `
       <h1 class="welcome__title">PDF-A-go-actionable</h1>
-      <p class="welcome__tagline">Free, browser-based PDF accessibility checker</p>
+      <p class="welcome__tagline">Free PDF accessibility checker</p>
       <ul class="welcome__features">
         <li>Runs entirely in your browser, no file uploads</li>
         <li>Fix-it guidance for every finding</li>
-        <li>Covers the 13-point PDF accessibility checklist</li>
+        <li>Checks what screen reader users need most</li>
       </ul>
     `
     );
@@ -323,6 +342,7 @@ export function initAppShell(container, worker) {
       border: 1,
       ...(closable ? { onclose: function () { welcomeWin = null; } } : {}),
     });
+    setWinBoxAriaRole(welcomeWin, 'Welcome');
   }
 
   function closeWelcome() {
@@ -470,6 +490,7 @@ export function initAppShell(container, worker) {
       ],
       border: 1,
     });
+    setWinBoxAriaRole(session.progressWin, `Analyzing ${session.fileName}`);
   }
 
   function onProgress(session, { phase, percent }) {
@@ -485,6 +506,12 @@ export function initAppShell(container, worker) {
   function onResult(session, data) {
     closeProgressDialog(session);
     session.data = data;
+
+    // Announce verdict via live region
+    const groups = groupFindings(data.findings);
+    const { label: verdictLabel } = computeVerdict(groups);
+    liveRegion.textContent = `Analysis complete for ${session.fileName}. Verdict: ${verdictLabel}.`;
+
     showResults(session, data);
 
     // When a preview alt-text label is clicked, open image inventory and scroll to match
@@ -550,8 +577,11 @@ export function initAppShell(container, worker) {
       const cascadeX = 40 + (session.cascadeIndex % 8) * CASCADE_OFFSET;
       const cascadeY = MENUBAR_HEIGHT + 30 + (session.cascadeIndex % 8) * CASCADE_OFFSET;
 
+      const winTitle = data.meta.title
+        ? `Results: ${data.meta.title}`
+        : `Results: ${data.meta.fileName || session.fileName}`;
       session.mainWin = new WinBox({
-        title: `Results: ${data.meta.fileName || session.fileName}`,
+        title: winTitle,
         mount: content,
         root,
         x: cascadeX,
@@ -570,6 +600,7 @@ export function initAppShell(container, worker) {
           }
         },
       });
+      setWinBoxAriaRole(session.mainWin, winTitle, 'region');
     });
   }
 
@@ -700,6 +731,7 @@ export function initAppShell(container, worker) {
       },
     });
 
+    setWinBoxAriaRole(win, `${def.title}: ${session.fileName}`, 'region');
     session.floatingPanels.set(id, win);
   }
 

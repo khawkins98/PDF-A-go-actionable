@@ -7,6 +7,7 @@
  */
 import { PDFName, PDFDict, PDFArray } from 'pdf-lib';
 import { resolve } from '../engine/utils/resolve.js';
+import { getRemediation } from '../guidance.js';
 
 /**
  * @param {import('pdf-lib').PDFDocument} pdfDoc
@@ -16,6 +17,7 @@ import { resolve } from '../engine/utils/resolve.js';
 export function checkForms(pdfDoc, ctx) {
   const { context } = ctx;
   const findings = [];
+  let hasFormFields = false;
 
   // Check AcroForm fields
   const catalog = pdfDoc.catalog;
@@ -28,6 +30,7 @@ export function checkForms(pdfDoc, ctx) {
       if (fields) {
         const fieldResults = checkFieldLabels(resolve(fields, context), context);
         findings.push(fieldResults);
+        hasFormFields = fieldResults.status !== 'not-applicable';
       } else {
         findings.push({
           id: 'form-labels',
@@ -37,7 +40,7 @@ export function checkForms(pdfDoc, ctx) {
           summary: 'AcroForm present but no fields found.',
           details: [],
           remediation: null,
-          wcagRef: '1.3.1',
+          wcagRef: '3.3.2',
           pdfuaRef: '7.18',
         });
       }
@@ -51,20 +54,50 @@ export function checkForms(pdfDoc, ctx) {
       summary: 'No form fields in this document.',
       details: [],
       remediation: null,
-      wcagRef: '1.3.1',
+      wcagRef: '3.3.2',
       pdfuaRef: '7.18',
     });
   }
 
-  // Check tab order on pages
-  const tabOrderResult = checkTabOrder(pdfDoc);
+  // Check tab order on pages — fail when form fields present, warn otherwise
+  const tabOrderResult = checkTabOrder(pdfDoc, hasFormFields);
   findings.push(tabOrderResult);
 
   return findings;
 }
 
 /**
+ * Recursively collect leaf form fields, following /Kids arrays.
+ * Leaf fields are those with /FT or without /Kids.
+ * @param {PDFArray} fieldsArray
+ * @param {object} context
+ * @param {object[]} results - accumulated leaf fields
+ * @param {number} depth - recursion depth cap
+ */
+function collectLeafFields(fieldsArray, context, results, depth = 0) {
+  if (depth > 20 || !(fieldsArray instanceof PDFArray)) return;
+
+  for (let i = 0; i < fieldsArray.size(); i++) {
+    const field = resolve(fieldsArray.get(i), context);
+    if (!(field instanceof PDFDict)) continue;
+
+    const kids = field.get(PDFName.of('Kids'));
+    if (kids) {
+      const kidsResolved = resolve(kids, context);
+      if (kidsResolved instanceof PDFArray) {
+        collectLeafFields(kidsResolved, context, results, depth + 1);
+        continue;
+      }
+    }
+
+    // Leaf field (has /FT or no /Kids)
+    results.push(field);
+  }
+}
+
+/**
  * Check form field labels (TU tooltip) for AcroForm fields.
+ * Traverses nested /Kids to find leaf fields.
  */
 function checkFieldLabels(fieldsArray, context) {
   if (!(fieldsArray instanceof PDFArray)) {
@@ -76,19 +109,19 @@ function checkFieldLabels(fieldsArray, context) {
       summary: 'No form fields found.',
       details: [],
       remediation: null,
-      wcagRef: '1.3.1',
+      wcagRef: '3.3.2',
       pdfuaRef: '7.18',
     };
   }
+
+  const leafFields = [];
+  collectLeafFields(fieldsArray, context, leafFields);
 
   let total = 0;
   let withTU = 0;
   const details = [];
 
-  for (let i = 0; i < fieldsArray.size(); i++) {
-    const field = resolve(fieldsArray.get(i), context);
-    if (!(field instanceof PDFDict)) continue;
-
+  for (const field of leafFields) {
     total++;
     const nameObj = field.get(PDFName.of('T'));
     const name = nameObj ? nameObj.decodeText() : `Field ${total}`;
@@ -111,7 +144,7 @@ function checkFieldLabels(fieldsArray, context) {
       summary: 'No form fields found.',
       details: [],
       remediation: null,
-      wcagRef: '1.3.1',
+      wcagRef: '3.3.2',
       pdfuaRef: '7.18',
     };
   }
@@ -121,23 +154,31 @@ function checkFieldLabels(fieldsArray, context) {
     id: 'form-labels',
     category: 'forms',
     title: 'Form Field Labels',
-    status: missing === 0 ? 'pass' : 'warning',
+    status: missing === 0 ? 'pass' : 'fail',
     summary: missing === 0
       ? `All ${total} form field(s) have tooltip labels.`
       : `${missing} of ${total} form field(s) missing tooltip labels (/TU).`,
     details,
     remediation: missing === 0
       ? null
-      : 'Add tooltip text to each form field. In Acrobat: Form Editing > right-click field > Properties > General > Tooltip. The tooltip is read by screen readers as the field label.',
-    wcagRef: '1.3.1',
+      : getRemediation('form-labels'),
+    wcagRef: '3.3.2',
     pdfuaRef: '7.18',
   };
 }
 
 /**
  * Check if pages have /Tabs /S (tab order follows structure).
+ *
+ * Severity depends on whether the document has form fields:
+ * - With form fields: fail (PDF/UA requires /Tabs /S for keyboard form navigation)
+ * - Without form fields: warning (best practice — structure tree still governs
+ *   screen reader reading order, but tab key falls back to visual order)
+ *
+ * @param {import('pdf-lib').PDFDocument} pdfDoc
+ * @param {boolean} hasFormFields - Whether the document has interactive form fields
  */
-function checkTabOrder(pdfDoc) {
+function checkTabOrder(pdfDoc, hasFormFields) {
   const pages = pdfDoc.getPages();
   let withTabsS = 0;
   let total = pages.length;
@@ -164,11 +205,14 @@ function checkTabOrder(pdfDoc) {
   }
 
   const missing = total - withTabsS;
+  // Form fields + missing /Tabs /S = fail (keyboard users can't navigate forms in structure order)
+  // No form fields + missing /Tabs /S = warning (best practice; screen reader reading order unaffected)
+  const status = missing === 0 ? 'pass' : (hasFormFields ? 'fail' : 'warning');
   return {
     id: 'tab-order',
     category: 'forms',
     title: 'Tab Order',
-    status: missing === 0 ? 'pass' : 'warning',
+    status,
     summary: missing === 0
       ? `All ${total} page(s) have tab order set to structure order (/Tabs /S).`
       : `${missing} of ${total} page(s) missing /Tabs /S. Tab order may not follow reading order.`,
@@ -177,7 +221,7 @@ function checkTabOrder(pdfDoc) {
     ],
     remediation: missing === 0
       ? null
-      : 'Set tab order to "Use Document Structure" for all pages. In Acrobat: right-click each page thumbnail > Page Properties > Tab Order > Use Document Structure.',
+      : getRemediation('tab-order'),
     wcagRef: '2.4.3',
     pdfuaRef: null,
   };

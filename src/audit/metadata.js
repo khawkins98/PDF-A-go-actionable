@@ -13,9 +13,18 @@
  * - Bookmarks present
  * - Per-element language specifications
  */
-import { PDFName, PDFDict, PDFRef } from 'pdf-lib';
+import { PDFName, PDFDict } from 'pdf-lib';
 import { resolve } from '../engine/utils/resolve.js';
-import { walkStructureTree } from '../engine/utils/struct-tree-walker.js';
+import { getRemediation } from '../guidance.js';
+// Structure tree walk accessed via ctx.getStructureElements() for cached single-pass
+
+/** BCP-47 language tag validation pattern. */
+const BCP47_REGEX = /^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$/;
+
+/** Check if a string is a valid BCP-47 language tag. */
+function isValidBcp47(lang) {
+  return BCP47_REGEX.test(lang);
+}
 
 /**
  * @param {import('pdf-lib').PDFDocument} pdfDoc
@@ -36,11 +45,11 @@ export function checkMetadata(pdfDoc, ctx) {
   } else if (traits.titleSource === 'info') {
     titleStatus = 'warning';
     titleSummary = `Document title is set in the Info dictionary: "${traits.title}". For full PDF/UA compliance, the title should also be in XMP metadata (dc:title).`;
-    titleRemediation = 'The document title is in the legacy Info dictionary but not in XMP metadata. PDF/UA requires dc:title in XMP. Re-export the PDF with your authoring tool, or use Acrobat\'s File > Properties to set the title (which updates both sources).';
+    titleRemediation = getRemediation('document-title', 'warning');
   } else {
     titleStatus = 'fail';
     titleSummary = 'No document title set. The title bar will show the filename instead.';
-    titleRemediation = 'Set the document title in your authoring tool (File > Properties in Word/InDesign, or Document Properties in Acrobat). Use something descriptive, not the filename.';
+    titleRemediation = getRemediation('document-title', 'fail');
   }
   findings.push({
     id: 'document-title',
@@ -55,18 +64,28 @@ export function checkMetadata(pdfDoc, ctx) {
   });
 
   // #2 — Document language
+  let langStatus, langSummary, langRemediation;
+  if (!traits.lang) {
+    langStatus = 'fail';
+    langSummary = 'No document language specified. Screen readers may use the wrong pronunciation rules.';
+    langRemediation = getRemediation('document-lang', 'fail');
+  } else if (!isValidBcp47(traits.lang)) {
+    langStatus = 'warning';
+    langSummary = `Document language is set to "${traits.lang}" but this is not a valid BCP-47 tag. Use a format like "en", "en-US", or "zh-Hans-CN".`;
+    langRemediation = `The language tag "${traits.lang}" is not valid BCP-47 format. Use standard codes: "en" for English, "fr" for French, "en-US" for American English, etc.`;
+  } else {
+    langStatus = 'pass';
+    langSummary = `Document language is set: "${traits.lang}"`;
+    langRemediation = null;
+  }
   findings.push({
     id: 'document-lang',
     category: 'metadata',
     title: 'Document Language',
-    status: traits.lang ? 'pass' : 'fail',
-    summary: traits.lang
-      ? `Document language is set: "${traits.lang}"`
-      : 'No document language specified. Screen readers may use the wrong pronunciation rules.',
+    status: langStatus,
+    summary: langSummary,
     details: traits.lang ? [{ label: 'Language', value: traits.lang }] : [],
-    remediation: traits.lang
-      ? null
-      : 'Set the document language in your authoring tool. In Word: File > Options > Language. In Acrobat: File > Properties > Advanced > Language.',
+    remediation: langRemediation,
     wcagRef: '3.1.1',
     pdfuaRef: '7.2',
   });
@@ -81,7 +100,7 @@ export function checkMetadata(pdfDoc, ctx) {
     summary: securityResult.summary,
     details: securityResult.details,
     remediation: securityResult.status === 'fail'
-      ? 'Remove the security restrictions blocking accessibility. In Acrobat: File > Properties > Security > Change Settings, then enable "Enable text access for screen reader devices."'
+      ? getRemediation('security-permissions')
       : null,
     wcagRef: null,
     pdfuaRef: '7.1',
@@ -114,7 +133,7 @@ export function checkMetadata(pdfDoc, ctx) {
     details: [],
     remediation: traits.isPdfUA
       ? null
-      : 'PDF/UA conformance is declared via XMP metadata. Tools like Acrobat Pro and axesPDF can add this declaration after validation.',
+      : getRemediation('pdfua-conformance'),
     wcagRef: null,
     pdfuaRef: null,
   });
@@ -131,7 +150,7 @@ export function checkMetadata(pdfDoc, ctx) {
     details: [],
     remediation: traits.displayDocTitle === true
       ? null
-      : 'In Acrobat: File > Properties > Initial View > Window Options > Show: Document Title.',
+      : getRemediation('display-doc-title'),
     wcagRef: '2.4.2',
     pdfuaRef: null,
   });
@@ -149,7 +168,7 @@ export function checkMetadata(pdfDoc, ctx) {
     details: [],
     remediation: hasBookmarks
       ? null
-      : 'Add bookmarks in your authoring tool. In Word, heading styles become bookmarks automatically on export. In Acrobat: View > Navigation Panels > Bookmarks.',
+      : getRemediation('bookmarks'),
     wcagRef: '2.4.5',
     pdfuaRef: null,
   });
@@ -230,7 +249,7 @@ function checkSecurity(pdfDoc) {
  * Walks the structure tree and reports which elements specify a language.
  */
 function checkPerElementLanguage(pdfDoc, ctx) {
-  const { traits, roleMap } = ctx;
+  const { traits } = ctx;
 
   if (!traits.hasStructTree) {
     return {
@@ -246,7 +265,7 @@ function checkPerElementLanguage(pdfDoc, ctx) {
     };
   }
 
-  const elements = walkStructureTree(pdfDoc, roleMap);
+  const elements = ctx.getStructureElements();
   const withLang = elements.filter(el => el.lang);
 
   if (withLang.length === 0) {
@@ -257,18 +276,22 @@ function checkPerElementLanguage(pdfDoc, ctx) {
       status: 'warning',
       summary: 'No structure elements specify a language. This is fine for single-language documents, but multilingual content needs per-element language tags.',
       details: [],
-      remediation: 'If the document contains content in multiple languages, set the /Lang attribute on the relevant structure elements. In Acrobat: select the element in the Tags panel > Properties > Language.',
+      remediation: getRemediation('per-element-language'),
       wcagRef: '3.1.2',
       pdfuaRef: '7.2',
     };
   }
 
-  // Build per-language summary
+  // Build per-language summary and check for invalid BCP-47 tags
   const langMap = new Map();
+  const invalidLangs = new Set();
   for (const el of withLang) {
     const list = langMap.get(el.lang) || [];
     list.push(el.type === el.resolvedType ? el.type : `${el.type} (${el.resolvedType})`);
     langMap.set(el.lang, list);
+    if (!isValidBcp47(el.lang)) {
+      invalidLangs.add(el.lang);
+    }
   }
 
   const details = [];
@@ -277,6 +300,26 @@ function checkPerElementLanguage(pdfDoc, ctx) {
       label: lang,
       value: `${types.length} element${types.length === 1 ? '' : 's'} (${[...new Set(types)].join(', ')})`,
     });
+  }
+
+  if (invalidLangs.size > 0) {
+    for (const lang of invalidLangs) {
+      details.push({
+        label: 'Invalid language tag',
+        value: `"${lang}" is not valid BCP-47 format`,
+      });
+    }
+    return {
+      id: 'per-element-language',
+      category: 'metadata',
+      title: 'Per-Element Language',
+      status: 'warning',
+      summary: `${withLang.length} structure element(s) specify language, but ${invalidLangs.size} use invalid BCP-47 tags.`,
+      details,
+      remediation: `Fix invalid language tags: ${[...invalidLangs].map(l => `"${l}"`).join(', ')}. Use standard BCP-47 codes like "en", "fr-FR", "zh-Hans-CN".`,
+      wcagRef: '3.1.2',
+      pdfuaRef: '7.2',
+    };
   }
 
   return {

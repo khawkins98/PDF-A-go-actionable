@@ -126,7 +126,7 @@ export function renderSummaryPanel(el, data, bus) {
     { label: 'PDF/UA', value: meta.isPdfUA ? 'Yes' : 'No' },
     { label: 'Tagged', value: meta.isTagged ? (meta.hasSuspects ? 'Yes (suspects)' : 'Yes') : 'No', warn: !meta.isTagged },
     { label: 'Structure Tree', value: meta.hasStructTree ? 'Yes' : 'No' },
-    { label: 'Display Doc Title', value: meta.displayDocTitle ? 'Yes' : 'No', warn: !meta.displayDocTitle },
+    { label: 'Viewer Shows Title', value: meta.displayDocTitle ? 'Yes' : 'No' },
   ];
 
   // Tool metadata (only shown when present)

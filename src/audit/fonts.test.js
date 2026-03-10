@@ -11,7 +11,7 @@ import { describe, it, expect } from 'vitest';
 import { checkFonts } from './fonts.js';
 import { buildTestContext } from '../../test/helpers/context.js';
 import { PDFDocument, PDFName, PDFDict, PDFRef } from 'pdf-lib';
-import { createUntaggedPdf, createTaggedPdf } from '../../test/fixtures/create-test-pdfs.js';
+import { createUntaggedPdf, createTaggedPdf, createPdfWithCompositeFont } from '../../test/fixtures/create-test-pdfs.js';
 
 describe('checkFonts', () => {
   it('should return two findings (both not-applicable) when no fonts in document', async () => {
@@ -86,6 +86,15 @@ describe('checkFonts', () => {
     expect(embedding.pdfuaRef).toBe('7.21.4');
   });
 
+  it('should use WCAG 4.1.1 reference for font-tounicode findings', async () => {
+    const bytes = await createUntaggedPdf();
+    const ctx = await buildTestContext(bytes);
+    const findings = checkFonts(ctx.pdfDoc, ctx);
+
+    const tounicode = findings.find(f => f.id === 'font-tounicode');
+    expect(tounicode.wcagRef).toBe('4.1.1');
+  });
+
   it('should handle font without /BaseFont gracefully', async () => {
     // Create a PDF with a manually added font dict missing /BaseFont
     const doc = await PDFDocument.create();
@@ -109,7 +118,7 @@ describe('checkFonts', () => {
     expect(tounicode.details.some(d => d.label === 'Unknown')).toBe(true);
   });
 
-  it('should warn when some fonts lack ToUnicode', async () => {
+  it('should fail when some fonts lack ToUnicode', async () => {
     // Create a PDF with a font that has no ToUnicode
     const doc = await PDFDocument.create();
     const page = doc.addPage();
@@ -127,7 +136,7 @@ describe('checkFonts', () => {
 
     expect(findings).toHaveLength(2);
     const tounicode = findings.find(f => f.id === 'font-tounicode');
-    expect(tounicode.status).toBe('warning');
+    expect(tounicode.status).toBe('fail');
     expect(tounicode.summary).toContain('missing ToUnicode');
   });
 
@@ -261,7 +270,7 @@ describe('checkFonts', () => {
 
     expect(findings).toHaveLength(2);
     const embedding = findings.find(f => f.id === 'font-embedding');
-    expect(embedding.status).toBe('warning');
+    expect(embedding.status).toBe('fail');
     const notEmbeddedDetails = embedding.details.filter(d => d.value === 'Not embedded');
     expect(notEmbeddedDetails).toHaveLength(1);
     expect(notEmbeddedDetails[0].label).toBe('TestNotEmbedded-Regular');
@@ -356,7 +365,7 @@ describe('checkFonts', () => {
     expect(type3Details).toHaveLength(0);
   });
 
-  it('should handle standard 14 font (no FontDescriptor) without crashing', async () => {
+  it('should pass standard 14 fonts without ToUnicode (exempt)', async () => {
     const doc = await PDFDocument.create();
     doc.addPage();
 
@@ -374,12 +383,13 @@ describe('checkFonts', () => {
 
     expect(findings).toHaveLength(2);
 
-    // font-tounicode: should not throw, and the font should be counted
+    // font-tounicode: standard 14 font is exempt — should pass
     const tounicode = findings.find(f => f.id === 'font-tounicode');
-    expect(tounicode.status).not.toBe('not-applicable');
-    // Helvetica should appear in ToUnicode details
+    expect(tounicode.status).toBe('pass');
+    // Helvetica should appear in ToUnicode details with exempt note
     const helveticaDetail = tounicode.details.find(d => d.label === 'Helvetica');
     expect(helveticaDetail).toBeDefined();
+    expect(helveticaDetail.value).toContain('Standard font');
 
     // font-embedding: No FontDescriptor, so nothing to check for embedding
     // Helvetica should NOT appear as "Not embedded" since there's no FontDescriptor
@@ -390,16 +400,16 @@ describe('checkFonts', () => {
     expect(notEmbeddedDetails).toHaveLength(0);
   });
 
-  it('should count symbol/decorative fonts without ToUnicode as missing', async () => {
+  it('should fail non-standard fonts without ToUnicode', async () => {
     const doc = await PDFDocument.create();
     doc.addPage();
 
-    // Symbol-style font without ToUnicode (common for icon fonts, wingdings, etc.)
+    // Non-standard font without ToUnicode (custom icon font, etc.)
     const fontDict = doc.context.obj({
       Type: 'Font',
       Subtype: PDFName.of('Type1'),
-      BaseFont: PDFName.of('ZapfDingbats'),
-      Encoding: PDFName.of('ZapfDingbatsEncoding'),
+      BaseFont: PDFName.of('CustomIconFont'),
+      Encoding: PDFName.of('WinAnsiEncoding'),
     });
     doc.context.register(fontDict);
 
@@ -409,13 +419,34 @@ describe('checkFonts', () => {
 
     const tounicode = findings.find(f => f.id === 'font-tounicode');
     expect(tounicode).toBeDefined();
-    expect(tounicode.status).toBe('warning');
+    expect(tounicode.status).toBe('fail');
     expect(tounicode.summary).toContain('missing ToUnicode');
 
     // Should appear in details
-    const dingbatsDetail = tounicode.details.find(d => d.label === 'ZapfDingbats');
-    expect(dingbatsDetail).toBeDefined();
-    expect(dingbatsDetail.value).toBe('Missing ToUnicode');
+    const iconDetail = tounicode.details.find(d => d.label === 'CustomIconFont');
+    expect(iconDetail).toBeDefined();
+    expect(iconDetail.value).toBe('Missing ToUnicode');
+  });
+
+  it('should pass standard 14 ZapfDingbats without ToUnicode (exempt)', async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage();
+
+    const fontDict = doc.context.obj({
+      Type: 'Font',
+      Subtype: PDFName.of('Type1'),
+      BaseFont: PDFName.of('ZapfDingbats'),
+    });
+    doc.context.register(fontDict);
+
+    const saved = await doc.save();
+    const ctx = await buildTestContext(saved);
+    const findings = checkFonts(ctx.pdfDoc, ctx);
+
+    const tounicode = findings.find(f => f.id === 'font-tounicode');
+    expect(tounicode.status).toBe('pass');
+    const detail = tounicode.details.find(d => d.label === 'ZapfDingbats');
+    expect(detail.value).toContain('Standard font');
   });
 
   it('should report correct counts in embedding summary for mixed fonts', async () => {
@@ -482,7 +513,7 @@ describe('checkFonts', () => {
     expect(findings).toHaveLength(2);
 
     const embedding = findings.find(f => f.id === 'font-embedding');
-    expect(embedding.status).toBe('warning');
+    expect(embedding.status).toBe('fail');
 
     // Should have exactly 1 "Not embedded" detail for the not-embedded font
     const notEmbeddedDetails = embedding.details.filter(d => d.value === 'Not embedded');
@@ -496,5 +527,32 @@ describe('checkFonts', () => {
 
     // Summary text should mention the count
     expect(embedding.summary).toContain('1 of 3');
+  });
+
+  // --- CIDFont composite font embedding tests ---
+
+  it('should detect embedded CIDFont via Type0 DescendantFonts', async () => {
+    const bytes = await createPdfWithCompositeFont({ embedded: true });
+    const ctx = await buildTestContext(bytes);
+    const findings = checkFonts(ctx.pdfDoc, ctx);
+
+    const embedding = findings.find(f => f.id === 'font-embedding');
+    expect(embedding).toBeDefined();
+    expect(embedding.status).toBe('pass');
+    const notEmbeddedDetails = embedding.details.filter(d => d.value === 'Not embedded');
+    expect(notEmbeddedDetails).toHaveLength(0);
+  });
+
+  it('should detect not-embedded CIDFont via Type0 DescendantFonts', async () => {
+    const bytes = await createPdfWithCompositeFont({ embedded: false });
+    const ctx = await buildTestContext(bytes);
+    const findings = checkFonts(ctx.pdfDoc, ctx);
+
+    const embedding = findings.find(f => f.id === 'font-embedding');
+    expect(embedding).toBeDefined();
+    expect(embedding.status).toBe('fail');
+    const notEmbeddedDetails = embedding.details.filter(d => d.value === 'Not embedded');
+    expect(notEmbeddedDetails).toHaveLength(1);
+    expect(notEmbeddedDetails[0].label).toBe('TestComposite-Regular');
   });
 });

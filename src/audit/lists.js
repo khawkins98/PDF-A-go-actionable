@@ -4,8 +4,9 @@
  * Check #10 — Lists are properly tagged (L > LI > Lbl + LBody).
  */
 import { PDFName, PDFDict, PDFArray } from 'pdf-lib';
-import { resolve } from '../engine/utils/resolve.js';
+import { resolve, resolvePageIndex, formatPagePrefix } from '../engine/utils/resolve.js';
 import { resolveRole } from '../engine/utils/role-map.js';
+import { getRemediation } from '../guidance.js';
 
 /**
  * @param {import('pdf-lib').PDFDocument} pdfDoc
@@ -43,7 +44,8 @@ export function checkLists(pdfDoc, ctx) {
     const resolved = resolveRole(typeName, roleMap);
 
     if (resolved !== 'L') return;
-    lists.push({ element: obj, typeName });
+    const pageIdx = resolvePageIndex(obj, ctx.pageRefMap);
+    lists.push({ element: obj, typeName, pageIndex: pageIdx });
   });
 
   if (lists.length === 0) {
@@ -61,16 +63,20 @@ export function checkLists(pdfDoc, ctx) {
   }
 
   // Validate each list
-  const issues = [];
+  const structuralIssues = [];
+  const lblIssues = [];
   const details = [];
 
   lists.forEach((list, idx) => {
-    const result = validateList(list.element, idx + 1, context, roleMap);
+    const result = validateList(list.element, idx + 1, context, roleMap, list.pageIndex);
     details.push(...result.details);
-    issues.push(...result.issues);
+    structuralIssues.push(...result.structuralIssues);
+    lblIssues.push(...result.lblIssues);
   });
 
-  if (issues.length === 0) {
+  const allIssues = [...structuralIssues, ...lblIssues];
+
+  if (allIssues.length === 0) {
     return [{
       id: 'list-structure',
       category: 'lists',
@@ -84,14 +90,18 @@ export function checkLists(pdfDoc, ctx) {
     }];
   }
 
+  // Structural issues (missing LBody, unexpected children, no LI) → fail
+  // Only Lbl missing → warning
+  const status = structuralIssues.length > 0 ? 'fail' : 'warning';
+
   return [{
     id: 'list-structure',
     category: 'lists',
     title: 'List Structure',
-    status: 'fail',
-    summary: `${issues.length} issue(s) found in list structure.`,
+    status,
+    summary: `${allIssues.length} issue(s) found in list structure.`,
     details,
-    remediation: 'Use proper list formatting in your authoring tool. In Word: use bullet/numbered list styles. Avoid manually typing bullets or numbers. In Acrobat: use the Tags panel to fix list structure (L > LI > Lbl + LBody).',
+    remediation: getRemediation('list-structure'),
     wcagRef: '1.3.1',
     pdfuaRef: '7.6',
   }];
@@ -100,8 +110,10 @@ export function checkLists(pdfDoc, ctx) {
 /**
  * Validate a single list's structure: L > LI > Lbl + LBody.
  */
-function validateList(listDict, listNum, context, roleMap) {
-  const issues = [];
+function validateList(listDict, listNum, context, roleMap, pageIndex) {
+  const pagePrefix = formatPagePrefix(pageIndex);
+  const structuralIssues = [];
+  const lblIssues = [];
   const details = [];
 
   const children = getChildren(listDict, context);
@@ -129,22 +141,22 @@ function validateList(listDict, listNum, context, roleMap) {
       const hasLbl = childTypes.includes('Lbl');
 
       if (!hasLBody) {
-        issues.push(`List ${listNum}, LI ${liCount}: missing LBody`);
+        structuralIssues.push(`List ${listNum}, LI ${liCount}: missing LBody`);
         details.push({
           label: `List ${listNum}, LI ${liCount}`,
-          value: `Missing LBody (has: ${childTypes.join(', ') || 'no typed children'})`,
+          value: `${pagePrefix}Missing LBody (has: ${childTypes.join(', ') || 'no typed children'})`,
         });
       }
       if (!hasLbl) {
-        issues.push(`List ${listNum}, LI ${liCount}: missing Lbl`);
+        lblIssues.push(`List ${listNum}, LI ${liCount}: missing Lbl`);
         details.push({
           label: `List ${listNum}, LI ${liCount}`,
-          value: `Missing Lbl (has: ${childTypes.join(', ') || 'no typed children'})`,
+          value: `${pagePrefix}Missing Lbl (has: ${childTypes.join(', ') || 'no typed children'})`,
         });
       }
     } else if (resolvedType !== 'Caption') {
       // Non-LI children of L (other than Caption) are structural issues
-      issues.push(`List ${listNum}: unexpected child type "${resolvedType}"`);
+      structuralIssues.push(`List ${listNum}: unexpected child type "${resolvedType}"`);
       details.push({
         label: `List ${listNum}`,
         value: `Unexpected child type "${typeName}" (-> ${resolvedType}), expected LI`,
@@ -153,19 +165,19 @@ function validateList(listDict, listNum, context, roleMap) {
   }
 
   if (liCount === 0) {
-    issues.push(`List ${listNum}: no LI children found`);
+    structuralIssues.push(`List ${listNum}: no LI children found`);
     details.push({
       label: `List ${listNum}`,
       value: 'No LI (list item) children found',
     });
-  } else if (issues.length === 0) {
+  } else if (structuralIssues.length === 0 && lblIssues.length === 0) {
     details.push({
       label: `List ${listNum}`,
       value: `${liCount} list item(s), structure OK`,
     });
   }
 
-  return { issues, details };
+  return { structuralIssues, lblIssues, details };
 }
 
 /**

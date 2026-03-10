@@ -8,6 +8,7 @@
 import { PDFName, PDFDict, PDFArray } from 'pdf-lib';
 import { resolve } from '../engine/utils/resolve.js';
 import { resolveRole } from '../engine/utils/role-map.js';
+import { getRemediation } from '../guidance.js';
 
 /**
  * @param {import('pdf-lib').PDFDocument} pdfDoc
@@ -85,13 +86,27 @@ export function checkReadingOrder(pdfDoc, ctx) {
 
   return [
     {
+      id: 'color-contrast',
+      category: 'reading-order',
+      title: 'Color Contrast',
+      status: 'manual',
+      summary: 'Verify that all text meets minimum contrast ratios. Automated tools cannot reliably check contrast in PDF content streams.',
+      details: [
+        { label: 'WCAG requirement', value: 'Normal text: 4.5:1 contrast ratio. Large text (18pt or 14pt bold): 3:1 ratio.' },
+        { label: 'How to check', value: 'Use the Colour Contrast Analyser (free, Windows/macOS) or inspect colors in Acrobat Pro. Check body text, headings, link text, and text over images or colored backgrounds.' },
+      ],
+      remediation: getRemediation('color-contrast'),
+      wcagRef: '1.4.3',
+      pdfuaRef: null,
+    },
+    {
       id: 'reading-order',
       category: 'reading-order',
       title: 'Logical Reading Order',
       status: 'manual',
       summary: 'Reading order must be verified manually. Use the Structure Tree panel to review element order and compare it to the visual layout.',
       details: baseDetails,
-      remediation: 'If reading order is wrong, fix it in the authoring tool by adjusting the tag order. In Acrobat: View > Navigation Panels > Order, then drag items to reorder. In Word: make sure content is in order in the document (text boxes can break flow).',
+      remediation: getRemediation('reading-order'),
       wcagRef: '1.3.2',
       pdfuaRef: '7.2',
     },
@@ -105,7 +120,7 @@ export function checkReadingOrder(pdfDoc, ctx) {
         { label: 'Download PAC', value: 'https://pac.pdf-accessibility.org/' },
         { label: 'Note', value: 'PAC is Windows-only. Use Wine on macOS/Linux, or the online version at https://pac.pdf-accessibility.org/en/pac-online' },
       ],
-      remediation: 'Download and install PAC, then open your PDF in it. Fix any errors PAC reports.',
+      remediation: getRemediation('pac-validation'),
       wcagRef: null,
       pdfuaRef: null,
     },
@@ -120,7 +135,7 @@ export function checkReadingOrder(pdfDoc, ctx) {
         { label: 'VoiceOver (macOS)', value: 'Built-in: System Settings > Accessibility > VoiceOver' },
         { label: 'Testing tip', value: 'Open the PDF in Acrobat Reader or a browser, turn on the screen reader, and listen to the whole document. Pay attention to heading announcements, image alt text, table navigation, form field labels, and link text.' },
       ],
-      remediation: 'If the screen reader reads content in the wrong order or misses elements, fix the tag structure and reading order in your authoring tool.',
+      remediation: getRemediation('screen-reader-test'),
       wcagRef: '1.3.2',
       pdfuaRef: null,
     },

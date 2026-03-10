@@ -1,5 +1,70 @@
 # Changelog
 
+## 1.3.0 2026-03-10
+
+### Audit accuracy
+- Severity corrections: `form-labels`, `font-embedding`, and `font-tounicode` promoted from warning to fail
+- Tab order severity: `fail` when form fields present (keyboard navigation broken), `warning` otherwise (best practice — structure tree still governs screen reader reading order)
+- Standard 14 font exemption: base PDF fonts (Helvetica, Courier, Times-Roman, Symbol, ZapfDingbats and variants) exempt from ToUnicode requirement
+- CIDFont composite font embedding: Type0 fonts now check DescendantFonts for embedding status
+- BCP-47 language validation: invalid document-level and per-element language tags produce warnings
+- Nested form field traversal: recursive `/Kids` resolution finds leaf fields inside parent containers (depth cap 20)
+- Table TR wrapper validation: TH/TD cells not wrapped in TR elements are flagged
+- Page numbers in finding details: all structure-based checks include `Page N:` prefix when page reference is available
+- Fix WCAG references: heading hierarchy → 2.4.6, form labels → 3.3.2, font ToUnicode → 4.1.1
+- Recognize `/Formula` StructElem in image alt text checks (not just `/Figure`)
+- Support generic `/H` heading type (level 0) in heading hierarchy validation
+- Heading hierarchy: non-H1 start without skipped levels is now a warning, not a fail
+- Lists: missing `/Lbl` is now a warning (structural issues remain fail)
+- Link text extraction: recursively collect text from child StructElems
+- Add color contrast as a manual-review finding (WCAG 1.4.3)
+
+### Self-accessibility
+- Add ARIA roles (`dialog`, `region`) on all WinBox windows
+- Announce analysis verdict via `aria-live` region for screen readers
+- Document-level drag-and-drop: drop PDFs anywhere on the page, not just the drop zone
+- Structure tree: color-coded icons for tag types (headings, figures, tables, links, lists)
+- Structure tree: hover tooltips with plain-English tag explanations
+- Creator-specific hint banner on dashboard (InDesign, Word, PowerPoint, Acrobat, LibreOffice)
+
+### Dashboard UX
+- Remove UNDRR 13-point validation checklist from dashboard (findings are already shown in status-grouped sections — the checklist duplicated them)
+- Remediation hints: first sentence of remediation shown inline on fail/warning rows
+- Document title shown in dashboard header and window title bar when available
+- `display-doc-title` decoupled from checklist item #1
+
+### Export quality
+- PDF export: set document metadata (title, author, subject, producer, creator, creation date)
+- PDF export: render finding details in full-density sections
+- CSV export: add details column and UTF-8 BOM for Excel compatibility
+- JSON export: remove UNDRR checklist (findings already included individually)
+- PDF export: remove separate checklist summary page (findings grouped by status in main report)
+- Extract `buildJsonOutput()` and `buildCsvContent()` as testable pure functions
+
+### Remediation guidance
+- InDesign-specific remediation tips added to all finding remediations
+- Link text remediation includes bare URL workaround
+- Tab order guidance includes Adobe Acrobat steps
+
+### Performance
+- Single-pass structure tree walk: `getStructureElements()` cached in shared context
+- Performance benchmark: 1000-element PDF audited in under 3 seconds
+
+### Better error messages
+- Non-PDF file detection via `%PDF-` magic byte check
+- Password-protected PDF detection with specific remediation guidance
+- Corrupt PDF detection with clearer messaging
+
+### Messaging
+- Clarify that this is not a PDF/UA conformance validator; it covers the checks that most affect whether a PDF works with assistive technology
+- Updated README, About dialog, welcome screen, meta tags, and PDF export
+- Replaced "Non-Goals" with "Scope" section in README
+
+### Test infrastructure
+- New shared assertion helpers: `findFindingById()`, `expectFindingStatus()`
+- 6 new PDF fixture factories
+- 798 tests across 45 test files (up from 688 across 40)
+
 ## 1.2.0 2026-03-02
 
 - 13-point validation checklist alignment throughout the tool

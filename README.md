@@ -1,43 +1,55 @@
 # PDF-A-go-actionable
 
-A free, client-side PDF accessibility checker. Drop a PDF, get an actionable report. No uploads, no accounts, no cost.
+A free, client-side PDF accessibility checker. Drop a PDF, get a report that tells you what's wrong and how to fix it. No uploads, no accounts, no cost.
 
-> **Experimental.** This tool is provided as-is for informational purposes. It is not a substitute for professional accessibility auditing or full PDF/UA conformance validation. Results should be verified independently. See [LICENSE](LICENSE) for warranty terms.
+> **Not a PDF/UA conformance validator.** PDF/UA has 300+ rules. This tool covers the ~13 checks that affect whether someone can use your PDF with a screen reader. For full conformance testing, use [PAC](https://pac.pdf-accessibility.org/) or [veraPDF](https://verapdf.org/). See [LICENSE](LICENSE) for warranty terms.
 
 ## Background
 
-Checking PDF accessibility shouldn't require a $240/year Adobe subscription or a Windows-only desktop tool. Most organizations producing PDFs -- government agencies, NGOs, universities -- need to validate accessibility before publication, but the existing tools have tradeoffs:
+Checking PDF accessibility shouldn't require a $240/year Adobe subscription or a Windows-only desktop tool. Most organizations producing PDFs -- government agencies, NGOs, universities -- need to check accessibility before publication, but the options have tradeoffs:
 
-- **Adobe Acrobat Pro** -- thorough but expensive and proprietary
+- **Adobe Acrobat Pro** -- thorough but expensive ($240/year) and proprietary
 - **PAC (PDF Accessibility Checker)** -- free and thorough, but Windows-only
 - **axesCheck** -- web-based, but uploads files to a third party
 - **PDFcheck** -- client-side, but limited to basic metadata checks
 
-PDF-A-go-actionable is a browser-based accessibility audit that processes everything locally. Your PDFs never leave your machine.
+PDF-A-go-actionable runs in the browser and processes everything locally. Your PDFs never leave your machine.
+
+Full PDF/UA has 300+ rules. A lot of them are technical metadata requirements that don't change whether someone can read your document. This tool covers the ~13 checks that accessibility professionals rely on most: Is it tagged? Do images have alt text? Are headings in order? Can a screen reader follow the reading sequence? Do fonts support text extraction? Getting these right goes a long way.
 
 ## What It Checks
 
-The tool covers the practical validation workflow used by accessibility professionals (the "13-point checklist"):
+The tool covers the checks that accessibility professionals rely on most:
 
 **Automated checks:**
 - Document title, language, and security permissions
 - Tagged PDF with structure tree
 - Image alt text coverage
-- Heading hierarchy (H1 > H2 > H3, no skips)
+- Heading hierarchy (H1 > H2 > H3, no skips; generic /H supported)
 - Table header cells and scope
 - List structure (L > LI > Lbl + LBody)
-- Font Unicode mapping (ToUnicode CMap coverage)
+- Font Unicode mapping (ToUnicode CMap coverage; standard 14 fonts exempt)
+- Font embedding (including CIDFont composites via DescendantFonts)
 - Bookmark/outline presence
-- Form field labeling
-- Link text quality
+- Form field labeling (including nested fields via /Kids traversal)
+- Link text quality (with recursive child text extraction)
 - Tab order configuration
+- BCP-47 language tag validation (document-level and per-element)
 
 **Visual tools:**
 - PDF Preview panel with page navigation and zoom (50%-300% + fit-to-width)
 - Reading order visualization -- numbered badges with connecting lines showing content stream order
 - Structure tree to preview linking -- click a tree node to highlight its MCID regions on the rendered page
 
+**Report dashboard:**
+- At-a-glance verdict: PASS / PASS WITH WARNINGS / FAIL
+- Findings grouped by severity: fails, warnings, manual review, passed, not applicable
+- Page numbers in finding details where available
+- Remediation hints inline on fail/warning findings
+- Clear error messages for non-PDF files, encrypted PDFs, and corrupt files
+
 **Flagged for manual review:**
+- Color contrast (WCAG 1.4.3)
 - Reading order (with interactive structure tree explorer and visual reading order overlay to help)
 - Screen reader testing (with tool recommendations)
 
@@ -61,7 +73,7 @@ Built on [WinBox](https://github.com/nextapps-de/winbox) with CSS overrides for 
 
 ### Conventions
 
-- **TDD** --tests are written before implementation (see PRD.md for details)
+- **TDD** --tests are written before implementation
 - **[Conventional Commits](https://www.conventionalcommits.org/)** --all commit messages use prefixes like `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`
 
 ### Advanced Menu --Test PDFs
@@ -75,9 +87,15 @@ Test PDFs are sourced from:
 
 All files are fetched via `cdn.jsdelivr.net` at runtime (CORS-friendly, no local fixtures needed).
 
+## Scope
+
+This tool checks about 13 things -- the ones that determine whether a PDF works with assistive technology. Every finding includes what's wrong and how to fix it, with steps for specific authoring tools (InDesign, Word, Acrobat).
+
+It runs entirely in the browser. No server, no uploads, no accounts. It does not edit or repair PDFs -- use your authoring tool or Acrobat for fixes. It does not attempt full PDF/UA conformance (300+ rules); for that, use PAC or veraPDF.
+
 ## Status
 
-V1.1.0. See [CHANGELOG.md](CHANGELOG.md) for release history and [PRD.md](PRD.md) for the full product requirements.
+V1.3.0. See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## Acknowledgments
 
@@ -94,7 +112,7 @@ This project builds on the work of many others:
 - **[PDF-A-go-go](https://github.com/khawkins98/PDF-A-go-go)** (MIT) -- the first project in this family; building it revealed the PDF accessibility problems this tool checks for
 
 **Reference tools and standards:**
-- **[PAC (PDF Accessibility Checker)](https://pac.pdf-accessibility.org/)** by the PDF/UA Foundation -- the most thorough free PDF/UA validator, and the main reference for this tool's check list
+- **[PAC (PDF Accessibility Checker)](https://pac.pdf-accessibility.org/)** by the PDF/UA Foundation -- the most thorough free PDF/UA conformance validator; use alongside this tool when full standard compliance is needed
 - **[veraPDF](https://verapdf.org/)** -- open-source PDF/A and PDF/UA validator. The [veraPDF PDF/UA-1 test corpus](https://github.com/veraPDF/veraPDF-corpus) (CC BY 4.0 / GPLv3+) provides atomic pass/fail test files used in the Advanced menu
 - **[PDF Association](https://pdfa.org/)** -- the ["Techniques for Accessible PDF"](https://github.com/pdf-association/techniques-for-accessible-pdf) repository (CC BY 4.0) provides real-world accessible/inaccessible PDF examples used in the Advanced menu
 - **[Open Preservation Foundation](https://openpreservation.org/)** -- the ["Cabinet of Horrors" format corpus](https://github.com/openpreserve/format-corpus) (CC0 1.0) provides edge-case test PDFs (encryption, corruption, font embedding) used in the Advanced menu

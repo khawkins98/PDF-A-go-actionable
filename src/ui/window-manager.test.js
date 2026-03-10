@@ -10,6 +10,7 @@ import {
   closeAllWindows,
   focusWindow,
   getFloatingLayout,
+  setWinBoxAriaRole,
 } from './window-manager.js';
 import { MENUBAR_HEIGHT } from './menu-bar.js';
 
@@ -156,6 +157,27 @@ describe('focusWindow', () => {
     const sessions = new Map();
     focusWindow(sessions, 'nonexistent');
     // No error
+  });
+});
+
+describe('setWinBoxAriaRole', () => {
+  it('should set role and aria-label on win.dom', () => {
+    const dom = document.createElement('div');
+    setWinBoxAriaRole({ dom }, 'About');
+    expect(dom.getAttribute('role')).toBe('dialog');
+    expect(dom.getAttribute('aria-label')).toBe('About');
+  });
+
+  it('should accept a custom role', () => {
+    const dom = document.createElement('div');
+    setWinBoxAriaRole({ dom }, 'Results', 'region');
+    expect(dom.getAttribute('role')).toBe('region');
+    expect(dom.getAttribute('aria-label')).toBe('Results');
+  });
+
+  it('should not throw when win is null or has no dom', () => {
+    expect(() => setWinBoxAriaRole(null, 'Test')).not.toThrow();
+    expect(() => setWinBoxAriaRole({}, 'Test')).not.toThrow();
   });
 });
 

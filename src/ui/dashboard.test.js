@@ -4,6 +4,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderDashboard } from './dashboard.js';
+import { META_TOOLTIPS } from '../guidance.js';
 
 /** Minimal Finding factory. */
 function finding(overrides) {
@@ -165,7 +166,7 @@ describe('renderDashboard', () => {
     const sections = el.querySelectorAll('.dashboard__section');
     const labels = [...sections].map((s) => s.getAttribute('aria-label'));
     expect(labels).toEqual([
-      'Needs Attention',
+      'Requires Attention',
       'Warnings',
       'Manual Review',
       'Passed',
@@ -386,8 +387,8 @@ describe('renderDashboard', () => {
 
     const sections = el.querySelectorAll('.dashboard__section');
     const labels = [...sections].map((s) => s.getAttribute('aria-label'));
-    // Should only have "Needs Attention" and "Passed", not Warning/Manual/N/A
-    expect(labels).toEqual(['Needs Attention', 'Passed']);
+    // Should only have "Requires Attention" and "Passed", not Warning/Manual/N/A
+    expect(labels).toEqual(['Requires Attention', 'Passed']);
   });
 
   // --- File facts line ---
@@ -423,9 +424,27 @@ describe('renderDashboard', () => {
     expect(h2s[0].textContent).toBe('PDF Accessibility Report');
 
     const h3s = el.querySelectorAll('h3');
-    // File name, "Validation Checklist", "Needs Attention", "Passed"
-    expect(h3s.length).toBe(4);
+    // File name, "Requires Attention", "Passed"
+    expect(h3s.length).toBe(3);
     expect(h3s[0].textContent).toBe('test.pdf');
+  });
+
+  it('should show document title below filename when title is set', () => {
+    const data = makeData([finding({ status: 'pass', title: 'Lang' })]);
+    renderDashboard(el, data, callbacks);
+
+    const docTitle = el.querySelector('.dashboard__doc-title');
+    expect(docTitle).not.toBeNull();
+    expect(docTitle.textContent).toBe('My Document');
+  });
+
+  it('should not show document title when title is missing', () => {
+    const data = makeData([finding({ status: 'pass', title: 'Lang' })]);
+    data.meta.title = '';
+    renderDashboard(el, data, callbacks);
+
+    const docTitle = el.querySelector('.dashboard__doc-title');
+    expect(docTitle).toBeNull();
   });
 
   // --- Sections use aria-label ---
@@ -437,7 +456,7 @@ describe('renderDashboard', () => {
     renderDashboard(el, data, callbacks);
 
     const section = el.querySelector('.dashboard__section');
-    expect(section.getAttribute('aria-label')).toBe('Needs Attention');
+    expect(section.getAttribute('aria-label')).toBe('Requires Attention');
   });
 
   // --- Empty findings description ---
@@ -502,6 +521,53 @@ describe('renderDashboard', () => {
     expect(labels).not.toContain('Producer');
   });
 
+  // --- Creator-specific hints ---
+
+  it('should show creator hint banner for InDesign PDFs', () => {
+    const data = makeData([], { creator: 'Adobe InDesign 2025', producer: 'Adobe PDF Library 17.0' });
+    renderDashboard(el, data, callbacks);
+
+    const hint = el.querySelector('.dashboard__creator-hint');
+    expect(hint).not.toBeNull();
+    expect(hint.textContent).toContain('Created with Adobe InDesign');
+    expect(hint.textContent).toContain('reading order');
+    expect(hint.getAttribute('role')).toBe('note');
+  });
+
+  it('should show creator hint banner for Word PDFs', () => {
+    const data = makeData([], { creator: 'Microsoft Word 365' });
+    renderDashboard(el, data, callbacks);
+
+    const hint = el.querySelector('.dashboard__creator-hint');
+    expect(hint).not.toBeNull();
+    expect(hint.textContent).toContain('Created with Microsoft Word');
+  });
+
+  it('should show creator hint banner for PowerPoint PDFs', () => {
+    const data = makeData([], { producer: 'Microsoft PowerPoint 2021' });
+    renderDashboard(el, data, callbacks);
+
+    const hint = el.querySelector('.dashboard__creator-hint');
+    expect(hint).not.toBeNull();
+    expect(hint.textContent).toContain('Created with Microsoft PowerPoint');
+  });
+
+  it('should not show creator hint for unknown tools', () => {
+    const data = makeData([], { creator: 'PptxGenJS', producer: 'some-lib' });
+    renderDashboard(el, data, callbacks);
+
+    const hint = el.querySelector('.dashboard__creator-hint');
+    expect(hint).toBeNull();
+  });
+
+  it('should not show creator hint when no creator/producer metadata', () => {
+    const data = makeData([], {});
+    renderDashboard(el, data, callbacks);
+
+    const hint = el.querySelector('.dashboard__creator-hint');
+    expect(hint).toBeNull();
+  });
+
   // --- File facts edge cases ---
 
   it('should show singular "page" for single-page documents', () => {
@@ -548,101 +614,119 @@ describe('renderDashboard', () => {
     }
   });
 
-  // --- UNDRR Validation Checklist ---
+  // --- Metadata tooltips ---
 
-  it('should render a "Validation Checklist" section', () => {
-    const data = makeData([finding({ status: 'pass' })]);
-    renderDashboard(el, data, callbacks);
-
-    const section = el.querySelector('.dashboard__checklist-section');
-    expect(section).not.toBeNull();
-    expect(section.getAttribute('aria-label')).toBe('Validation Checklist');
-  });
-
-  it('should render 13 checklist items', () => {
+  it('should add data-tooltip and title attributes to metadata dt elements', () => {
     const data = makeData([]);
     renderDashboard(el, data, callbacks);
 
-    const items = el.querySelectorAll('.dashboard__checklist-item');
-    expect(items.length).toBe(13);
+    const grid = el.querySelector('.dashboard__meta-grid');
+    const dts = [...grid.querySelectorAll('dt')];
+    const titleDt = dts.find((d) => d.textContent === 'Title');
+    expect(titleDt.getAttribute('data-tooltip')).toBe(META_TOOLTIPS['Title']);
+    expect(titleDt.getAttribute('title')).toBe(META_TOOLTIPS['Title']);
   });
 
-  it('should show numbered badges 1-13', () => {
+  it('should add tabindex="0" and has-tooltip class for keyboard access', () => {
     const data = makeData([]);
     renderDashboard(el, data, callbacks);
 
-    const numbers = el.querySelectorAll('.dashboard__checklist-number');
-    const values = [...numbers].map((n) => n.textContent);
-    expect(values).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13']);
+    const grid = el.querySelector('.dashboard__meta-grid');
+    const dts = [...grid.querySelectorAll('dt')];
+    const langDt = dts.find((d) => d.textContent === 'Language');
+    expect(langDt.getAttribute('tabindex')).toBe('0');
+    expect(langDt.classList.contains('has-tooltip')).toBe(true);
   });
 
-  it('should show Pass status for checklist items with passing findings', () => {
-    const data = makeData([
-      finding({ id: 'document-title', status: 'pass', title: 'Document Title' }),
-      finding({ id: 'display-doc-title', status: 'pass', title: 'Display Doc Title' }),
-    ]);
+  it('should have tooltips on all standard metadata labels', () => {
+    const data = makeData([], { creator: 'Adobe InDesign', producer: 'Adobe PDF Library' });
     renderDashboard(el, data, callbacks);
 
-    const items = el.querySelectorAll('.dashboard__checklist-item');
-    // Item 1 should be pass
-    const status = items[0].querySelector('.dashboard__checklist-status');
-    expect(status.textContent).toBe('Pass');
-    expect(status.classList.contains('dashboard__checklist-status--pass')).toBe(true);
+    const grid = el.querySelector('.dashboard__meta-grid');
+    const dts = [...grid.querySelectorAll('dt')];
+    for (const dt of dts) {
+      const label = dt.textContent;
+      if (META_TOOLTIPS[label]) {
+        expect(dt.hasAttribute('data-tooltip'), `${label} should have data-tooltip`).toBe(true);
+      }
+    }
   });
 
-  it('should show Fail status for checklist items with failing findings', () => {
-    const data = makeData([
-      finding({ id: 'document-title', status: 'fail', title: 'Document Title' }),
-    ]);
-    renderDashboard(el, data, callbacks);
-
-    const items = el.querySelectorAll('.dashboard__checklist-item');
-    const status = items[0].querySelector('.dashboard__checklist-status');
-    expect(status.textContent).toBe('Fail');
-    expect(status.classList.contains('dashboard__checklist-status--fail')).toBe(true);
-  });
-
-  it('should show -- for checklist items with no matching findings', () => {
+  it('should not add tooltip attributes when label is not in META_TOOLTIPS', () => {
+    // All current labels are in META_TOOLTIPS, so this verifies the guard works
+    // by checking that no dt has a tooltip without a matching META_TOOLTIPS key
     const data = makeData([]);
     renderDashboard(el, data, callbacks);
 
-    const items = el.querySelectorAll('.dashboard__checklist-item');
-    // Item 1 has no findings
-    const status = items[0].querySelector('.dashboard__checklist-status');
-    expect(status.textContent).toBe('--');
-  });
-
-  it('should use two-column grid layout for checklist', () => {
-    const data = makeData([]);
-    renderDashboard(el, data, callbacks);
-
-    const grid = el.querySelector('.dashboard__checklist');
-    expect(grid).not.toBeNull();
-  });
-
-  it('should show contextual reason for N/A checklist items', () => {
-    const data = makeData([
-      finding({ id: 'table-headers', status: 'not-applicable', title: 'Table Headers', summary: 'No tables found in the structure tree.' }),
-    ]);
-    renderDashboard(el, data, callbacks);
-
-    const reasons = el.querySelectorAll('.dashboard__checklist-reason');
-    expect(reasons.length).toBeGreaterThan(0);
-    const reasonTexts = [...reasons].map((r) => r.textContent);
-    expect(reasonTexts).toContain('No tables found in the structure tree.');
+    const grid = el.querySelector('.dashboard__meta-grid');
+    const dts = [...grid.querySelectorAll('dt')];
+    for (const dt of dts) {
+      if (dt.hasAttribute('data-tooltip')) {
+        expect(META_TOOLTIPS[dt.textContent]).toBeDefined();
+      }
+    }
   });
 
   // --- displayDocTitle warning ---
 
-  it('should show warning style for displayDocTitle when false', () => {
+  it('should show Viewer Shows Title without warning style when false', () => {
     const data = makeData([], { displayDocTitle: false });
     renderDashboard(el, data, callbacks);
 
     const grid = el.querySelector('.dashboard__meta-grid');
     const dts = [...grid.querySelectorAll('dt')];
-    const dt = dts.find((d) => d.textContent === 'Display Doc Title');
+    const dt = dts.find((d) => d.textContent === 'Viewer Shows Title');
     const dd = dt.nextElementSibling;
     expect(dd.textContent).toBe('No');
-    expect(dd.classList.contains('dashboard__meta-warn')).toBe(true);
+    expect(dd.classList.contains('dashboard__meta-warn')).toBe(false);
+  });
+
+  // --- Remediation hints on fail/warning rows ---
+
+  it('should show remediation hint on fail finding rows', () => {
+    const data = makeData([
+      finding({
+        status: 'fail',
+        title: 'Missing Title',
+        summary: 'No title set.',
+        remediation: 'Set the document title in your authoring tool. Use something descriptive.',
+      }),
+    ]);
+    renderDashboard(el, data, callbacks);
+
+    const hint = el.querySelector('.dashboard__finding-hint');
+    expect(hint).not.toBeNull();
+    expect(hint.textContent).toBe('Set the document title in your authoring tool.');
+  });
+
+  it('should show remediation hint on warning finding rows', () => {
+    const data = makeData([
+      finding({
+        status: 'warning',
+        title: 'Font Issue',
+        summary: 'Some fonts lack ToUnicode.',
+        remediation: 'Embed all fonts when exporting. In Word: use standard fonts.',
+      }),
+    ]);
+    renderDashboard(el, data, callbacks);
+
+    const hint = el.querySelector('.dashboard__finding-hint');
+    expect(hint).not.toBeNull();
+    expect(hint.textContent).toBe('Embed all fonts when exporting.');
+  });
+
+  it('should not show remediation hint when finding has no remediation', () => {
+    const data = makeData([
+      finding({
+        status: 'fail',
+        title: 'Missing Title',
+        summary: 'No title set.',
+        remediation: null,
+      }),
+    ]);
+    renderDashboard(el, data, callbacks);
+
+    const hint = el.querySelector('.dashboard__finding-hint');
+    expect(hint).toBeNull();
   });
 });
