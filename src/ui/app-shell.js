@@ -323,7 +323,7 @@ export function initAppShell(container, worker) {
 
     const version = document.createElement('p');
     version.className = 'welcome__version';
-    version.textContent = `v1.0.0 \u00B7 ${typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : 'dev'}`;
+    version.textContent = `v${typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev'} \u00B7 ${typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : 'dev'}`;
     content.appendChild(version);
 
     const classes = ['white', 'no-full', 'no-max', 'no-min', 'no-resize'];

@@ -120,7 +120,7 @@ export const TOOL_URL = 'https://khawkins98.github.io/PDF-A-go-actionable/';
 export const REPO_URL = 'https://github.com/khawkins98/PDF-A-go-actionable';
 
 async function downloadPDF(data) {
-  const { PDFDocument, StandardFonts, rgb, PDFName, PDFString, PDFHexString, PDFStream } = await import('pdf-lib');
+  const { PDFDocument, StandardFonts, rgb, PDFName, PDFString, PDFHexString, PDFStream, PDFOperator } = await import('pdf-lib');
   const pdfDoc = await PDFDocument.create();
 
   const reportTitle = `Accessibility Report: ${data.meta.fileName || 'Unknown'}`;
@@ -131,6 +131,7 @@ async function downloadPDF(data) {
   pdfDoc.setSubject('PDF accessibility audit report');
   pdfDoc.setProducer('PDF-A-go-actionable');
   pdfDoc.setCreator('PDF-A-go-actionable');
+  pdfDoc.setKeywords(['PDF accessibility', 'WCAG', 'audit report', 'PDF/UA', 'assistive technology']);
   pdfDoc.setCreationDate(new Date());
 
   // Document language (fixes "Document Language" fail)
@@ -174,6 +175,26 @@ async function downloadPDF(data) {
   // Bookmark positions collected during rendering
   const bookmarks = [];
 
+  // === Marked content tracking for structure tree ===
+  let nextMcid = 0;
+  // Each entry: { role, mcid, pageRef (page.ref), altText? }
+  const mcidEntries = [];
+
+  // Begin a marked content sequence on the current page
+  function beginMark(role) {
+    const mcid = nextMcid++;
+    page.pushOperators(
+      PDFOperator.of('BDC', [PDFName.of(role), pdfDoc.context.obj({ MCID: mcid })]),
+    );
+    mcidEntries.push({ role, mcid, pageRef: page.ref });
+    return mcid;
+  }
+
+  // End the current marked content sequence
+  function endMark() {
+    page.pushOperators(PDFOperator.of('EMC'));
+  }
+
   // Helper: add a new page if needed
   function ensureSpace(needed) {
     if (y - needed < bottomMargin) {
@@ -182,7 +203,7 @@ async function downloadPDF(data) {
     }
   }
 
-  // Helper: draw text and advance y
+  // Helper: draw text and advance y, optionally wrapped in marked content
   function drawText(text, options = {}) {
     const {
       size = fontSize,
@@ -191,6 +212,7 @@ async function downloadPDF(data) {
       color = rgb(0.13, 0.15, 0.16),
       indent = 0,
       maxWidth = contentWidth,
+      role,
     } = options;
     const selectedFont = useBold ? fontBold : useOblique ? fontOblique : font;
 
@@ -215,6 +237,8 @@ async function downloadPDF(data) {
     const totalHeight = lines.length * (size * 1.4);
     ensureSpace(totalHeight);
 
+    if (role) beginMark(role);
+
     for (const l of lines) {
       page.drawText(l, {
         x: margin + indent,
@@ -225,6 +249,8 @@ async function downloadPDF(data) {
       });
       y -= size * 1.4;
     }
+
+    if (role) endMark();
   }
 
   // Helper: draw the logo mark (favicon replica) at given position
@@ -294,6 +320,8 @@ async function downloadPDF(data) {
       bookmarks.push({ title: text, page, y: y + headingFontSize });
     }
 
+    beginMark('H2');
+
     // Accent bar (thin vertical stripe)
     page.drawRectangle({
       x: margin,
@@ -310,6 +338,9 @@ async function downloadPDF(data) {
       font: fontBold,
       color: rgb(0.13, 0.15, 0.16),
     });
+
+    endMark();
+
     y -= headingFontSize * 1.4;
     y -= 4;
   }
@@ -337,10 +368,14 @@ async function downloadPDF(data) {
   // === Branded header (linked to tool URL) ===
   const logoSize = 22;
   const headerY = y;
+
+  beginMark('Artifact');
   drawLogoMark(page, margin, headerY - logoSize + 4, logoSize);
+  endMark();
 
   // Tool name next to logo
   const nameX = margin + logoSize + 8;
+  beginMark('P');
   page.drawText('PDF-A-go-actionable', {
     x: nameX,
     y: headerY - 3,
@@ -357,6 +392,7 @@ async function downloadPDF(data) {
     font: fontOblique,
     color: rgb(0.45, 0.47, 0.50),
   });
+  endMark();
 
   // Clickable link over entire header area
   const headerLinkW = fontBold.widthOfTextAtSize('PDF-A-go-actionable', 14) + logoSize + 8;
@@ -374,7 +410,7 @@ async function downloadPDF(data) {
   y -= 16;
 
   // === Report title + file info ===
-  drawText('PDF Accessibility Report', { size: titleFontSize, useBold: true });
+  drawText('PDF Accessibility Report', { size: titleFontSize, useBold: true, role: 'H1' });
   y -= 2;
   const fileName = data.meta.fileName || 'Unknown';
   const now = new Date();
@@ -382,6 +418,7 @@ async function downloadPDF(data) {
   drawText(`${fileName}  |  ${dateStr}`, {
     size: smallFontSize,
     color: rgb(0.45, 0.47, 0.50),
+    role: 'P',
   });
   y -= 10;
 
@@ -398,6 +435,8 @@ async function downloadPDF(data) {
 
   // Rectangle bottom-left corner; top edge aligns with current y
   const rectBottom = y - bannerHeight;
+
+  beginMark('Sect');
   page.drawRectangle({
     x: margin,
     y: rectBottom,
@@ -427,6 +466,7 @@ async function downloadPDF(data) {
     font,
     color: rgb(0.25, 0.25, 0.25),
   });
+  endMark();
 
   y = rectBottom - 16;
 
@@ -464,6 +504,8 @@ async function downloadPDF(data) {
   for (let i = 0; i < metaItems.length; i += 2) {
     ensureSpace(fontSize * 1.4);
 
+    beginMark('P');
+
     // Column 1
     const item1 = metaItems[i];
     const display1 = item1.value || 'Not set';
@@ -491,6 +533,8 @@ async function downloadPDF(data) {
         color: item2.warn ? warnColor : normalColor,
       });
     }
+
+    endMark();
 
     y -= fontSize * 1.4;
   }
@@ -520,9 +564,10 @@ async function downloadPDF(data) {
           size: subheadingFontSize,
           useBold: true,
           color: statusColors[finding.status] || rgb(0, 0, 0),
+          role: 'H3',
         });
 
-        drawText(finding.summary, { size: fontSize, indent: 10 });
+        drawText(finding.summary, { size: fontSize, indent: 10, role: 'P' });
 
         if (finding.details && finding.details.length > 0) {
           for (const detail of finding.details) {
@@ -530,6 +575,7 @@ async function downloadPDF(data) {
               size: smallFontSize,
               indent: 20,
               color: rgb(0.35, 0.35, 0.35),
+              role: 'P',
             });
           }
         }
@@ -539,6 +585,7 @@ async function downloadPDF(data) {
             size: fontSize,
             indent: 10,
             color: rgb(0.3, 0.3, 0.3),
+            role: 'P',
           });
         }
 
@@ -550,6 +597,7 @@ async function downloadPDF(data) {
             size: smallFontSize,
             indent: 10,
             color: rgb(0.5, 0.5, 0.5),
+            role: 'P',
           });
         }
 
@@ -564,9 +612,10 @@ async function downloadPDF(data) {
           size: subheadingFontSize,
           useBold: true,
           color: statusColors[finding.status] || rgb(0, 0, 0),
+          role: 'H3',
         });
 
-        drawText(finding.summary, { size: fontSize, indent: 10 });
+        drawText(finding.summary, { size: fontSize, indent: 10, role: 'P' });
         y -= 4;
       }
     } else {
@@ -578,6 +627,7 @@ async function downloadPDF(data) {
         drawText(`${prefix}  ${finding.title}`, {
           size: fontSize,
           color: statusColors[group.key] || rgb(0.3, 0.3, 0.3),
+          role: 'P',
         });
       }
       y -= 4;
@@ -651,6 +701,78 @@ async function downloadPDF(data) {
       font,
       color: footerColor,
     });
+  }
+
+  // === Structure Tree (Tagged PDF) ===
+  if (mcidEntries.length > 0) {
+    // Mark the document as tagged
+    pdfDoc.catalog.set(PDFName.of('MarkInfo'), pdfDoc.context.obj({ Marked: true }));
+
+    // Create Document root StructElem
+    const structTreeRoot = pdfDoc.context.register(pdfDoc.context.obj({
+      Type: 'StructTreeRoot',
+    }));
+    const docElem = pdfDoc.context.register(pdfDoc.context.obj({
+      Type: 'StructElem',
+      S: 'Document',
+      P: structTreeRoot,
+    }));
+
+    // Build a StructElem for each marked content entry
+    const childRefs = [];
+    // Group MCIDs by page for ParentTree
+    const pageToMcids = new Map();
+
+    for (const entry of mcidEntries) {
+      const childRef = pdfDoc.context.register(pdfDoc.context.obj({
+        Type: 'StructElem',
+        S: entry.role,
+        P: docElem,
+        K: entry.mcid,
+        Pg: entry.pageRef,
+      }));
+      childRefs.push(childRef);
+
+      if (!pageToMcids.has(entry.pageRef)) pageToMcids.set(entry.pageRef, []);
+      pageToMcids.get(entry.pageRef).push({ mcid: entry.mcid, elemRef: childRef });
+    }
+
+    // Set children on Document elem
+    const docDict = pdfDoc.context.lookup(docElem);
+    docDict.set(PDFName.of('K'), pdfDoc.context.obj(childRefs));
+
+    // Build ParentTree (maps MCID → StructElem for each page)
+    const parentTreeNums = [];
+    let pageIdx = 0;
+    for (const p of pages) {
+      const entries = pageToMcids.get(p.ref);
+      if (entries) {
+        // Build array mapping MCID index → StructElem ref
+        const mcidToElem = [];
+        for (const e of entries) mcidToElem[e.mcid] = e.elemRef;
+        // Fill gaps with null refs
+        const arr = [];
+        for (let m = 0; m <= Math.max(...entries.map(e => e.mcid)); m++) {
+          arr.push(mcidToElem[m] || null);
+        }
+        parentTreeNums.push(pageIdx, pdfDoc.context.obj(arr.filter(Boolean)));
+      }
+      // Set StructParents on the page
+      p.node.set(PDFName.of('StructParents'), pdfDoc.context.obj(pageIdx));
+      pageIdx++;
+    }
+
+    const parentTree = pdfDoc.context.register(pdfDoc.context.obj({
+      Type: 'NumberTree',
+      Nums: parentTreeNums,
+    }));
+
+    // Wire up StructTreeRoot
+    const rootDict = pdfDoc.context.lookup(structTreeRoot);
+    rootDict.set(PDFName.of('K'), docElem);
+    rootDict.set(PDFName.of('ParentTree'), parentTree);
+    rootDict.set(PDFName.of('ParentTreeNextKey'), pdfDoc.context.obj(pageIdx));
+    pdfDoc.catalog.set(PDFName.of('StructTreeRoot'), structTreeRoot);
   }
 
   // === Bookmarks (Outlines) ===

@@ -29,7 +29,7 @@ export function showAboutDialog(root, WinBox, onClose) {
         <circle cx="26" cy="6" r="4" fill="#22c55e"/>
       </svg>
       <div class="about-hero__name">PDF-A-go-actionable</div>
-      <div class="about-hero__version">Version 1.3.1</div>
+      <div class="about-hero__version">Version ${typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev'}</div>
       <div class="about-hero__tagline">PDF Accessibility Checker</div>
     </div>
     <div class="about-info-panel">
@@ -41,7 +41,7 @@ export function showAboutDialog(root, WinBox, onClose) {
         <dt>License</dt>
         <dd><a href="https://github.com/khawkins98/PDF-A-go-actionable" target="_blank" rel="noopener noreferrer">MIT</a></dd>
         <dt>Changelog</dt>
-        <dd><a href="https://github.com/khawkins98/PDF-A-go-actionable/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">v1.3.1</a></dd>
+        <dd><a href="https://github.com/khawkins98/PDF-A-go-actionable/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">v${typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev'}</a></dd>
       </dl>
       <details class="about-details">
         <summary>Built With</summary>

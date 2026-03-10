@@ -13,11 +13,13 @@
 - Date and time shown in report subtitle (not just date) for distinguishing reruns
 
 ### PDF export accessibility
+- **Tagged PDF with structure tree**: all content wrapped in marked content sequences (`BDC`/`EMC`) with proper roles (H1, H2, H3, P, Sect, Artifact) and a StructTreeRoot with Document > StructElem hierarchy and ParentTree
 - Document language set to `en` on the catalog (fixes "Document Language" fail)
 - Viewer preference `DisplayDocTitle` enabled (fixes "Display Document Title" warning)
 - Tab order set to structure (`/Tabs /S`) on all pages (fixes "Tab Order" warning)
 - Bookmarks (outlines) added for each report section for keyboard/AT navigation (fixes "Bookmarks" warning)
 - XMP metadata with `dc:title`, `dc:creator`, `xmp:CreatorTool` (fixes "Document Title" XMP warning)
+- Keywords set on exported PDF: "PDF accessibility, WCAG, audit report, PDF/UA, assistive technology"
 
 ## 1.3.0 2026-03-10
 
