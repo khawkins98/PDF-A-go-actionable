@@ -28,18 +28,17 @@
 - Creator-specific hint banner on dashboard (InDesign, Word, PowerPoint, Acrobat, LibreOffice)
 
 ### Dashboard UX
-- Checklist progress indicator: "N of M automated checks pass"
-- Expandable checklist items with "Why This Matters" narrative and authoring tips
+- Remove UNDRR 13-point validation checklist from dashboard (findings are already shown in status-grouped sections — the checklist duplicated them)
 - Remediation hints: first sentence of remediation shown inline on fail/warning rows
 - Document title shown in dashboard header and window title bar when available
 - `display-doc-title` decoupled from checklist item #1
-- Checklist item #11 renamed "Accessibility checker is run" (pass or warning only)
 
 ### Export quality
 - PDF export: set document metadata (title, author, subject, producer, creator, creation date)
 - PDF export: render finding details in full-density sections
 - CSV export: add details column and UTF-8 BOM for Excel compatibility
-- JSON export: include UNDRR 13-point checklist status
+- JSON export: remove UNDRR checklist (findings already included individually)
+- PDF export: remove separate checklist summary page (findings grouped by status in main report)
 - Extract `buildJsonOutput()` and `buildCsvContent()` as testable pure functions
 
 ### Remediation guidance
@@ -64,7 +63,7 @@
 ### Test infrastructure
 - New shared assertion helpers: `findFindingById()`, `expectFindingStatus()`
 - 6 new PDF fixture factories
-- 783 tests across 44 test files (up from 688 across 40)
+- 798 tests across 45 test files (up from 688 across 40)
 
 ## 1.2.0 2026-03-02
 

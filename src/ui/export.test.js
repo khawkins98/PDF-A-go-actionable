@@ -5,11 +5,9 @@
  * - escapeCsvField: quoting, escaping, null handling
  * - buildFilename: strips .pdf, appends report suffix
  * - initExport: returns three export functions
- * - drawChecklistPage (via PDF export integration)
  */
 import { describe, it, expect } from 'vitest';
 import { escapeCsvField, buildFilename, initExport, buildJsonOutput, buildCsvContent } from './export.js';
-import { UNDRR_CHECKLIST } from './undrr-checklist.js';
 
 describe('escapeCsvField', () => {
   it('should return a plain string unchanged', () => {
@@ -89,7 +87,7 @@ describe('initExport', () => {
 // --- buildJsonOutput ---
 
 describe('buildJsonOutput', () => {
-  it('should include checklist in JSON output', () => {
+  it('should not include checklist in JSON output', () => {
     const data = {
       meta: { fileName: 'test.pdf' },
       findings: [
@@ -97,9 +95,7 @@ describe('buildJsonOutput', () => {
       ],
     };
     const output = buildJsonOutput(data);
-    expect(output.checklist).toBeDefined();
-    expect(Array.isArray(output.checklist)).toBe(true);
-    expect(output.checklist.length).toBe(13);
+    expect(output.checklist).toBeUndefined();
     expect(output.tool).toBe('PDF-A-go-actionable');
     expect(output.exportedAt).toBeDefined();
   });
@@ -174,33 +170,3 @@ describe('buildCsvContent', () => {
   });
 });
 
-// --- UNDRR Checklist integration ---
-
-describe('UNDRR checklist coverage', () => {
-  it('should have all 13 UNDRR checklist items defined', () => {
-    expect(UNDRR_CHECKLIST).toHaveLength(13);
-  });
-
-  it('should map our finding IDs to the checklist items', () => {
-    const allIds = UNDRR_CHECKLIST.flatMap((item) => item.findingIds);
-    expect(allIds).toContain('document-title');
-    expect(allIds).toContain('document-lang');
-    expect(allIds).toContain('heading-hierarchy');
-    expect(allIds).toContain('image-alt-text');
-  });
-
-  it('should not have unknown finding IDs in the checklist', () => {
-    const knownIds = [
-      'document-title', 'display-doc-title', 'document-lang',
-      'security-permissions', 'tagged-pdf', 'structure-tree',
-      'reading-order', 'tab-order', 'image-alt-text',
-      'decorative-images', 'heading-hierarchy', 'table-headers',
-      'list-structure', 'pac-validation', 'screen-reader-test',
-      'color-contrast',
-    ];
-    const allIds = UNDRR_CHECKLIST.flatMap((item) => item.findingIds);
-    for (const id of allIds) {
-      expect(knownIds, `Unknown finding ID "${id}" in UNDRR checklist`).toContain(id);
-    }
-  });
-});

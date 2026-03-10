@@ -424,8 +424,8 @@ describe('renderDashboard', () => {
     expect(h2s[0].textContent).toBe('PDF Accessibility Report');
 
     const h3s = el.querySelectorAll('h3');
-    // File name, "Validation Checklist", "Requires Attention", "Passed"
-    expect(h3s.length).toBe(4);
+    // File name, "Requires Attention", "Passed"
+    expect(h3s.length).toBe(3);
     expect(h3s[0].textContent).toBe('test.pdf');
   });
 
@@ -614,90 +614,6 @@ describe('renderDashboard', () => {
     }
   });
 
-  // --- UNDRR Validation Checklist ---
-
-  it('should render a "Validation Checklist" section', () => {
-    const data = makeData([finding({ status: 'pass' })]);
-    renderDashboard(el, data, callbacks);
-
-    const section = el.querySelector('.dashboard__checklist-section');
-    expect(section).not.toBeNull();
-    expect(section.getAttribute('aria-label')).toBe('Validation Checklist');
-  });
-
-  it('should render 13 checklist items', () => {
-    const data = makeData([]);
-    renderDashboard(el, data, callbacks);
-
-    const items = el.querySelectorAll('.dashboard__checklist-item');
-    expect(items.length).toBe(13);
-  });
-
-  it('should show numbered badges 1-13', () => {
-    const data = makeData([]);
-    renderDashboard(el, data, callbacks);
-
-    const numbers = el.querySelectorAll('.dashboard__checklist-number');
-    const values = [...numbers].map((n) => n.textContent);
-    expect(values).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13']);
-  });
-
-  it('should show Pass status for checklist items with passing findings', () => {
-    const data = makeData([
-      finding({ id: 'document-title', status: 'pass', title: 'Document Title' }),
-      finding({ id: 'display-doc-title', status: 'pass', title: 'Display Doc Title' }),
-    ]);
-    renderDashboard(el, data, callbacks);
-
-    const items = el.querySelectorAll('.dashboard__checklist-item');
-    // Item 1 should be pass
-    const status = items[0].querySelector('.dashboard__checklist-status');
-    expect(status.textContent).toBe('Pass');
-    expect(status.classList.contains('dashboard__checklist-status--pass')).toBe(true);
-  });
-
-  it('should show Fail status for checklist items with failing findings', () => {
-    const data = makeData([
-      finding({ id: 'document-title', status: 'fail', title: 'Document Title' }),
-    ]);
-    renderDashboard(el, data, callbacks);
-
-    const items = el.querySelectorAll('.dashboard__checklist-item');
-    const status = items[0].querySelector('.dashboard__checklist-status');
-    expect(status.textContent).toBe('Fail');
-    expect(status.classList.contains('dashboard__checklist-status--fail')).toBe(true);
-  });
-
-  it('should show -- for checklist items with no matching findings', () => {
-    const data = makeData([]);
-    renderDashboard(el, data, callbacks);
-
-    const items = el.querySelectorAll('.dashboard__checklist-item');
-    // Item 1 has no findings
-    const status = items[0].querySelector('.dashboard__checklist-status');
-    expect(status.textContent).toBe('--');
-  });
-
-  it('should use two-column grid layout for checklist', () => {
-    const data = makeData([]);
-    renderDashboard(el, data, callbacks);
-
-    const grid = el.querySelector('.dashboard__checklist');
-    expect(grid).not.toBeNull();
-  });
-
-  it('should show contextual reason for N/A checklist items', () => {
-    const data = makeData([
-      finding({ id: 'table-headers', status: 'not-applicable', title: 'Table Headers', summary: 'No tables found in the structure tree.' }),
-    ]);
-    renderDashboard(el, data, callbacks);
-
-    const reasons = el.querySelectorAll('.dashboard__checklist-reason');
-    expect(reasons.length).toBeGreaterThan(0);
-    const reasonTexts = [...reasons].map((r) => r.textContent);
-    expect(reasonTexts).toContain('No tables found in the structure tree.');
-  });
-
   // --- Metadata tooltips ---
 
   it('should add data-tooltip and title attributes to metadata dt elements', () => {
@@ -765,61 +681,7 @@ describe('renderDashboard', () => {
     expect(dd.classList.contains('dashboard__meta-warn')).toBe(false);
   });
 
-  // --- Phase 8: Checklist progress indicator ---
-
-  it('should show compliance progress indicator', () => {
-    const data = makeData([
-      finding({ id: 'document-title', status: 'pass', title: 'Document Title' }),
-      finding({ id: 'display-doc-title', status: 'pass', title: 'Display Doc Title' }),
-      finding({ id: 'document-lang', status: 'fail', title: 'Document Language' }),
-    ]);
-    renderDashboard(el, data, callbacks);
-
-    const progress = el.querySelector('.dashboard__checklist-progress');
-    expect(progress).not.toBeNull();
-    expect(progress.textContent).toMatch(/\d+ of \d+ automated checks pass/);
-  });
-
-  // --- Phase 8: Expandable checklist items ---
-
-  it('should render expandable checklist items as details/summary', () => {
-    const data = makeData([]);
-    renderDashboard(el, data, callbacks);
-
-    const items = el.querySelectorAll('.dashboard__checklist-item');
-    expect(items.length).toBe(13);
-    // Each item should be a <details> element
-    for (const item of items) {
-      expect(item.tagName.toLowerCase()).toBe('details');
-      expect(item.querySelector('summary')).not.toBeNull();
-    }
-  });
-
-  it('should show Why This Matters in expanded checklist item', () => {
-    const data = makeData([]);
-    renderDashboard(el, data, callbacks);
-
-    const items = el.querySelectorAll('.dashboard__checklist-item');
-    // Item 1: "Document title is set" — has whyItMatters
-    const body = items[0].querySelector('.dashboard__checklist-body');
-    expect(body).not.toBeNull();
-
-    const why = body.querySelector('.dashboard__checklist-why');
-    expect(why).not.toBeNull();
-    expect(why.textContent).toContain('document title');
-  });
-
-  it('should show authoring tip in expanded checklist item', () => {
-    const data = makeData([]);
-    renderDashboard(el, data, callbacks);
-
-    const items = el.querySelectorAll('.dashboard__checklist-item');
-    const tip = items[0].querySelector('.dashboard__checklist-tip');
-    expect(tip).not.toBeNull();
-    expect(tip.textContent.length).toBeGreaterThan(0);
-  });
-
-  // --- Phase 8: Remediation hints on fail/warning rows ---
+  // --- Remediation hints on fail/warning rows ---
 
   it('should show remediation hint on fail finding rows', () => {
     const data = makeData([

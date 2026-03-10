@@ -43,7 +43,7 @@ The tool covers the checks that accessibility professionals rely on most:
 
 **Report dashboard:**
 - At-a-glance verdict: PASS / PASS WITH WARNINGS / FAIL
-- UNDRR 13-point validation checklist with expandable "Why This Matters" guidance and authoring tips
+- Findings grouped by severity: fails, warnings, manual review, passed, not applicable
 - Page numbers in finding details where available
 - Remediation hints inline on fail/warning findings
 - Clear error messages for non-PDF files, encrypted PDFs, and corrupt files
