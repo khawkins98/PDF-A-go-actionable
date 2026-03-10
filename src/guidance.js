@@ -79,7 +79,7 @@ export const FINDINGS = {
   },
   'font-tounicode': {
     why: 'Without a ToUnicode CMap, the PDF viewer cannot convert font glyph codes back to characters. Screen readers will skip or mispronounce the text, and copy-paste will produce symbols instead of words.',
-    remediation: 'Without a ToUnicode CMap, the PDF viewer cannot convert font glyph codes back to characters. Screen readers will skip or mispronounce the text, and copy-paste will produce symbols instead of words. Re-export the PDF with font embedding enabled, or use fonts that include Unicode mapping. In InDesign: File > Export > Adobe PDF > Advanced > check "Subset fonts below 100%". In Word: save as PDF (fonts are embedded by default). In Acrobat: Preflight > Embed missing fonts.',
+    remediation: 'Re-export the PDF with font embedding enabled, or use fonts that include Unicode mapping. In InDesign: File > Export > Adobe PDF > Advanced > check "Subset fonts below 100%". In Word: save as PDF (fonts are embedded by default). In Acrobat: Preflight > Embed missing fonts.',
   },
   'font-embedding': {
     why: 'Unembedded fonts rely on the reader\'s computer having the same font installed. If the font is missing, the system substitutes a different one, which can ruin the layout or render text unreadable.',
