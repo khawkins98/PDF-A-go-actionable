@@ -126,10 +126,10 @@ export function checkMetadata(pdfDoc, ctx) {
     id: 'pdfua-conformance',
     category: 'metadata',
     title: 'PDF/UA Conformance',
-    status: traits.isPdfUA ? 'pass' : 'warning',
+    status: traits.isPdfUA ? 'pass' : 'manual',
     summary: traits.isPdfUA
       ? 'Document claims PDF/UA conformance.'
-      : 'Document does not claim PDF/UA conformance. This is informational; the document may still be accessible.',
+      : 'Document does not claim PDF/UA conformance. Consider validating with a dedicated PDF/UA checker such as PAC or veraPDF if full conformance is a goal.',
     details: [],
     remediation: traits.isPdfUA
       ? null
