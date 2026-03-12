@@ -161,6 +161,14 @@ async function downloadPDF(data) {
 
   const pages = [];
 
+  // Bookmark positions collected during rendering
+  const bookmarks = [];
+
+  // === Marked content tracking for structure tree ===
+  let nextMcid = 0;
+  // Each entry: { role, mcid, pageRef (page.ref), altText? }
+  const mcidEntries = [];
+
   // Helper: create a page with tab order set to structure (fixes "Tab Order" warning)
   function addNewPage() {
     const p = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -172,14 +180,6 @@ async function downloadPDF(data) {
 
   let page = addNewPage();
   let y = pageHeight - margin;
-
-  // Bookmark positions collected during rendering
-  const bookmarks = [];
-
-  // === Marked content tracking for structure tree ===
-  let nextMcid = 0;
-  // Each entry: { role, mcid, pageRef (page.ref), altText? }
-  const mcidEntries = [];
 
   // Begin a marked content sequence on the current page
   function beginMark(role) {
