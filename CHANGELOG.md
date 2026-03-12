@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.2 2026-03-12
+
+### Bug fixes
+- Fixed PDF export crash ("can't access lexical declaration before initialization"). The `nextMcid` variable was declared after the first call to `addNewPage()` which referenced it, causing a Temporal Dead Zone error in production builds.
+
 ## 1.3.1 2026-03-10
 
 ### PDF export branding
