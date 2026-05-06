@@ -4,3 +4,13 @@ dist/
 .DS_Store
 *.local
 CLAUDE.md
+
+# Environment / local config
+.env
+.env.*
+!.env.example
+
+# Editor / agent caches
+.claude/
+.idea/
+.vscode/
