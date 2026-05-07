@@ -12,8 +12,11 @@ describe('main.js', () => {
   beforeEach(() => {
     origWorker = globalThis.Worker;
 
-    // Mock Worker constructor
-    globalThis.Worker = vi.fn(() => ({ postMessage: vi.fn(), terminate: vi.fn() }));
+    // Mock Worker constructor (vi.fn with `function` so it's `new`-able)
+    globalThis.Worker = vi.fn(function () {
+      this.postMessage = vi.fn();
+      this.terminate = vi.fn();
+    });
 
     // Ensure #app exists
     document.body.innerHTML = '<div id="app"></div>';
